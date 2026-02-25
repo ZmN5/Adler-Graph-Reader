@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # Constants
-DB_PATH = Path(__file__).parent / "knowledge.sqlite"
+DB_PATH = Path(__file__).parent.parent.parent / "knowledge.sqlite"
 
 
 def get_db_connection() -> sqlite3.Connection:
@@ -105,11 +105,11 @@ def get_concepts_with_relations(document_id: str, limit: int = 50) -> List[Dict]
     # Get concepts
     cursor = conn.execute(
         """
-        SELECT c.id, c.name, c.description, c.type,
-               cr.target_id, cr.relation_type, t.name as target_name
+        SELECT c.id, c.name, c.definition,
+               cr.target_concept_id, cr.relation_type, t.name as target_name
         FROM concepts c
-        LEFT JOIN concept_relations cr ON c.id = cr.source_id
-        LEFT JOIN concepts t ON cr.target_id = t.id
+        LEFT JOIN concept_relations cr ON c.id = cr.source_concept_id
+        LEFT JOIN concepts t ON cr.target_concept_id = t.id
         WHERE c.document_id = ?
         ORDER BY c.name
         LIMIT ?
@@ -127,25 +127,15 @@ def build_graphvizGraph(concepts: List[Dict]) -> graphviz.Graph:
     dot = graphviz.Digraph(comment="Knowledge Graph")
     dot.attr(rankdir="LR", size="12,8")
     
-    # Group by type
-    type_colors = {
-        "theme": "#FF6B6B",
-        "concept": "#4ECDC4", 
-        "entity": "#45B7D1",
-        "default": "#96CEB4"
-    }
-    
     # Add nodes
     nodes = set()
     for c in concepts:
         if c["name"] and c["name"] not in nodes:
-            color = type_colors.get(c.get("type", "default"), type_colors["default"])
-            dot.node(c["name"], color=color, style="filled", fillcolor=color + "40")
+            dot.node(c["name"], style="filled", fillcolor="#4ECDC440")
             nodes.add(c["name"])
         
         if c.get("target_name") and c["target_name"] not in nodes:
-            color = type_colors.get("default", type_colors["default"])
-            dot.node(c["target_name"], color=color, style="filled", fillcolor=color + "40")
+            dot.node(c["target_name"], style="filled", fillcolor="#96CEB440")
             nodes.add(c["target_name"])
     
     # Add edges
@@ -229,9 +219,7 @@ with tab2:
         
         for name, details in list(concept_details.items())[:20]:
             with st.expander(f"📌 {name}"):
-                st.write(details.get("description", "No description"))
-                if details.get("type"):
-                    st.caption(f"Type: {details['type']}")
+                st.write(details.get("definition", "No definition"))
     else:
         st.info("No concepts extracted yet. Run 'build-graph' command to extract concepts.")
 
