@@ -41,3 +41,7 @@ htmlcov/
 # Ruff
 .ruff_cache/
 books/
+
+# Local database
+knowledge.sqlite
+uv.lock
