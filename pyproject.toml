@@ -1,7 +1,26 @@
 [project]
 name = "adler-graph-reader"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "艾德勒图谱阅读器 - Extract structured knowledge from PDFs/EPUBs"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "ebooklib>=0.20",
+    "instructor>=1.14.5",
+    "openai>=2.24.0",
+    "pydantic>=2.12.5",
+    "pymupdf>=1.27.1",
+    "sqlite-vec>=0.1.6",
+]
+
+[project.scripts]
+adler = "adler_graph_reader.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.package]
+source = "src"
+
+[tool.uv]
+dev-dependencies = []
