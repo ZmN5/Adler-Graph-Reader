@@ -3,6 +3,7 @@ CLI interface for Adler-Graph-Reader.
 """
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -70,6 +71,11 @@ def parse_args() -> argparse.Namespace:
 
     # init-db command
     subparsers.add_parser("init-db", help="Initialize database")
+
+    # ui command
+    ui = subparsers.add_parser("ui", help="Launch web UI")
+    ui.add_argument("--port", "-p", type=int, default=8501, help="Port number (default: 8501)")
+    ui.add_argument("--browser/--no-browser", default=True, help="Open browser automatically")
 
     return parser.parse_args()
 
@@ -436,6 +442,33 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
     tracker.close()
 
 
+def cmd_ui(port: int = 8501, open_browser: bool = True):
+    """Launch Streamlit web UI."""
+    import streamlit.web.cli as stcli
+    import os
+    
+    ui_path = Path(__file__).parent / "ui.py"
+    
+    if not ui_path.exists():
+        print(f"Error: UI file not found at {ui_path}")
+        return
+    
+    # Change to project directory so it finds knowledge.sqlite
+    project_dir = Path(__file__).parent.parent.parent
+    
+    cmd = [
+        "streamlit", "run", str(ui_path),
+        "--server.port", str(port),
+        "--server.headless", "false" if open_browser else "true"
+    ]
+    
+    print(f"Starting UI at http://localhost:{port}")
+    print(f"Press Ctrl+C to stop")
+    
+    os.chdir(project_dir)
+    subprocess.run(cmd)
+
+
 def main() -> int:
     """Main entry point."""
     args = parse_args()
@@ -480,6 +513,10 @@ def main() -> int:
 
     if args.command == "qa":
         cmd_qa(args.question, args.document, args.session)
+        return 0
+
+    if args.command == "ui":
+        cmd_ui(args.port, args.browser)
         return 0
 
     print("Usage: adler-graph-reader <command>")
