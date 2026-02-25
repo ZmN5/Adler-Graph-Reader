@@ -17,7 +17,7 @@ from .models import BookSummary, ConceptExtraction
 
 # Default Ollama configuration
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
-DEFAULT_MODEL = "glm-4.7-flash:latest"
+DEFAULT_MODEL = "qwen3:4b"
 DEFAULT_EMBED_MODEL = "qwen3-embedding:0.6b"
 
 
@@ -73,7 +73,7 @@ class OllamaClient(LLMProvider):
                 base_url=self.base_url,
                 api_key="not-needed",
                 timeout=Timeout(60.0, connect=10.0),
-                http_client=httpx.Client(proxy=None),
+                http_client=httpx.Client(trust_env=False),
             )
         return self._client
 
@@ -86,7 +86,7 @@ class OllamaClient(LLMProvider):
                     base_url=self.base_url,
                     api_key="not-needed",
                     timeout=Timeout(60.0, connect=10.0),
-                    http_client=httpx.Client(proxy=None),
+                    http_client=httpx.Client(trust_env=False),
                 ),
                 mode=instructor.Mode.JSON,
             )

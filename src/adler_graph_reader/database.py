@@ -59,13 +59,12 @@ def init_database(db_path: Optional[Path] = None) -> sqlite3.Connection:
     """)
 
     # 2. fts_chunks: FTS5 virtual table for full-text search
+    # Using independent FTS5 table (not external content) for better compatibility
     cursor.execute("""
         CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
             content,
             document_id UNINDEXED,
-            tree_id UNINDEXED,
-            content='document_tree',
-            content_rowid='id'
+            tree_id UNINDEXED
         )
     """)
 
@@ -79,15 +78,13 @@ def init_database(db_path: Optional[Path] = None) -> sqlite3.Connection:
 
     cursor.execute("""
         CREATE TRIGGER IF NOT EXISTS document_tree_ad AFTER DELETE ON document_tree BEGIN
-            INSERT INTO fts_chunks(fts_chunks, rowid, content, document_id, tree_id)
-            VALUES('delete', old.id, old.content, old.document_id, old.id);
+            DELETE FROM fts_chunks WHERE rowid = old.id;
         END
     """)
 
     cursor.execute("""
         CREATE TRIGGER IF NOT EXISTS document_tree_au AFTER UPDATE ON document_tree BEGIN
-            INSERT INTO fts_chunks(fts_chunks, rowid, content, document_id, tree_id)
-            VALUES('delete', old.id, old.content, old.document_id, old.id);
+            DELETE FROM fts_chunks WHERE rowid = old.id;
             INSERT INTO fts_chunks(rowid, content, document_id, tree_id)
             VALUES (new.id, new.content, new.document_id, new.id);
         END

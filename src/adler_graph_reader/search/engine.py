@@ -1,5 +1,5 @@
 """
-Hybrid search engine combining BM25, vector search, and LLM reranking.
+Hybrid search engine combining BM25 and vector search with RRF fusion.
 """
 
 from dataclasses import dataclass
@@ -22,7 +22,8 @@ class SearchResult:
 
 class HybridSearchEngine:
     """
-    Hybrid search combining BM25, vector search, RRF fusion, and LLM reranking.
+    Hybrid search combining BM25, vector search, and RRF fusion.
+    No LLM reranking - uses direct RRF scoring.
     """
 
     def __init__(
@@ -44,8 +45,7 @@ class HybridSearchEngine:
         1. BM25 search
         2. Vector search
         3. RRF fusion
-        4. LLM reranking
-        5. Context expansion
+        4. Context expansion (no LLM reranking)
         """
         # 1 & 2: Parallel BM25 and Vector search
         bm25_results = database.bm25_search(self.conn, query, document_id, limit=20)
@@ -62,21 +62,23 @@ class HybridSearchEngine:
         # 3: RRF fusion
         fused = rrf_fusion(bm25_results, vector_results, k=60)
 
-        # Get top 20 for reranking
-        top_20_ids = [r["tree_id"] for r in fused[:20]]
-        if not top_20_ids:
+        # Get top results with scores
+        top_results = fused[:top_k]
+        if not top_results:
             return []
 
-        # Get full content for reranking
-        chunks = database.get_chunks_by_ids(self.conn, top_20_ids)
+        top_ids = [r["tree_id"] for r in top_results]
+        
+        # Create score map from fusion results
+        score_map = {r["tree_id"]: r.get("rrf_score", 0) for r in top_results}
+
+        # Get full content
+        chunks = database.get_chunks_by_ids(self.conn, top_ids)
         chunk_map = {c["tree_id"]: c for c in chunks}
 
-        # 4: LLM reranking
-        reranked = self._rerank(query, chunks)
-
-        # 5: Context expansion and build results
+        # 4: Context expansion and build results
         results = []
-        for item in reranked[:top_k]:
+        for item in top_results:
             tree_id = item["tree_id"]
             chunk = chunk_map.get(tree_id)
             if not chunk:
@@ -89,58 +91,9 @@ class HybridSearchEngine:
             results.append(SearchResult(
                 tree_id=tree_id,
                 content=chunk["content"],
-                score=item.get("rerank_score", 0),
+                score=score_map.get(tree_id, 0),
                 context=context,
                 page_number=chunk.get("page_number"),
             ))
 
         return results
-
-    def _rerank(
-        self,
-        query: str,
-        chunks: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        """Use LLM to rerank chunks by relevance."""
-        if len(chunks) <= 5:
-            return [{"tree_id": c["tree_id"], "rerank_score": 1.0} for c in chunks]
-
-        # Build reranking prompt
-        chunk_texts = "\n\n".join([
-            f"[{i+1}] {c['content'][:500]}"
-            for i, c in enumerate(chunks)
-        ])
-
-        prompt = f"""请根据查询 "{query}" 对以下文本片段进行相关性打分。
-
-{chunk_texts}
-
-请按相关性从高到低排序，输出格式：
-每行一个序号，用逗号分隔，例如：1, 3, 2, 4, 5
-
-只输出数字序号，不要有其他内容。"""
-
-        try:
-            response = self.llm_client.generate(prompt, temperature=0.3)
-            # Parse response
-            order = [int(x.strip()) for x in response.split(",") if x.strip().isdigit()]
-
-            if len(order) != len(chunks):
-                # Fallback: return original order
-                return [{"tree_id": c["tree_id"], "rerank_score": 1.0 / (i + 1)}
-                        for i, c in enumerate(chunks)]
-
-            # Map original indices
-            result = []
-            for rank, idx in enumerate(order):
-                if 0 < idx <= len(chunks):
-                    result.append({
-                        "tree_id": chunks[idx - 1]["tree_id"],
-                        "rerank_score": 1.0 / (rank + 1),
-                    })
-            return result
-
-        except Exception:
-            # Fallback on error
-            return [{"tree_id": c["tree_id"], "rerank_score": 1.0 / (i + 1)}
-                    for i, c in enumerate(chunks)]

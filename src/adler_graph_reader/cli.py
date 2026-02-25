@@ -75,7 +75,8 @@ def parse_args() -> argparse.Namespace:
     # ui command
     ui = subparsers.add_parser("ui", help="Launch web UI")
     ui.add_argument("--port", "-p", type=int, default=8501, help="Port number (default: 8501)")
-    ui.add_argument("--browser/--no-browser", default=True, help="Open browser automatically")
+    ui.add_argument("--browser", "-b", action="store_true", default=True, help="Open browser automatically")
+    ui.add_argument("--no-browser", "-n", dest="browser", action="store_false", help="Don't open browser automatically")
 
     return parser.parse_args()
 
@@ -414,7 +415,7 @@ def cmd_graph(document_id: str, format: str = "text") -> None:
 
 def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> None:
     """Ask a question about the document."""
-    conn = database.get_connection()
+    conn = database.get_admin_connection()
     tracker = QATracker(conn)
 
     if session_id is None:

@@ -16,7 +16,7 @@ Adler-Graph-Reader is a Python CLI tool that reads PDF/EPUB documents, extracts 
 
 - **Python**: 3.12+ (managed by uv)
 - **Runtime**: Ollama (http://localhost:11434/v1)
-- **Models**: qwen3 (14b/32b) for reasoning, gte-qwen2-1.5b for embeddings
+- **Models**: qwen3:4b for reasoning, qwen3-embedding:0.6b for embeddings
 - **Database**: knowledge.sqlite (SQLite + FTS5 + sqlite-vec)
 
 ## Commands
@@ -68,7 +68,7 @@ src/adler_graph_reader/
 - **parser**: Each format (PDF, EPUB) is a separate class implementing `DocumentParser`
 - **llm**: `OllamaClient` wraps OpenAI SDK with instructor for structured output
 - **knowledge**: Pure Pydantic models, no business logic
-- **search**: `HybridSearchEngine` composes BM25 + vector + RRF + reranking
+- **search**: `HybridSearchEngine` composes BM25 + vector + RRF fusion (no reranking)
 - **output**: Stateless generators, writer handles file I/O
 
 ### Database Schema
@@ -81,5 +81,5 @@ src/adler_graph_reader/
 
 1. **Ingestion** (`ingest`): Parse → chunk with parent_id → FTS5 + embeddings
 2. **Analysis** (`analyze`): Map-Reduce summarization → concept extraction
-3. **Search** (`search`): Hybrid search with RRF fusion and LLM reranking
+3. **Search** (`search`): Hybrid search with RRF fusion (no LLM reranking)
 4. **Output**: Pure file I/O → Obsidian [[wikilinks]]
