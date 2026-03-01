@@ -107,7 +107,11 @@ class OllamaClient(LLMProvider):
         """Lazy initialization of async client with MD_JSON mode for LM Studio."""
         if self._async_client is None:
             self._async_client = instructor.from_openai(
-                AsyncOpenAI(base_url=self.base_url, api_key="not-needed"),
+                AsyncOpenAI(
+                    base_url=self.base_url,
+                    api_key="not-needed",
+                    timeout=Timeout(DEFAULT_TIMEOUT, connect=10.0),
+                ),
                 mode=instructor.Mode.MD_JSON,  # Use markdown JSON mode for LM Studio compatibility
             )
         return self._async_client

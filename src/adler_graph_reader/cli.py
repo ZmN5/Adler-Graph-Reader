@@ -13,7 +13,7 @@ from .knowledge.graph import KnowledgeGraph, QATracker
 from .llm import get_default_client, OllamaClient
 from .llm.models import BookSummary, ConceptExtraction
 from .output import MarkdownGenerator, ObsidianWriter
-from .parser import create_parser, ParsedDocument
+from .parser import create_parser
 from .search import HybridSearchEngine
 
 
@@ -375,7 +375,7 @@ def cmd_build_graph(
 
     # Summary
     print("=" * 50)
-    print(f"Knowledge graph built successfully!")
+    print("Knowledge graph built successfully!")
     print(f"  Document: {document_id}")
     print(f"  Themes: {len(themes)}")
     print(f"  Concepts: {len(concepts)}")
@@ -481,7 +481,7 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
         # Show history
         history = tracker.get_history(session_id)
         if history:
-            print(f"\n=== Session History ===\n")
+            print("\n=== Session History ===\n")
             for h in history[-3:]:
                 print(f"Q: {h.question}")
                 print(f"A: {h.answer[:200]}...")
@@ -491,7 +491,7 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
 
     result = tracker.ask(document_id, question, session_id)
 
-    print(f"=== Answer ===\n")
+    print("=== Answer ===\n")
     print(result["answer"])
     print(f"\nConfidence: {result.get('confidence', 0):.2f}")
     print(f"Cited concepts: {len(result.get('cited_concept_ids', []))}")
@@ -501,7 +501,6 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
 
 def cmd_ui(port: int = 8501, open_browser: bool = True):
     """Launch Streamlit web UI."""
-    import streamlit.web.cli as stcli
     import os
     
     ui_path = Path(__file__).parent / "ui.py"
@@ -520,7 +519,7 @@ def cmd_ui(port: int = 8501, open_browser: bool = True):
     ]
     
     print(f"Starting UI at http://localhost:{port}")
-    print(f"Press Ctrl+C to stop")
+    print("Press Ctrl+C to stop")
     
     os.chdir(project_dir)
     subprocess.run(cmd)

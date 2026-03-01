@@ -7,8 +7,6 @@ from typing import Any, Optional
 
 from ..llm import OllamaClient, get_default_client
 from ..llm.models import (
-    ConceptExtractionWithExamples,
-    ConceptRelationExtraction,
     ThemeExtraction,
     EnhancedConceptExtraction,
     EnhancedRelationExtraction,
@@ -274,7 +272,7 @@ class ConceptExtractor:
             )
             if result.concepts:
                 return result.concepts[0]
-        except Exception as e:
+        except Exception:
             # Fallback to simple extraction
             pass
 
@@ -457,7 +455,6 @@ class QAExtractor:
                 combined.append(c)
 
         # Build context from concepts and their source chunks
-        concept_map = {c["id"]: c for c in combined}
         all_chunk_ids = []
         for c in combined:
             all_chunk_ids.extend(c.get("source_chunk_ids", []))

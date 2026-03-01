@@ -24,5 +24,8 @@ build-backend = "hatchling.build"
 [tool.hatch.package]
 source = "src"
 
-[tool.uv]
-dev-dependencies = []
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.15.4",
+]

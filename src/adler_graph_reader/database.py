@@ -41,7 +41,6 @@ def init_database(db_path: Optional[Path] = None) -> sqlite3.Connection:
     - fts_chunks: FTS5 virtual table for BM25 full-text search
     - vec_chunks: sqlite-vec virtual table for semantic vector search
     """
-    path = db_path or DB_PATH
     conn = get_admin_connection()
     cursor = conn.cursor()
 

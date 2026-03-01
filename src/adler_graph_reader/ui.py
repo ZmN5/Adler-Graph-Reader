@@ -7,7 +7,7 @@ A web interface for exploring knowledge graphs extracted from documents.
 import streamlit as st
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 import graphviz
 
 # Page config

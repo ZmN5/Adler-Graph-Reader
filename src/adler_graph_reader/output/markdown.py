@@ -4,7 +4,6 @@ Markdown generation utilities.
 
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
 from ..knowledge.models import BookAnalysis, ConceptNode
 
@@ -153,7 +152,7 @@ class MarkdownGenerator:
             pattern = rf'\b({re.escape(concept)})\b'
             result = re.sub(
                 pattern,
-                rf'[[\1]]',
+                r'[[\1]]',
                 result,
             )
 

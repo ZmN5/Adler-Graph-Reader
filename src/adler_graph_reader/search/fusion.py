@@ -3,7 +3,6 @@ Reciprocal Rank Fusion (RRF) for combining search results.
 """
 
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import Any
 
 

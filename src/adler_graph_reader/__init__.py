@@ -10,9 +10,9 @@ Pipeline:
 
 __version__ = "0.1.0"
 
-from . import database
-from . import knowledge
-from . import llm
-from . import output
-from . import parser
-from . import search
+from . import database as database
+from . import knowledge as knowledge
+from . import llm as llm
+from . import output as output
+from . import parser as parser
+from . import search as search

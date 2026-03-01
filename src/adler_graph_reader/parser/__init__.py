@@ -6,7 +6,10 @@ Handles parsing of PDF and EPUB documents into chunks with hierarchical structur
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Optional
+
+from .pdf import PDFParser
+from .epub import EPUBParser
 
 
 @dataclass
@@ -44,10 +47,6 @@ class DocumentParser(ABC):
     def get_title(self) -> str:
         """Extract the document title."""
         pass
-
-
-from .pdf import PDFParser
-from .epub import EPUBParser
 
 
 def create_parser(file_path: Path) -> DocumentParser:

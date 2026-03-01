@@ -4,7 +4,6 @@ Graph visualization export: Graphviz DOT and JSON formats.
 
 import json
 from pathlib import Path
-from typing import Optional
 
 
 class GraphvizExporter:
@@ -92,7 +91,6 @@ class GraphvizExporter:
         # Add theme-concept edges
         lines.append('')
         lines.append('  // Theme-Concept relationships')
-        concept_theme_map = {c['id']: c.get('theme_id') for c in concepts}
         for concept in concepts:
             if concept.get('theme_id'):
                 source = f"theme_{concept['theme_id']}"

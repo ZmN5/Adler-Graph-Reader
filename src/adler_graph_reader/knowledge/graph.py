@@ -207,7 +207,6 @@ class KnowledgeGraph:
             ))
 
         # Add theme-concept edges
-        concept_theme_map = {c.id: c.theme_id for c in graph.concepts}
         for concept in graph.concepts:
             if concept.theme_id:
                 edges.append(GraphEdge(
