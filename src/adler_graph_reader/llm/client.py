@@ -18,7 +18,7 @@ from .models import BookSummary, ConceptExtraction
 # Default LM Studio configuration
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MODEL = "local"  # LM Studio uses the currently loaded model
-DEFAULT_EMBED_MODEL = "local"  # LM Studio uses the same model for embeddings
+DEFAULT_EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
 DEFAULT_TIMEOUT = 120.0  # Increased timeout for complex extractions
 
 
