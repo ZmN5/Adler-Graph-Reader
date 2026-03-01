@@ -19,6 +19,7 @@ from .models import BookSummary, ConceptExtraction
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_MODEL = "qwen3:4b"
 DEFAULT_EMBED_MODEL = "qwen3-embedding:0.6b"
+DEFAULT_TIMEOUT = 120.0  # Increased timeout for complex extractions
 
 
 class LLMProvider(ABC):
@@ -72,7 +73,7 @@ class OllamaClient(LLMProvider):
             self._client = OpenAI(
                 base_url=self.base_url,
                 api_key="not-needed",
-                timeout=Timeout(60.0, connect=10.0),
+                timeout=Timeout(DEFAULT_TIMEOUT, connect=10.0),
                 http_client=httpx.Client(trust_env=False),
             )
         return self._client
@@ -85,7 +86,7 @@ class OllamaClient(LLMProvider):
                 OpenAI(
                     base_url=self.base_url,
                     api_key="not-needed",
-                    timeout=Timeout(60.0, connect=10.0),
+                    timeout=Timeout(DEFAULT_TIMEOUT, connect=10.0),
                     http_client=httpx.Client(trust_env=False),
                 ),
                 mode=instructor.Mode.JSON,

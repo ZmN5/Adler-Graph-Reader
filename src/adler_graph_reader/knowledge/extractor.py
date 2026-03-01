@@ -124,7 +124,7 @@ class ConceptExtractor:
             SELECT id, content FROM document_tree
             WHERE document_id = ? AND type = 'chapter'
             ORDER BY id
-            LIMIT 10
+            LIMIT 15
             """,
             (document_id,),
         )
@@ -136,119 +136,138 @@ class ConceptExtractor:
                 SELECT id, content FROM document_tree
                 WHERE document_id = ?
                 ORDER BY id
-                LIMIT 15
+                LIMIT 20
                 """,
                 (document_id,),
             )
             chapters = [(row[0], row[1]) for row in cursor.fetchall()]
 
-        # Combine content for concept extraction
-        combined_content = "\n\n---\n\n".join([
-            f"[Section {ch[0]}]:\n{ch[1][:1500]}"
-            for ch in chapters[:5]
+        # Step 1: Extract concept names first (lightweight)
+        concept_names = self._extract_concept_names(chapters, max_concepts * 2)
+
+        # Step 2: Extract detailed information for each concept
+        concepts = []
+        for name in concept_names[:max_concepts]:
+            try:
+                # Find source chunks for this concept
+                cursor.execute(
+                    """
+                    SELECT d.id, d.content FROM document_tree d
+                    WHERE d.document_id = ? AND d.content LIKE ?
+                    ORDER BY d.id
+                    LIMIT 2
+                    """,
+                    (document_id, f"%{name}%"),
+                )
+                chunk_rows = cursor.fetchall()
+
+                if not chunk_rows:
+                    continue
+
+                chunk_ids = [row[0] for row in chunk_rows]
+                context = "\n\n".join([f"[Chunk {row[0]}]: {row[1][:600]}" for row in chunk_rows])
+
+                # Extract concept details with timeout handling
+                concept_data = self._extract_single_concept(name, context)
+
+                if concept_data:
+                    embedding = self.client.embed(f"{concept_data.name}: {concept_data.definition}")
+
+                    concept = ConceptModel(
+                        document_id=document_id,
+                        theme_id=theme_ids[0] if theme_ids else None,
+                        name=concept_data.name,
+                        definition=concept_data.definition,
+                        explanation=getattr(concept_data, 'explanation', None),
+                        examples=concept_data.examples,
+                        importance_score=concept_data.importance_score,
+                        category=getattr(concept_data, 'category', 'concept'),
+                        source_chunk_ids=chunk_ids,
+                        embedding=embedding,
+                    )
+                    concepts.append(concept)
+            except Exception as e:
+                print(f"Warning: Failed to process concept {name}: {e}")
+                continue
+
+        return concepts
+
+    def _extract_concept_names(
+        self,
+        chapters: list[tuple[int, str]],
+        max_names: int,
+    ) -> list[str]:
+        """Extract concept names from chapters."""
+        # Use first few chapters for concept identification
+        combined = "\n\n---\n\n".join([
+            f"[Section {ch[0]}]:\n{ch[1][:1000]}"
+            for ch in chapters[:3]
         ])
 
-        # Step 1: Extract concepts using enhanced model
-        prompt = f"""从以下书籍内容中提取核心概念（关键术语/理论/方法）：
+        prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法）：
 
-{combined_content}
+{combined}
 
-请识别 15-25 个最重要的核心概念，对每个概念提供：
-1. 概念名称（简洁的术语）
-2. 定义（1-2 句清晰定义）
-3. 详细解释（扩展说明）
-4. 1-3 个具体例子
-5. 重要性评分（0-1，根据在书中的核心程度）
-6. 类别（concept 概念/principle 原理/method 方法/tool 工具/person 人物/event 事件）
+请列出 {max_names} 个最重要的核心概念名称（名词术语），按重要性从高到低排序。
+每行一个概念，不要编号，不要额外说明。"""
 
-请按重要性从高到低排序输出。"""
+        try:
+            response = self.client.generate(
+                prompt,
+                system="你是一个概念识别专家，擅长从学术文本中识别关键术语。",
+                temperature=0.3,
+            )
+            concept_names = [
+                line.strip().lstrip("0123456789.-* ")
+                for line in response.strip().split("\n")
+                if line.strip() and len(line.strip()) > 2
+            ]
+            return concept_names[:max_names]
+        except Exception as e:
+            print(f"Warning: Failed to extract concept names: {e}")
+            return []
+
+    def _extract_single_concept(
+        self,
+        name: str,
+        context: str,
+    ) -> Optional[EnhancedConcept]:
+        """Extract detailed information for a single concept."""
+        prompt = f"""从以下上下文中提取关于"{name}"的概念信息：
+
+{context}
+
+请提供：
+1. 概念定义（1-2 句清晰定义）
+2. 详细解释（扩展说明，可选）
+3. 1-3 个具体例子
+4. 重要性评分（0-1）
+5. 类别（concept/principle/method/tool/person/event）
+
+请严格按照 JSON 格式输出。"""
 
         try:
             result = self.client.generate_structured(
                 prompt,
                 response_model=EnhancedConceptExtraction,
-                system="你是一个知识提取专家，擅长从学术文本中识别核心概念并提供精确定义。",
-                temperature=0.3,
+                system="你是一个知识提取专家，擅长提取概念的定义和例子。",
+                temperature=0.4,
             )
-            concepts_data = result.concepts
+            if result.concepts:
+                return result.concepts[0]
         except Exception as e:
-            print(f"Warning: Enhanced extraction failed, falling back: {e}")
-            concepts_data = self._extract_concepts_basic(conn, document_id, chapters, max_concepts)
+            # Fallback to simple extraction
+            pass
 
-        # Convert to ConceptModel and store
-        concepts = []
-        for concept_data in concepts_data[:max_concepts]:
-            try:
-                # Find source chunks for this concept
-                cursor.execute(
-                    """
-                    SELECT d.id FROM document_tree d
-                    WHERE d.document_id = ? AND d.content LIKE ?
-                    ORDER BY d.id
-                    LIMIT 3
-                    """,
-                    (document_id, f"%{concept_data.name}%"),
-                )
-                chunk_ids = [row[0] for row in cursor.fetchall()]
-
-                # Generate embedding for the concept
-                embedding = self.client.embed(f"{concept_data.name}: {concept_data.definition}")
-
-                concept = ConceptModel(
-                    document_id=document_id,
-                    theme_id=theme_ids[0] if theme_ids else None,
-                    name=concept_data.name,
-                    definition=concept_data.definition,
-                    explanation=getattr(concept_data, 'explanation', None),
-                    examples=concept_data.examples,
-                    importance_score=concept_data.importance_score,
-                    category=getattr(concept_data, 'category', 'concept'),
-                    source_chunk_ids=chunk_ids,
-                    embedding=embedding,
-                )
-                concepts.append(concept)
-            except Exception as e:
-                print(f"Warning: Failed to process concept {concept_data.name}: {e}")
-                continue
-
-        return concepts
-
-    def _extract_concepts_basic(
-        self,
-        conn: sqlite3.Connection,
-        document_id: str,
-        chapters: list[tuple[int, str]],
-        max_concepts: int,
-    ) -> list[EnhancedConcept]:
-        """Fallback basic concept extraction."""
-        prompt = f"""从以下文本中识别核心概念（关键词/术语）：
-
-{chr(10).join([ch[1][:1000] for ch in chapters[:3]])}
-
-请列出 15-20 个核心概念名词/术语，按重要性排序。每行一个概念。"""
-
-        try:
-            concept_names = self.client.generate(
-                prompt,
-                system="你是一个概念识别专家。",
-                temperature=0.3,
-            ).strip().split("\n")
-            concept_names = [c.strip().lstrip("0123456789.-* ") for c in concept_names if c.strip()]
-
-            concepts = []
-            for name in concept_names[:max_concepts]:
-                concepts.append(EnhancedConcept(
-                    name=name,
-                    definition=f"{name} 是文中的一个核心概念。",
-                    explanation=None,
-                    examples=[],
-                    importance_score=0.5,
-                    category='concept',
-                ))
-            return concepts
-        except Exception as e:
-            print(f"Warning: Basic extraction also failed: {e}")
-            return []
+        # Fallback: create minimal concept
+        return EnhancedConcept(
+            name=name,
+            definition=f"{name} 是文本中的一个核心概念。",
+            explanation=None,
+            examples=[],
+            importance_score=0.5,
+            category='concept',
+        )
 
 
 class RelationExtractor:
