@@ -36,17 +36,23 @@ class ThemeExtractor:
         - Map: Extract themes from each chapter
         - Reduce: Combine and rank themes
         """
+        import time
+        start_time = time.time()
+        
         cursor = conn.cursor()
+        print(f"[ThemeExtractor] Querying database for document: {document_id}")
+        
         cursor.execute(
             """
             SELECT content FROM document_tree
             WHERE document_id = ? AND type = 'chapter'
             ORDER BY id
-            LIMIT 10
+            LIMIT 5
             """,
             (document_id,),
         )
         contents = [row[0] for row in cursor.fetchall()]
+        print(f"[ThemeExtractor] Found {len(contents)} chapters")
 
         if not contents:
             cursor.execute(
@@ -54,13 +60,17 @@ class ThemeExtractor:
                 SELECT content FROM document_tree
                 WHERE document_id = ?
                 ORDER BY id
-                LIMIT 5
+                LIMIT 3
                 """,
                 (document_id,),
             )
             contents = [row[0] for row in cursor.fetchall()]
+            print(f"[ThemeExtractor] Fallback: found {len(contents)} chunks")
 
-        combined_content = "\n\n---\n\n".join([c[:2000] for c in contents[:5]])
+        # Limit content size to avoid overwhelming the LLM
+        combined_content = "\n\n---\n\n".join([c[:1500] for c in contents[:3]])
+        content_size = len(combined_content)
+        print(f"[ThemeExtractor] Combined content size: {content_size} chars")
 
         prompt = f"""从以下书籍内容中提取{max_themes}个主要主题：
 
@@ -73,6 +83,8 @@ class ThemeExtractor:
 
 请严格按照格式输出。"""
 
+        print(f"[ThemeExtractor] Calling LLM... (elapsed: {time.time() - start_time:.1f}s)")
+        
         try:
             result = self.client.generate_structured(
                 prompt,
@@ -80,6 +92,10 @@ class ThemeExtractor:
                 system="你是一个主题提取专家，擅长从文本中识别主要主题。",
                 temperature=0.3,
             )
+            elapsed = time.time() - start_time
+            print(f"[ThemeExtractor] LLM call completed in {elapsed:.1f}s")
+            print(f"[ThemeExtractor] Extracted {len(result.themes)} themes")
+            
             return [
                 ThemeModel(
                     document_id=document_id,
@@ -91,7 +107,10 @@ class ThemeExtractor:
                 for t in result.themes
             ]
         except Exception as e:
-            print(f"Warning: Failed to extract themes: {e}")
+            elapsed = time.time() - start_time
+            print(f"[ThemeExtractor] Error after {elapsed:.1f}s: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
 

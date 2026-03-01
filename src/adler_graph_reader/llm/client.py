@@ -19,6 +19,7 @@ from .models import BookSummary, ConceptExtraction
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MODEL = "local"  # LM Studio uses the currently loaded model
 DEFAULT_EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
+DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
 DEFAULT_TIMEOUT = 120.0  # Increased timeout for complex extractions
 
 
