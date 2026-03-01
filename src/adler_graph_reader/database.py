@@ -13,7 +13,7 @@ import sqlite_vec
 
 DB_PATH = Path("knowledge.sqlite")
 VEC_EXTENSION = Path(sqlite_vec.__file__).parent / "vec0.dylib"
-EMBEDDING_DIM = 1024  # qwen3-embedding:0.6b output dimension
+EMBEDDING_DIM = 768  # nomic-embed-text-v1.5 output dimension
 
 
 def get_connection() -> sqlite3.Connection:
