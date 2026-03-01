@@ -4,6 +4,7 @@ Knowledge graph management and QA tracking.
 
 import sqlite3
 import uuid
+from pathlib import Path
 from typing import Any, Optional
 
 from .. import database
@@ -69,6 +70,8 @@ class KnowledgeGraph:
                 importance_score=concept.importance_score,
                 source_chunk_ids=concept.source_chunk_ids,
                 embedding=concept.embedding,
+                explanation=concept.explanation,
+                category=concept.category,
             )
             concept.id = concept_id
             stored_concepts.append(concept)
@@ -111,6 +114,7 @@ class KnowledgeGraph:
                 relation_type=rel.relation_type,
                 strength=rel.strength,
                 evidence=rel.evidence,
+                explanation=rel.explanation,
             )
             rel.id = rel_id
             stored_relations.append(rel)
@@ -256,6 +260,77 @@ class KnowledgeGraph:
             "relations": relations,
             "neighbors": neighbors,
         }
+
+    def export_dot(
+        self,
+        document_id: str,
+        output_path: Path,
+        layout: str = "dot",
+    ) -> Path:
+        """Export graph to Graphviz DOT format."""
+        from ..output.visualization import GraphvizExporter
+
+        graph_data = self.get_graph(document_id)
+
+        exporter = GraphvizExporter(title=document_id)
+        return exporter.export(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+            output_path=output_path,
+            layout=layout,
+        )
+
+    def export_json(
+        self,
+        document_id: str,
+        output_path: Path,
+        include_metadata: bool = True,
+    ) -> Path:
+        """Export graph to JSON format."""
+        from ..output.visualization import GraphJSONExporter
+
+        graph_data = self.get_graph(document_id)
+
+        exporter = GraphJSONExporter()
+        return exporter.export(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+            output_path=output_path,
+            include_metadata=include_metadata,
+        )
+
+    def export_networkx(self, document_id: str):
+        """Export to NetworkX graph object."""
+        from ..output.visualization import GraphJSONExporter
+
+        graph_data = self.get_graph(document_id)
+
+        exporter = GraphJSONExporter()
+        return exporter.export_networkx(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+        )
+
+    def export_svg(
+        self,
+        document_id: str,
+        output_path: Path,
+    ) -> Path:
+        """Export graph to SVG format (requires Graphviz)."""
+        from ..output.visualization import GraphvizExporter
+
+        graph_data = self.get_graph(document_id)
+
+        exporter = GraphvizExporter(title=document_id)
+        return exporter.export_svg(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+            output_path=output_path,
+        )
 
     def close(self) -> None:
         """Close the database connection."""

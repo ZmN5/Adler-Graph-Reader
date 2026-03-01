@@ -61,7 +61,14 @@ def parse_args() -> argparse.Namespace:
     # graph command
     graph = subparsers.add_parser("graph", help="View knowledge graph")
     graph.add_argument("--document", "-d", required=True, help="Document ID")
-    graph.add_argument("--format", choices=["text", "json", "viz"], default="text", help="Output format")
+    graph.add_argument("--format", choices=["text", "json", "viz", "dot"], default="text", help="Output format")
+
+    # export-graph command
+    export_graph = subparsers.add_parser("export-graph", help="Export knowledge graph to file")
+    export_graph.add_argument("--document", "-d", required=True, help="Document ID")
+    export_graph.add_argument("--output", "-o", type=Path, default=Path("output/graph"), help="Output directory")
+    export_graph.add_argument("--formats", nargs="+", choices=["dot", "svg", "json"], default=["dot", "json"], help="Export formats")
+    export_graph.add_argument("--layout", choices=["dot", "neato", "fdp", "sfdp", "circo"], default="dot", help="Graphviz layout")
 
     # qa command
     qa = subparsers.add_parser("qa", help="Ask questions about the document")
@@ -394,6 +401,14 @@ def cmd_graph(document_id: str, format: str = "text") -> None:
     elif format == "viz":
         viz = graph.to_visualization(document_id)
         print(viz.model_dump_json(indent=2))
+    elif format == "dot":
+        # Export to DOT and print
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.dot', delete=False) as f:
+            dot_path = graph.export_dot(document_id, Path(f.name))
+        with open(dot_path, 'r') as f:
+            print(f.read())
+        dot_path.unlink()  # Clean up
     else:
         # Text format
         graph_data = graph.get_graph(document_id)
@@ -405,11 +420,52 @@ def cmd_graph(document_id: str, format: str = "text") -> None:
         print(f"\n=== Concepts ({len(graph_data.concepts)}) ===\n")
         for concept in graph_data.concepts:
             print(f"- {concept.name}: {concept.definition[:80]}...")
+            if hasattr(concept, 'explanation') and concept.explanation:
+                print(f"  {concept.explanation[:100]}...")
+            if concept.examples:
+                print(f"  Examples: {', '.join(concept.examples[:2])}")
 
         print(f"\n=== Relations ({len(graph_data.relations)}) ===\n")
         for rel in graph_data.relations:
-            print(f"- {rel.source_concept_id} --[{rel.relation_type}]--> {rel.target_concept_id}")
+            source_name = rel.source_concept_id
+            target_name = rel.target_concept_id
+            print(f"- {source_name} --[{rel.relation_type}:{rel.strength:.2f}]--> {target_name}")
+            if rel.evidence:
+                print(f"  Evidence: {rel.evidence[:80]}...")
 
+    graph.close()
+
+
+def cmd_export_graph(
+    document_id: str,
+    output_dir: Path,
+    formats: list[str],
+    layout: str = "dot",
+) -> None:
+    """Export knowledge graph to files."""
+    conn = database.get_admin_connection()
+    graph = KnowledgeGraph(conn)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n=== Exporting graph for: {document_id} ===\n")
+
+    if "dot" in formats:
+        dot_path = output_dir / f"{document_id}.dot"
+        graph.export_dot(document_id, dot_path, layout=layout)
+        print(f"Exported DOT: {dot_path}")
+
+    if "svg" in formats:
+        svg_path = output_dir / f"{document_id}.svg"
+        result_path = graph.export_svg(document_id, svg_path)
+        print(f"Exported SVG: {result_path}")
+
+    if "json" in formats:
+        json_path = output_dir / f"{document_id}_graph.json"
+        graph.export_json(document_id, json_path)
+        print(f"Exported JSON: {json_path}")
+
+    print("\nExport complete!")
     graph.close()
 
 
@@ -510,6 +566,10 @@ def main() -> int:
 
     if args.command == "graph":
         cmd_graph(args.document, args.format)
+        return 0
+
+    if args.command == "export-graph":
+        cmd_export_graph(args.document, args.output, args.formats, args.layout)
         return 0
 
     if args.command == "qa":
