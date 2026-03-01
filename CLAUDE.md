@@ -4,19 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Adler-Graph-Reader is a Python CLI tool that reads PDF/EPUB documents, extracts structured knowledge using local Qwen3 model (via Ollama), and generates an Obsidian-compatible Markdown knowledge base with bidirectional links.
+Adler-Graph-Reader is a Python CLI tool that reads PDF/EPUB documents, extracts structured knowledge using local LLM (via LM Studio/Ollama), and generates an Obsidian-compatible Markdown knowledge base with bidirectional links.
 
 ### Core Philosophy (Zero-Bloat)
 - No heavy frameworks (LangChain, LangGraph, LlamaIndex)
 - Pure Python functional programming
-- Direct Ollama API via OpenAI SDK
+- OpenAI-compatible API (LM Studio, Ollama, etc.)
 - Hybrid search: SQLite (FTS5 + sqlite-vec) instead of vector DBs
 
 ## Environment
 
 - **Python**: 3.12+ (managed by uv)
-- **Runtime**: Ollama (http://localhost:11434/v1)
-- **Models**: qwen3:4b for reasoning, qwen3-embedding:0.6b for embeddings
+- **Runtime**: LM Studio (http://localhost:1234/v1)
+- **Models**: Any locally loaded model in LM Studio
 - **Database**: knowledge.sqlite (SQLite + FTS5 + sqlite-vec)
 
 ## Commands
@@ -66,7 +66,7 @@ src/adler_graph_reader/
 ### Module Design
 
 - **parser**: Each format (PDF, EPUB) is a separate class implementing `DocumentParser`
-- **llm**: `OllamaClient` wraps OpenAI SDK with instructor for structured output
+- **llm**: `OllamaClient` wraps OpenAI SDK for LM Studio/Ollama compatibility (instructor for structured output)
 - **knowledge**: Pure Pydantic models, no business logic
 - **search**: `HybridSearchEngine` composes BM25 + vector + RRF fusion (no reranking)
 - **output**: Stateless generators, writer handles file I/O

@@ -1,6 +1,6 @@
 """
-Ollama client for text generation and embeddings.
-Uses OpenAI SDK with Ollama's v1 compatibility endpoint.
+LM Studio client for text generation and embeddings.
+Uses OpenAI SDK with LM Studio's OpenAI-compatible API endpoint.
 """
 
 from abc import ABC, abstractmethod
@@ -15,10 +15,10 @@ from openai import Timeout
 from .models import BookSummary, ConceptExtraction
 
 
-# Default Ollama configuration
-DEFAULT_BASE_URL = "http://localhost:11434/v1"
-DEFAULT_MODEL = "qwen3:4b"
-DEFAULT_EMBED_MODEL = "qwen3-embedding:0.6b"
+# Default LM Studio configuration
+DEFAULT_BASE_URL = "http://localhost:1234/v1"
+DEFAULT_MODEL = "local"  # LM Studio uses the currently loaded model
+DEFAULT_EMBED_MODEL = "local"  # LM Studio uses the same model for embeddings
 DEFAULT_TIMEOUT = 120.0  # Increased timeout for complex extractions
 
 
@@ -55,8 +55,11 @@ class LLMProvider(ABC):
 @dataclass
 class OllamaClient(LLMProvider):
     """
-    Client for interacting with Ollama API.
+    Client for interacting with LM Studio (or other OpenAI-compatible) API.
     Supports both synchronous and structured generation.
+
+    Default configuration targets LM Studio at http://localhost:1234/v1
+    Can be configured for Ollama or other compatible endpoints.
     """
 
     base_url: str = DEFAULT_BASE_URL
