@@ -33,75 +33,50 @@ class ThemeExtractor:
         - Map: Extract themes from each chapter
         - Reduce: Combine and rank themes
         """
-        # Get chapters
+        # Get a sample of content for theme extraction
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id, content FROM document_tree
+            SELECT content FROM document_tree
             WHERE document_id = ? AND type = 'chapter'
             ORDER BY id
+            LIMIT 10
             """,
             (document_id,),
         )
-        chapters = [{"id": row[0], "content": row[1]} for row in cursor.fetchall()]
-
-        if not chapters:
-            # Fallback: use chunks
+        contents = [row[0] for row in cursor.fetchall()]
+        
+        if not contents:
             cursor.execute(
                 """
-                SELECT id, content FROM document_tree
+                SELECT content FROM document_tree
                 WHERE document_id = ?
                 ORDER BY id
-                LIMIT 20
+                LIMIT 5
                 """,
                 (document_id,),
             )
-            chapters = [{"id": row[0], "content": row[1]} for row in cursor.fetchall()]
+            contents = [row[0] for row in cursor.fetchall()]
+        
+        # Combine content for theme extraction
+        combined_content = "\n\n---\n\n".join([c[:2000] for c in contents[:5]])
+        
+        prompt = f"""从以下书籍内容中提取{max_themes}个主要主题：
 
-        # Map: Extract themes from each chapter
-        chapter_themes = []
-        for ch in chapters:
-            content = ch["content"][:3000]  # Limit context
-            prompt = f"""从以下章节内容中提取1-3个主要主题：
+{combined_content}
 
-{content}
-
-请识别：
+请为每个主题提供：
 1. 主题名称（简洁的关键词）
 2. 主题描述（一句话）
 3. 重要性评分（0-1）
 
 请严格按照格式输出。"""
 
-            try:
-                result = self.client.generate_structured(
-                    prompt,
-                    response_model=ThemeExtraction,
-                    system="你是一个主题提取专家，擅长从文本中识别主要主题。",
-                    temperature=0.3,
-                )
-                for theme in result.themes:
-                    theme.source_chunks = [ch["id"]]
-                    chapter_themes.append(theme)
-            except Exception as e:
-                print(f"Warning: Failed to extract themes from chapter {ch['id']}: {e}")
-                continue
-
-        # Reduce: Combine and rank themes
-        combined_prompt = f"""请从以下主题列表中，合并重复主题，选出最重要的{max_themes}个主题：
-
-{chr(10).join([
-    f"- {t.name}: {t.description} (评分: {t.importance_score})"
-    for t in chapter_themes
-])}
-
-请按重要性排序，输出不超过{max_themes}个主题。"""
-
         try:
-            final_themes = self.client.generate_structured(
-                combined_prompt,
+            result = self.client.generate_structured(
+                prompt,
                 response_model=ThemeExtraction,
-                system="你是一个主题分析专家，擅长合并和排序主题。",
+                system="你是一个主题提取专家，擅长从文本中识别主要主题。",
                 temperature=0.3,
             )
             return [
@@ -112,21 +87,11 @@ class ThemeExtractor:
                     importance_score=t.importance_score,
                     source_chunks=[],
                 )
-                for t in final_themes.themes
+                for t in result.themes
             ]
         except Exception as e:
-            print(f"Warning: Failed to combine themes: {e}")
-            # Return themes from chapters as fallback
-            return [
-                ThemeModel(
-                    document_id=document_id,
-                    name=t.name,
-                    description=t.description,
-                    importance_score=t.importance_score,
-                    source_chunks=t.source_chunks,
-                )
-                for t in chapter_themes[:max_themes]
-            ]
+            print(f"Warning: Failed to extract themes: {e}")
+            return []
 
 
 class ConceptExtractor:
