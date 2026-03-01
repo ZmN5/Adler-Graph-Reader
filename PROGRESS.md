@@ -1,48 +1,62 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-01)
+## 当前状态 (2026-03-02)
 
 ### ✅ 已完成
 
-1. **LM Studio 集成** - 项目从Ollama迁移到LM Studio
+1. **代码质量优化** (本次会话)
+   - 修复 13 个 ruff lint 警告
+   - 修复 parser 模块循环导入
+   - 更新 pyproject.toml 使用 dependency-groups
+
+2. **Embedding 双模式支持** (本次会话)
+   - 新增 `src/adler_graph_reader/embeddings/` 模块
+   - 支持三种模式: `lmstudio` / `local` / `auto`
+   - auto 模式下优先使用 LM Studio，失败时自动回退到本地 sentence-transformers
+   - 添加 sentence-transformers 依赖
+
+3. **LM Studio 集成** (之前)
    - 支持本地LLM推理
    - 支持embedding生成
    - 默认模型: qwen3.5-35b-a3b
    - Embedding模型: text-embedding-nomic-embed-text-v1.5
 
-2. **核心功能**
+4. **核心功能** (之前)
    - PDF/EPUB文档解析
    - 知识图谱提取
-   - 混合搜索 (FTS5 + 向量)
+   - 混合搜索 (FTS5 + 向量 + RRF)
    - Streamlit Web UI
+   - Reranker 集成
 
-### ❌ 进行中/待解决
+### 🔄 待完成
 
-1. **Structured Output 问题**
-   - Instructor库与LM Studio不兼容
-   - LM Studio不支持`response_format`参数
-   - 需要找替代方案实现结构化输出
+1. **Embedding 提供者集成**
+   - 将新的 embedding provider 集成到 LLM client
+   - 支持配置默认 embedding 维度
 
-2. **核心功能测试**
-   - 需要测试完整的ingest -> analyze -> graph流程
-   - 需要测试混合搜索
+2. **端到端测试**
+   - 导入一本 PDF
+   - 构建知识图谱
+   - 测试搜索功能
 
-### 📋 下一步工作
+3. **概念提取优化**
+   - 批量处理模式
+   - 进度持久化
 
-**优先级 1: 修复结构化输出**
-- 方案A: 使用LM Studio的JSON模式（如果支持）
-- 方案B: 使用函数调用/工具调用
-- 方案C: 提示词工程 + JSON解析
+### 📋 下一步工作 (优先级排序)
 
-**优先级 2: 端到端测试**
-- 导入一本PDF
-- 构建知识图谱
-- 测试搜索功能
+**优先级 1: 端到端测试**
+- 导入测试 PDF
+- 运行完整流程
+- 验证功能正常
+
+**优先级 2: Embedding 集成**
+- 将新 provider 集成到数据库/搜索模块
+- 配置默认维度 (当前 768)
 
 **优先级 3: 完善功能**
 - 优化概念提取
-- 添加更多测试
-- 完善文档
+- 添加单元测试
 
 ### 技术栈
 
@@ -51,3 +65,9 @@
 - SQLite + FTS5 + sqlite-vec
 - Streamlit (UI)
 - Pydantic (数据模型)
+- sentence-transformers (本地embedding)
+
+### Git 提交历史
+
+- `f18ace1` - fix: 代码质量优化 - 修复 ruff lint 警告
+- `dae5c2e` - feat: 实现 Embedding 双模式支持
