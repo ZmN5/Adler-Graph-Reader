@@ -4,7 +4,7 @@ Uses OpenAI SDK with LM Studio's OpenAI-compatible API endpoint.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import httpx
@@ -12,6 +12,7 @@ import instructor
 from openai import AsyncOpenAI, OpenAI
 from openai import Timeout
 
+from ..embeddings import EmbeddingProvider, create_embedding_provider
 from .models import BookSummary, ConceptExtraction
 
 
@@ -63,14 +64,19 @@ class OllamaClient(LLMProvider):
 
     Default configuration targets LM Studio at http://localhost:1234/v1
     Can be configured for Ollama or other compatible endpoints.
+
+    Uses the new EmbeddingProvider for embeddings with dual-mode support
+    (LM Studio API / local sentence-transformers / auto fallback).
     """
 
     base_url: str = DEFAULT_BASE_URL
     model: str = DEFAULT_MODEL
     embed_model: str = DEFAULT_EMBED_MODEL
+    embedding_mode: str = "lmstudio"  # "lmstudio", "local", or "auto"
     _client: Optional[OpenAI] = None
     _struct_client: Optional[OpenAI] = None
     _async_client: Optional[AsyncOpenAI] = None
+    _embedding_provider: Optional[EmbeddingProvider] = None
 
     @property
     def client(self) -> OpenAI:
@@ -158,10 +164,22 @@ class OllamaClient(LLMProvider):
             response_model=response_model,
         )
 
+    @property
+    def embedding_provider(self) -> EmbeddingProvider:
+        """Lazy initialization of embedding provider with dual-mode support."""
+        if self._embedding_provider is None:
+            self._embedding_provider = create_embedding_provider(
+                mode=self.embedding_mode,
+                lmstudio_url=self.base_url,
+                lmstudio_model=self.embed_model,
+            )
+        return self._embedding_provider
+
     def embed(self, text: str, max_retries: int = 3) -> list[float]:
-        """Generate embeddings using the embedding model with retry logic."""
+        """Generate embeddings using LM Studio API with fallback to embedding provider."""
         import time
 
+        # Primary: Use LM Studio API directly for consistent dimensions
         for attempt in range(max_retries):
             try:
                 response = self.client.embeddings.create(
@@ -173,7 +191,9 @@ class OllamaClient(LLMProvider):
                 if attempt < max_retries - 1:
                     time.sleep(1)
                     continue
-                raise e
+                # If LM Studio fails, fall back to embedding provider
+                print(f"LM Studio embedding failed: {e}, falling back to provider...")
+                return self.embedding_provider.embed(text)
 
     async def agenerate_structured(
         self,
@@ -204,6 +224,7 @@ def get_default_client(
     base_url: str = DEFAULT_BASE_URL,
     model: str = DEFAULT_MODEL,
     embed_model: str = DEFAULT_EMBED_MODEL,
+    embedding_mode: str = "lmstudio",
 ) -> OllamaClient:
     """Get or create the default LLM client."""
     global _default_client
@@ -212,6 +233,7 @@ def get_default_client(
             base_url=base_url,
             model=model,
             embed_model=embed_model,
+            embedding_mode=embedding_mode,
         )
     return _default_client
 
