@@ -8,9 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from .pdf import PDFParser
-from .epub import EPUBParser
-
 
 @dataclass
 class Chunk:
@@ -47,6 +44,11 @@ class DocumentParser(ABC):
     def get_title(self) -> str:
         """Extract the document title."""
         pass
+
+
+# Import parsers after defining base classes to avoid circular imports
+from .pdf import PDFParser
+from .epub import EPUBParser
 
 
 def create_parser(file_path: Path) -> DocumentParser:

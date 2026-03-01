@@ -10,6 +10,7 @@ dependencies = [
     "openai>=2.24.0",
     "pydantic>=2.12.5",
     "pymupdf>=1.27.1",
+    "sentence-transformers>=5.2.3",
     "sqlite-vec>=0.1.6",
     "streamlit>=1.28",
 ]
