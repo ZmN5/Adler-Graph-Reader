@@ -83,7 +83,12 @@ class OllamaClient(LLMProvider):
 
     @property
     def struct_client(self) -> OpenAI:
-        """Lazy initialization of sync client for structured generation."""
+        """Lazy initialization of sync client for structured generation.
+        
+        Uses MD_JSON mode which is more compatible with LM Studio.
+        This mode uses markdown-wrapped JSON responses instead of the
+        OpenAI response_format parameter.
+        """
         if self._struct_client is None:
             self._struct_client = instructor.from_openai(
                 OpenAI(
@@ -92,17 +97,17 @@ class OllamaClient(LLMProvider):
                     timeout=Timeout(DEFAULT_TIMEOUT, connect=10.0),
                     http_client=httpx.Client(trust_env=False),
                 ),
-                mode=instructor.Mode.JSON,
+                mode=instructor.Mode.MD_JSON,  # Use markdown JSON mode for LM Studio compatibility
             )
         return self._struct_client
 
     @property
     def async_client(self) -> AsyncOpenAI:
-        """Lazy initialization of async client."""
+        """Lazy initialization of async client with MD_JSON mode for LM Studio."""
         if self._async_client is None:
             self._async_client = instructor.from_openai(
                 AsyncOpenAI(base_url=self.base_url, api_key="not-needed"),
-                mode=instructor.Mode.JSON,
+                mode=instructor.Mode.MD_JSON,  # Use markdown JSON mode for LM Studio compatibility
             )
         return self._async_client
 
