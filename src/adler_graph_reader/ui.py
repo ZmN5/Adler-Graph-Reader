@@ -11,11 +11,7 @@ from typing import List, Dict
 import graphviz
 
 # Page config
-st.set_page_config(
-    page_title="Adler Graph Reader",
-    page_icon="📚",
-    layout="wide"
-)
+st.set_page_config(page_title="Adler Graph Reader", page_icon="📚", layout="wide")
 
 # Constants
 DB_PATH = Path(__file__).parent.parent.parent / "knowledge.sqlite"
@@ -40,48 +36,55 @@ def get_collections() -> List[Dict]:
 def get_document_stats(document_id: str) -> Dict[str, int]:
     """Get statistics for a document"""
     conn = get_db_connection()
-    
+
     # Total chunks
     cursor = conn.execute(
         "SELECT COUNT(*) as count FROM document_tree WHERE document_id = ? AND type = 'chunk'",
-        (document_id,)
+        (document_id,),
     )
     chunks = cursor.fetchone()["count"]
-    
+
     # Chapters
     cursor = conn.execute(
         "SELECT COUNT(*) as count FROM document_tree WHERE document_id = ? AND type = 'chapter'",
-        (document_id,)
+        (document_id,),
     )
     chapters = cursor.fetchone()["count"]
-    
+
     # Themes
-    cursor = conn.execute("SELECT COUNT(*) as count FROM themes WHERE document_id = ?", (document_id,))
+    cursor = conn.execute(
+        "SELECT COUNT(*) as count FROM themes WHERE document_id = ?", (document_id,)
+    )
     themes = cursor.fetchone()["count"]
-    
+
     # Concepts
-    cursor = conn.execute("SELECT COUNT(*) as count FROM concepts WHERE document_id = ?", (document_id,))
+    cursor = conn.execute(
+        "SELECT COUNT(*) as count FROM concepts WHERE document_id = ?", (document_id,)
+    )
     concepts = cursor.fetchone()["count"]
-    
+
     # Relations
-    cursor = conn.execute("SELECT COUNT(*) as count FROM concept_relations WHERE document_id = ?", (document_id,))
+    cursor = conn.execute(
+        "SELECT COUNT(*) as count FROM concept_relations WHERE document_id = ?",
+        (document_id,),
+    )
     relations = cursor.fetchone()["count"]
-    
+
     conn.close()
-    
+
     return {
         "chunks": chunks,
         "chapters": chapters,
         "themes": themes,
         "concepts": concepts,
-        "relations": relations
+        "relations": relations,
     }
 
 
 def search_content(document_id: str, query: str, limit: int = 10) -> List[Dict]:
     """Search content using FTS5"""
     conn = get_db_connection()
-    
+
     # Simple LIKE search as fallback
     cursor = conn.execute(
         """
@@ -90,9 +93,9 @@ def search_content(document_id: str, query: str, limit: int = 10) -> List[Dict]:
         WHERE document_id = ? AND content LIKE ?
         LIMIT ?
         """,
-        (document_id, f"%{query}%", limit)
+        (document_id, f"%{query}%", limit),
     )
-    
+
     results = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return results
@@ -101,7 +104,7 @@ def search_content(document_id: str, query: str, limit: int = 10) -> List[Dict]:
 def get_concepts_with_relations(document_id: str, limit: int = 50) -> List[Dict]:
     """Get concepts and their relations for graph visualization"""
     conn = get_db_connection()
-    
+
     # Get concepts
     cursor = conn.execute(
         """
@@ -114,9 +117,9 @@ def get_concepts_with_relations(document_id: str, limit: int = 50) -> List[Dict]
         ORDER BY c.name
         LIMIT ?
         """,
-        (document_id, limit)
+        (document_id, limit),
     )
-    
+
     results = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return results
@@ -126,23 +129,23 @@ def build_graphvizGraph(concepts: List[Dict]) -> graphviz.Graph:
     """Build Graphviz graph from concepts"""
     dot = graphviz.Digraph(comment="Knowledge Graph")
     dot.attr(rankdir="LR", size="12,8")
-    
+
     # Add nodes
     nodes = set()
     for c in concepts:
         if c["name"] and c["name"] not in nodes:
             dot.node(c["name"], style="filled", fillcolor="#4ECDC440")
             nodes.add(c["name"])
-        
+
         if c.get("target_name") and c["target_name"] not in nodes:
             dot.node(c["target_name"], style="filled", fillcolor="#96CEB440")
             nodes.add(c["target_name"])
-    
+
     # Add edges
     for c in concepts:
         if c.get("relation_type") and c["name"] and c.get("target_name"):
             dot.edge(c["name"], c["target_name"], label=c["relation_type"])
-    
+
     return dot
 
 
@@ -177,15 +180,15 @@ tab1, tab2, tab3 = st.tabs(["🔍 Search", "🧠 Knowledge Graph", "📖 Content
 
 with tab1:
     st.header("Search Content")
-    
+
     query = st.text_input("Search Query", placeholder="Enter keywords...")
     limit = st.slider("Results Limit", 5, 50, 10)
-    
+
     if query:
         results = search_content(selected_doc, query, limit)
-        
+
         st.markdown(f"**{len(results)} results found**")
-        
+
         for i, r in enumerate(results, 1):
             with st.expander(f"Result {i} - {r.get('type', 'chunk').upper()}"):
                 st.write(r.get("content", ""))
@@ -194,49 +197,51 @@ with tab1:
 
 with tab2:
     st.header("Knowledge Graph")
-    
+
     graph_limit = st.slider("Concepts to Display", 10, 100, 50)
-    
+
     if st.button("🔄 Refresh Graph"):
         st.rerun()
-    
+
     concepts = get_concepts_with_relations(selected_doc, graph_limit)
-    
+
     if concepts:
         # Build and render graph
         dot = build_graphvizGraph(concepts)
         st.graphviz_chart(dot)
-        
+
         # Show concept details
         st.markdown("### Concept Details")
-        
+
         # Group by name
         concept_details = {}
         for c in concepts:
             name = c.get("name")
             if name and name not in concept_details:
                 concept_details[name] = c
-        
+
         for name, details in list(concept_details.items())[:20]:
             with st.expander(f"📌 {name}"):
                 st.write(details.get("definition", "No definition"))
     else:
-        st.info("No concepts extracted yet. Run 'build-graph' command to extract concepts.")
+        st.info(
+            "No concepts extracted yet. Run 'build-graph' command to extract concepts."
+        )
 
 with tab3:
     st.header("Browse Content")
-    
+
     conn = get_db_connection()
-    
+
     # Get chapters
     cursor = conn.execute(
         "SELECT id, content FROM document_tree WHERE document_id = ? AND type = 'chapter' LIMIT 20",
-        (selected_doc,)
+        (selected_doc,),
     )
     chapters = [dict(row) for row in cursor.fetchall()]
-    
+
     conn.close()
-    
+
     if chapters:
         for ch in chapters:
             with st.expander(f"📑 {ch['content'][:100]}..."):
@@ -244,11 +249,11 @@ with tab3:
                 conn = get_db_connection()
                 cursor = conn.execute(
                     "SELECT content FROM document_tree WHERE document_id = ? AND parent_id = ? LIMIT 5",
-                    (selected_doc, ch["id"])
+                    (selected_doc, ch["id"]),
                 )
                 chunks = [row["content"] for row in cursor.fetchall()]
                 conn.close()
-                
+
                 for chunk in chunks:
                     st.write(chunk[:500] + "..." if len(chunk) > 500 else chunk)
                     st.divider()

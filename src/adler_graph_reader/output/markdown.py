@@ -11,6 +11,7 @@ from ..knowledge.models import BookAnalysis, ConceptNode
 @dataclass
 class MarkdownContent:
     """Represents generated markdown content."""
+
     filename: str
     content: str
     frontmatter: dict
@@ -69,22 +70,28 @@ class MarkdownGenerator:
         ]
 
         for ch in analysis.chapters:
-            content_lines.extend([
-                f"### {ch.title}",
-                "",
-                ch.summary,
-                "",
-                f"**关键概念**: {', '.join(ch.key_concepts)}" if ch.key_concepts else "",
-                "",
-            ])
+            content_lines.extend(
+                [
+                    f"### {ch.title}",
+                    "",
+                    ch.summary,
+                    "",
+                    f"**关键概念**: {', '.join(ch.key_concepts)}"
+                    if ch.key_concepts
+                    else "",
+                    "",
+                ]
+            )
 
         # Add concept index
-        content_lines.extend([
-            "## 概念索引",
-            "",
-            "(由分析阅读阶段提取)",
-            "",
-        ])
+        content_lines.extend(
+            [
+                "## 概念索引",
+                "",
+                "(由分析阅读阶段提取)",
+                "",
+            ]
+        )
 
         return MarkdownContent(
             filename=f"00_{sanitize_filename(title)}.md",
@@ -103,9 +110,7 @@ class MarkdownGenerator:
         }
 
         # Convert related concepts to wikilinks
-        related_links = [
-            to_wikilink(name) for name in concept.related_concepts
-        ]
+        related_links = [to_wikilink(name) for name in concept.related_concepts]
 
         content_lines = [
             f"# {concept.name}",
@@ -117,22 +122,26 @@ class MarkdownGenerator:
         ]
 
         for i, arg in enumerate(concept.arguments, 1):
-            content_lines.extend([
-                f"### 论点 {i}: {arg.proposition}",
-                "",
-                f"**推理过程**: {arg.reasoning}",
-                "",
-                f"**证据来源**: {arg.evidence_source}",
-                "",
-            ])
+            content_lines.extend(
+                [
+                    f"### 论点 {i}: {arg.proposition}",
+                    "",
+                    f"**推理过程**: {arg.reasoning}",
+                    "",
+                    f"**证据来源**: {arg.evidence_source}",
+                    "",
+                ]
+            )
 
         if related_links:
-            content_lines.extend([
-                "## 相关概念",
-                "",
-                ", ".join(related_links),
-                "",
-            ])
+            content_lines.extend(
+                [
+                    "## 相关概念",
+                    "",
+                    ", ".join(related_links),
+                    "",
+                ]
+            )
 
         return MarkdownContent(
             filename=f"{sanitize_filename(concept.name)}.md",
@@ -149,10 +158,10 @@ class MarkdownGenerator:
 
         for concept in known_concepts:
             # Skip if already a wikilink
-            pattern = rf'\b({re.escape(concept)})\b'
+            pattern = rf"\b({re.escape(concept)})\b"
             result = re.sub(
                 pattern,
-                r'[[\1]]',
+                r"[[\1]]",
                 result,
             )
 

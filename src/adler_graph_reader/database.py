@@ -137,9 +137,12 @@ def insert_chunk(
     return cursor.lastrowid
 
 
-def insert_embedding(conn: sqlite3.Connection, tree_id: int, embedding: list[float]) -> None:
+def insert_embedding(
+    conn: sqlite3.Connection, tree_id: int, embedding: list[float]
+) -> None:
     """Insert a vector embedding for a chunk."""
     import json
+
     cursor = conn.cursor()
     cursor.execute(
         "INSERT OR REPLACE INTO vec_chunks (tree_id, embedding) VALUES (?, ?)",
@@ -152,6 +155,7 @@ def _escape_fts5(query: str) -> str:
     """Escape special FTS5 characters and prepare query."""
     # Remove or escape special FTS5 characters
     import re
+
     # Wrap in quotes for phrase matching if multiple words
     if " " in query:
         # Escape special chars and wrap as phrase
@@ -167,6 +171,10 @@ def bm25_search(
     limit: int = 20,
 ) -> list[dict[str, Any]]:
     """Perform BM25 full-text search using FTS5."""
+    # Handle empty query
+    if not query or not query.strip():
+        return []
+
     # Escape the query for FTS5
     query = _escape_fts5(query)
     cursor = conn.cursor()
@@ -239,7 +247,12 @@ def vector_search(
         )
 
     return [
-        {"tree_id": row[0], "content": row[1], "page_number": row[2], "vector_distance": row[3]}
+        {
+            "tree_id": row[0],
+            "content": row[1],
+            "page_number": row[2],
+            "vector_distance": row[3],
+        }
         for row in cursor.fetchall()
     ]
 
@@ -305,12 +318,14 @@ def get_ancestors(conn: sqlite3.Connection, tree_id: int) -> list[dict[str, Any]
         if not row:
             break
 
-        ancestors.append({
-            "id": row[0],
-            "parent_id": row[1],
-            "type": row[2],
-            "content": row[3],
-        })
+        ancestors.append(
+            {
+                "id": row[0],
+                "parent_id": row[1],
+                "type": row[2],
+                "content": row[3],
+            }
+        )
 
         if row[1] is None:
             break
@@ -319,7 +334,9 @@ def get_ancestors(conn: sqlite3.Connection, tree_id: int) -> list[dict[str, Any]
     return ancestors
 
 
-def get_chunks_by_ids(conn: sqlite3.Connection, tree_ids: list[int]) -> list[dict[str, Any]]:
+def get_chunks_by_ids(
+    conn: sqlite3.Connection, tree_ids: list[int]
+) -> list[dict[str, Any]]:
     """Get multiple chunks by their IDs."""
     cursor = conn.cursor()
     placeholders = ",".join("?" * len(tree_ids))
@@ -416,13 +433,27 @@ def init_graph_tables(conn: Optional[sqlite3.Connection] = None) -> sqlite3.Conn
     """)
 
     # Indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_themes_document ON themes(document_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_concepts_document ON concepts(document_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_concepts_theme ON concepts(theme_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_source ON concept_relations(source_concept_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_target ON concept_relations(target_concept_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_qa_session ON qa_tracking(session_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_qa_document ON qa_tracking(document_id)")
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_themes_document ON themes(document_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_concepts_document ON concepts(document_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_concepts_theme ON concepts(theme_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_relations_source ON concept_relations(source_concept_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_relations_target ON concept_relations(target_concept_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_qa_session ON qa_tracking(session_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_qa_document ON qa_tracking(document_id)"
+    )
 
     conn.commit()
 
@@ -434,6 +465,7 @@ def init_graph_tables(conn: Optional[sqlite3.Connection] = None) -> sqlite3.Conn
 
 # ===== Graph CRUD Operations =====
 
+
 def insert_theme(
     conn: sqlite3.Connection,
     document_id: str,
@@ -444,13 +476,20 @@ def insert_theme(
 ) -> int:
     """Insert a theme. Returns the new row ID."""
     import json
+
     cursor = conn.cursor()
     cursor.execute(
         """
         INSERT INTO themes (document_id, name, description, importance_score, source_chunks)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (document_id, name, description, importance_score, json.dumps(source_chunks or [])),
+        (
+            document_id,
+            name,
+            description,
+            importance_score,
+            json.dumps(source_chunks or []),
+        ),
     )
     conn.commit()
     return cursor.lastrowid
@@ -459,6 +498,7 @@ def insert_theme(
 def get_themes(conn: sqlite3.Connection, document_id: str) -> list[dict[str, Any]]:
     """Get all themes for a document."""
     import json
+
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -496,6 +536,7 @@ def insert_concept(
 ) -> int:
     """Insert a concept. Returns the new row ID."""
     import json
+
     cursor = conn.cursor()
     embedding_json = json.dumps(embedding) if embedding else None
     cursor.execute(
@@ -503,8 +544,18 @@ def insert_concept(
         INSERT INTO concepts (document_id, theme_id, name, definition, explanation, examples, importance_score, category, source_chunk_ids, embedding)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (document_id, theme_id, name, definition, explanation, json.dumps(examples or []),
-         importance_score, category, json.dumps(source_chunk_ids or []), embedding_json),
+        (
+            document_id,
+            theme_id,
+            name,
+            definition,
+            explanation,
+            json.dumps(examples or []),
+            importance_score,
+            category,
+            json.dumps(source_chunk_ids or []),
+            embedding_json,
+        ),
     )
     conn.commit()
     return cursor.lastrowid
@@ -513,6 +564,7 @@ def insert_concept(
 def get_concepts(conn: sqlite3.Connection, document_id: str) -> list[dict[str, Any]]:
     """Get all concepts for a document."""
     import json
+
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -539,9 +591,12 @@ def get_concepts(conn: sqlite3.Connection, document_id: str) -> list[dict[str, A
     ]
 
 
-def get_concept_by_id(conn: sqlite3.Connection, concept_id: int) -> dict[str, Any] | None:
+def get_concept_by_id(
+    conn: sqlite3.Connection, concept_id: int
+) -> dict[str, Any] | None:
     """Get a single concept by ID."""
     import json
+
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -577,6 +632,7 @@ def search_concepts_by_embedding(
 ) -> list[dict[str, Any]]:
     """Search concepts by embedding similarity."""
     import json
+
     cursor = conn.cursor()
     embedding_json = json.dumps(query_embedding)
 
@@ -627,7 +683,15 @@ def insert_relation(
         INSERT INTO concept_relations (document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation),
+        (
+            document_id,
+            source_concept_id,
+            target_concept_id,
+            relation_type,
+            strength,
+            evidence,
+            explanation,
+        ),
     )
     conn.commit()
     return cursor.lastrowid
@@ -659,7 +723,9 @@ def get_relations(conn: sqlite3.Connection, document_id: str) -> list[dict[str, 
     ]
 
 
-def get_concept_relations(conn: sqlite3.Connection, concept_id: int) -> list[dict[str, Any]]:
+def get_concept_relations(
+    conn: sqlite3.Connection, concept_id: int
+) -> list[dict[str, Any]]:
     """Get all relations for a specific concept."""
     cursor = conn.cursor()
     cursor.execute(
@@ -698,13 +764,22 @@ def insert_qa(
 ) -> int:
     """Insert a QA record. Returns the new row ID."""
     import json
+
     cursor = conn.cursor()
     cursor.execute(
         """
         INSERT INTO qa_tracking (document_id, session_id, question, focus_concept_id, context, answer, cited_concept_ids)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (document_id, session_id, question, focus_concept_id, context, answer, json.dumps(cited_concept_ids or [])),
+        (
+            document_id,
+            session_id,
+            question,
+            focus_concept_id,
+            context,
+            answer,
+            json.dumps(cited_concept_ids or []),
+        ),
     )
     conn.commit()
     return cursor.lastrowid
@@ -713,6 +788,7 @@ def insert_qa(
 def get_qa_history(conn: sqlite3.Connection, session_id: str) -> list[dict[str, Any]]:
     """Get QA history for a session."""
     import json
+
     cursor = conn.cursor()
     cursor.execute(
         """

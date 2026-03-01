@@ -39,8 +39,7 @@ def rrf_fusion(
 
     # Sort by combined score
     fused = [
-        {"tree_id": tree_id, "rrf_score": score}
-        for tree_id, score in scores.items()
+        {"tree_id": tree_id, "rrf_score": score} for tree_id, score in scores.items()
     ]
     fused.sort(key=lambda x: x["rrf_score"], reverse=True)
 

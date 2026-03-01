@@ -13,6 +13,7 @@ from .fusion import rrf_fusion
 @dataclass
 class SearchResult:
     """Represents a search result with context."""
+
     tree_id: int
     content: str
     score: float
@@ -93,13 +94,15 @@ class HybridSearchEngine:
             siblings = database.get_sibling_chunks(self.conn, tree_id, limit=2)
             context = [s["content"] for s in siblings]
 
-            candidates.append(SearchResult(
-                tree_id=tree_id,
-                content=chunk["content"],
-                score=score_map.get(tree_id, 0),
-                context=context,
-                page_number=chunk.get("page_number"),
-            ))
+            candidates.append(
+                SearchResult(
+                    tree_id=tree_id,
+                    content=chunk["content"],
+                    score=score_map.get(tree_id, 0),
+                    context=context,
+                    page_number=chunk.get("page_number"),
+                )
+            )
 
         # 5: Optional reranking
         if self.use_reranker and len(candidates) > 1:
@@ -204,9 +207,12 @@ class HybridSearchEngine:
             query_embedding = self.llm_client.embed(query)
 
             for _, doc_text in pairs:
-                doc_embedding = self.llm_client.embed(doc_text[:500])  # Truncate for speed
+                doc_embedding = self.llm_client.embed(
+                    doc_text[:500]
+                )  # Truncate for speed
                 # Cosine similarity
                 import math
+
                 dot = sum(a * b for a, b in zip(query_embedding, doc_embedding))
                 norm_q = math.sqrt(sum(a * a for a in query_embedding))
                 norm_d = math.sqrt(sum(b * b for b in doc_embedding))

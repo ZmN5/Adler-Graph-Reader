@@ -41,34 +41,78 @@ def parse_args() -> argparse.Namespace:
     search.add_argument("--document", "-d", required=True, help="Document ID")
 
     # extract-themes command
-    extract_themes = subparsers.add_parser("extract-themes", help="Extract themes from document")
+    extract_themes = subparsers.add_parser(
+        "extract-themes", help="Extract themes from document"
+    )
     extract_themes.add_argument("--document", "-d", required=True, help="Document ID")
 
     # extract-concepts command
-    extract_concepts = subparsers.add_parser("extract-concepts", help="Extract concepts from document")
+    extract_concepts = subparsers.add_parser(
+        "extract-concepts", help="Extract concepts from document"
+    )
     extract_concepts.add_argument("--document", "-d", required=True, help="Document ID")
-    extract_concepts.add_argument("--theme-ids", nargs="*", type=int, help="Theme IDs to associate concepts with")
+    extract_concepts.add_argument(
+        "--theme-ids", nargs="*", type=int, help="Theme IDs to associate concepts with"
+    )
 
     # extract-relations command
-    extract_relations = subparsers.add_parser("extract-relations", help="Extract concept relations")
-    extract_relations.add_argument("--document", "-d", required=True, help="Document ID")
+    extract_relations = subparsers.add_parser(
+        "extract-relations", help="Extract concept relations"
+    )
+    extract_relations.add_argument(
+        "--document", "-d", required=True, help="Document ID"
+    )
 
     # build-graph command (complete pipeline)
-    build_graph = subparsers.add_parser("build-graph", help="Complete pipeline: ingest + extract themes/concepts/relations")
-    build_graph.add_argument("file", type=Path, nargs="?", help="PDF or EPUB file (skip if document already ingested)")
-    build_graph.add_argument("--document", "-d", help="Document ID (required if file not provided)")
+    build_graph = subparsers.add_parser(
+        "build-graph",
+        help="Complete pipeline: ingest + extract themes/concepts/relations",
+    )
+    build_graph.add_argument(
+        "file",
+        type=Path,
+        nargs="?",
+        help="PDF or EPUB file (skip if document already ingested)",
+    )
+    build_graph.add_argument(
+        "--document", "-d", help="Document ID (required if file not provided)"
+    )
 
     # graph command
     graph = subparsers.add_parser("graph", help="View knowledge graph")
     graph.add_argument("--document", "-d", required=True, help="Document ID")
-    graph.add_argument("--format", choices=["text", "json", "viz", "dot"], default="text", help="Output format")
+    graph.add_argument(
+        "--format",
+        choices=["text", "json", "viz", "dot"],
+        default="text",
+        help="Output format",
+    )
 
     # export-graph command
-    export_graph = subparsers.add_parser("export-graph", help="Export knowledge graph to file")
+    export_graph = subparsers.add_parser(
+        "export-graph", help="Export knowledge graph to file"
+    )
     export_graph.add_argument("--document", "-d", required=True, help="Document ID")
-    export_graph.add_argument("--output", "-o", type=Path, default=Path("output/graph"), help="Output directory")
-    export_graph.add_argument("--formats", nargs="+", choices=["dot", "svg", "json"], default=["dot", "json"], help="Export formats")
-    export_graph.add_argument("--layout", choices=["dot", "neato", "fdp", "sfdp", "circo"], default="dot", help="Graphviz layout")
+    export_graph.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=Path("output/graph"),
+        help="Output directory",
+    )
+    export_graph.add_argument(
+        "--formats",
+        nargs="+",
+        choices=["dot", "svg", "json"],
+        default=["dot", "json"],
+        help="Export formats",
+    )
+    export_graph.add_argument(
+        "--layout",
+        choices=["dot", "neato", "fdp", "sfdp", "circo"],
+        default="dot",
+        help="Graphviz layout",
+    )
 
     # qa command
     qa = subparsers.add_parser("qa", help="Ask questions about the document")
@@ -81,9 +125,23 @@ def parse_args() -> argparse.Namespace:
 
     # ui command
     ui = subparsers.add_parser("ui", help="Launch web UI")
-    ui.add_argument("--port", "-p", type=int, default=8501, help="Port number (default: 8501)")
-    ui.add_argument("--browser", "-b", action="store_true", default=True, help="Open browser automatically")
-    ui.add_argument("--no-browser", "-n", dest="browser", action="store_false", help="Don't open browser automatically")
+    ui.add_argument(
+        "--port", "-p", type=int, default=8501, help="Port number (default: 8501)"
+    )
+    ui.add_argument(
+        "--browser",
+        "-b",
+        action="store_true",
+        default=True,
+        help="Open browser automatically",
+    )
+    ui.add_argument(
+        "--no-browser",
+        "-n",
+        dest="browser",
+        action="store_false",
+        help="Don't open browser automatically",
+    )
 
     return parser.parse_args()
 
@@ -211,14 +269,13 @@ def cmd_analyze(
             continue
 
         # Build context from results
-        context = "\n\n".join([
-            r.content + "\n(上下文: " + " ".join(r.context) + ")"
-            for r in results
-        ])
+        context = "\n\n".join(
+            [r.content + "\n(上下文: " + " ".join(r.context) + ")" for r in results]
+        )
 
         # Extract concepts
         extraction = llm_client.generate_structured(
-            prompt=f"从以下上下文中提取关于\"{concept_query}\"的概念定义和论证：\n\n{context}",
+            prompt=f'从以下上下文中提取关于"{concept_query}"的概念定义和论证：\n\n{context}',
             response_model=ConceptExtraction,
             system="你是一个知识提取专家。",
         )
@@ -232,9 +289,7 @@ def cmd_analyze(
     generator = MarkdownGenerator()
 
     book_content = generator.generate_book_index(document_id, analysis)
-    concept_pages = [
-        generator.generate_concept_page(c) for c in concepts
-    ]
+    concept_pages = [generator.generate_concept_page(c) for c in concepts]
 
     writer = ObsidianWriter(output_dir)
     output_path = writer.write_book(document_id, book_content, concept_pages)
@@ -310,7 +365,9 @@ def cmd_extract_relations(document_id: str) -> None:
 
     print(f"\n=== Extracted {len(relations)} relations ===\n")
     for i, rel in enumerate(relations, 1):
-        print(f"{i}. {rel.source_concept_id} --[{rel.relation_type}]--> {rel.target_concept_id}")
+        print(
+            f"{i}. {rel.source_concept_id} --[{rel.relation_type}]--> {rel.target_concept_id}"
+        )
         print(f"   Strength: {rel.strength:.2f}")
         if rel.evidence:
             print(f"   Evidence: {rel.evidence[:100]}...")
@@ -337,7 +394,9 @@ def cmd_build_graph(
         # Verify document exists
         conn = database.get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM document_tree WHERE document_id = ?", (document_id,))
+        cursor.execute(
+            "SELECT COUNT(*) FROM document_tree WHERE document_id = ?", (document_id,)
+        )
         count = cursor.fetchone()[0]
         conn.close()
         if count == 0:
@@ -383,8 +442,10 @@ def cmd_build_graph(
     print("=" * 50)
 
     print("\nUsage:")
-    print(f"  View graph: uv run python main.py graph -d \"{document_id}\"")
-    print(f"  Ask questions: uv run python main.py qa \"your question\" -d \"{document_id}\"")
+    print(f'  View graph: uv run python main.py graph -d "{document_id}"')
+    print(
+        f'  Ask questions: uv run python main.py qa "your question" -d "{document_id}"'
+    )
 
     return document_id
 
@@ -396,6 +457,7 @@ def cmd_graph(document_id: str, format: str = "text") -> None:
 
     if format == "json":
         import json
+
         data = database.get_document_graph(conn, document_id)
         print(json.dumps(data, indent=2, ensure_ascii=False))
     elif format == "viz":
@@ -404,9 +466,10 @@ def cmd_graph(document_id: str, format: str = "text") -> None:
     elif format == "dot":
         # Export to DOT and print
         import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.dot', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".dot", delete=False) as f:
             dot_path = graph.export_dot(document_id, Path(f.name))
-        with open(dot_path, 'r') as f:
+        with open(dot_path, "r") as f:
             print(f.read())
         dot_path.unlink()  # Clean up
     else:
@@ -420,7 +483,7 @@ def cmd_graph(document_id: str, format: str = "text") -> None:
         print(f"\n=== Concepts ({len(graph_data.concepts)}) ===\n")
         for concept in graph_data.concepts:
             print(f"- {concept.name}: {concept.definition[:80]}...")
-            if hasattr(concept, 'explanation') and concept.explanation:
+            if hasattr(concept, "explanation") and concept.explanation:
                 print(f"  {concept.explanation[:100]}...")
             if concept.examples:
                 print(f"  Examples: {', '.join(concept.examples[:2])}")
@@ -429,7 +492,9 @@ def cmd_graph(document_id: str, format: str = "text") -> None:
         for rel in graph_data.relations:
             source_name = rel.source_concept_id
             target_name = rel.target_concept_id
-            print(f"- {source_name} --[{rel.relation_type}:{rel.strength:.2f}]--> {target_name}")
+            print(
+                f"- {source_name} --[{rel.relation_type}:{rel.strength:.2f}]--> {target_name}"
+            )
             if rel.evidence:
                 print(f"  Evidence: {rel.evidence[:80]}...")
 
@@ -502,25 +567,29 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
 def cmd_ui(port: int = 8501, open_browser: bool = True):
     """Launch Streamlit web UI."""
     import os
-    
+
     ui_path = Path(__file__).parent / "ui.py"
-    
+
     if not ui_path.exists():
         print(f"Error: UI file not found at {ui_path}")
         return
-    
+
     # Change to project directory so it finds knowledge.sqlite
     project_dir = Path(__file__).parent.parent.parent
-    
+
     cmd = [
-        "streamlit", "run", str(ui_path),
-        "--server.port", str(port),
-        "--server.headless", "false" if open_browser else "true"
+        "streamlit",
+        "run",
+        str(ui_path),
+        "--server.port",
+        str(port),
+        "--server.headless",
+        "false" if open_browser else "true",
     ]
-    
+
     print(f"Starting UI at http://localhost:{port}")
     print("Press Ctrl+C to stop")
-    
+
     os.chdir(project_dir)
     subprocess.run(cmd)
 

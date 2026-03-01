@@ -20,8 +20,12 @@ def clean_html_text(html_content: Union[str, bytes]) -> str:
         html_content = html_content.decode("utf-8", errors="replace")
 
     # Remove script and style elements
-    html_content = re.sub(r"<script[^>]*>.*?</script>", "", html_content, flags=re.DOTALL | re.IGNORECASE)
-    html_content = re.sub(r"<style[^>]*>.*?</style>", "", html_content, flags=re.DOTALL | re.IGNORECASE)
+    html_content = re.sub(
+        r"<script[^>]*>.*?</script>", "", html_content, flags=re.DOTALL | re.IGNORECASE
+    )
+    html_content = re.sub(
+        r"<style[^>]*>.*?</style>", "", html_content, flags=re.DOTALL | re.IGNORECASE
+    )
 
     # Decode HTML entities
     text = html.unescape(html_content)
@@ -97,28 +101,34 @@ class EPUBParser(DocumentParser):
                 if len(first_line) < 100 and len(first_line.split()) <= 10:
                     if not any(c in first_line for c in ".!?"):
                         current_chapter = first_line
-                        chunks.append(Chunk(
-                            content=first_line,
-                            chapter_title=first_line,
-                            level=1,
-                        ))
+                        chunks.append(
+                            Chunk(
+                                content=first_line,
+                                chapter_title=first_line,
+                                level=1,
+                            )
+                        )
                         # If there are more lines, treat as chapter intro
                         if len(lines) > 1:
                             intro = "\n".join(lines[1:]).strip()
                             if intro:
-                                chunks.append(Chunk(
-                                    content=intro,
-                                    chapter_title=current_chapter,
-                                    level=2,
-                                ))
+                                chunks.append(
+                                    Chunk(
+                                        content=intro,
+                                        chapter_title=current_chapter,
+                                        level=2,
+                                    )
+                                )
                         continue
 
                 # Regular content
-                chunks.append(Chunk(
-                    content=para,
-                    chapter_title=current_chapter,
-                    level=2 if current_chapter else 1,
-                ))
+                chunks.append(
+                    Chunk(
+                        content=para,
+                        chapter_title=current_chapter,
+                        level=2 if current_chapter else 1,
+                    )
+                )
 
         return ParsedDocument(
             title=self.get_title(),

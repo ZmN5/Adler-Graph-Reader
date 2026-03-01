@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class ThemeModel(BaseModel):
     """A theme extracted from a document."""
+
     id: int | None = None
     document_id: str
     name: str
@@ -19,6 +20,7 @@ class ThemeModel(BaseModel):
 
 class ConceptModel(BaseModel):
     """A concept with definition and examples."""
+
     id: int | None = None
     document_id: str
     theme_id: int | None = None
@@ -29,11 +31,14 @@ class ConceptModel(BaseModel):
     source_chunk_ids: list[int] = Field(default_factory=list)
     embedding: Optional[list[float]] = None
     explanation: Optional[str] = None  # Detailed explanation
-    category: Optional[str] = "concept"  # concept, principle, method, tool, person, event
+    category: Optional[str] = (
+        "concept"  # concept, principle, method, tool, person, event
+    )
 
 
 class RelationModel(BaseModel):
     """A relationship between two concepts."""
+
     id: int | None = None
     document_id: str
     source_concept_id: int
@@ -46,6 +51,7 @@ class RelationModel(BaseModel):
 
 class QAModel(BaseModel):
     """A question-answer pair with context."""
+
     id: int | None = None
     document_id: str
     session_id: str
@@ -58,6 +64,7 @@ class QAModel(BaseModel):
 
 class GraphData(BaseModel):
     """Complete graph data for a document."""
+
     themes: list[ThemeModel] = Field(default_factory=list)
     concepts: list[ConceptModel] = Field(default_factory=list)
     relations: list[RelationModel] = Field(default_factory=list)
@@ -65,6 +72,7 @@ class GraphData(BaseModel):
 
 class GraphNode(BaseModel):
     """A node in the knowledge graph for visualization."""
+
     id: str
     label: str
     node_type: str  # theme, concept
@@ -74,6 +82,7 @@ class GraphNode(BaseModel):
 
 class GraphEdge(BaseModel):
     """An edge in the knowledge graph for visualization."""
+
     source: str
     target: str
     relation_type: str
@@ -83,5 +92,6 @@ class GraphEdge(BaseModel):
 
 class GraphVisualization(BaseModel):
     """Graph data formatted for visualization."""
+
     nodes: list[GraphNode] = Field(default_factory=list)
     edges: list[GraphEdge] = Field(default_factory=list)

@@ -177,44 +177,52 @@ class KnowledgeGraph:
         nodes = []
         # Add theme nodes
         for theme in graph.themes:
-            nodes.append(GraphNode(
-                id=f"theme_{theme.id}",
-                label=theme.name,
-                node_type="theme",
-                importance=theme.importance_score,
-                description=theme.description,
-            ))
+            nodes.append(
+                GraphNode(
+                    id=f"theme_{theme.id}",
+                    label=theme.name,
+                    node_type="theme",
+                    importance=theme.importance_score,
+                    description=theme.description,
+                )
+            )
 
         # Add concept nodes
         for concept in graph.concepts:
-            nodes.append(GraphNode(
-                id=f"concept_{concept.id}",
-                label=concept.name,
-                node_type="concept",
-                importance=concept.importance_score,
-                description=concept.definition[:100],
-            ))
+            nodes.append(
+                GraphNode(
+                    id=f"concept_{concept.id}",
+                    label=concept.name,
+                    node_type="concept",
+                    importance=concept.importance_score,
+                    description=concept.definition[:100],
+                )
+            )
 
         edges = []
         # Add relation edges
         for rel in graph.relations:
-            edges.append(GraphEdge(
-                source=f"concept_{rel.source_concept_id}",
-                target=f"concept_{rel.target_concept_id}",
-                relation_type=rel.relation_type,
-                strength=rel.strength,
-                label=rel.relation_type,
-            ))
+            edges.append(
+                GraphEdge(
+                    source=f"concept_{rel.source_concept_id}",
+                    target=f"concept_{rel.target_concept_id}",
+                    relation_type=rel.relation_type,
+                    strength=rel.strength,
+                    label=rel.relation_type,
+                )
+            )
 
         # Add theme-concept edges
         for concept in graph.concepts:
             if concept.theme_id:
-                edges.append(GraphEdge(
-                    source=f"theme_{concept.theme_id}",
-                    target=f"concept_{concept.id}",
-                    relation_type="has_concept",
-                    strength=1.0,
-                ))
+                edges.append(
+                    GraphEdge(
+                        source=f"theme_{concept.theme_id}",
+                        target=f"concept_{concept.id}",
+                        relation_type="has_concept",
+                        strength=1.0,
+                    )
+                )
 
         return GraphVisualization(nodes=nodes, edges=edges)
 

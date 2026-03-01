@@ -35,11 +35,12 @@ class ThemeExtractor:
         - Reduce: Combine and rank themes
         """
         import time
+
         start_time = time.time()
-        
+
         cursor = conn.cursor()
         print(f"[ThemeExtractor] Querying database for document: {document_id}")
-        
+
         cursor.execute(
             """
             SELECT content FROM document_tree
@@ -81,8 +82,10 @@ class ThemeExtractor:
 
 请严格按照格式输出。"""
 
-        print(f"[ThemeExtractor] Calling LLM... (elapsed: {time.time() - start_time:.1f}s)")
-        
+        print(
+            f"[ThemeExtractor] Calling LLM... (elapsed: {time.time() - start_time:.1f}s)"
+        )
+
         try:
             result = self.client.generate_structured(
                 prompt,
@@ -93,7 +96,7 @@ class ThemeExtractor:
             elapsed = time.time() - start_time
             print(f"[ThemeExtractor] LLM call completed in {elapsed:.1f}s")
             print(f"[ThemeExtractor] Extracted {len(result.themes)} themes")
-            
+
             return [
                 ThemeModel(
                     document_id=document_id,
@@ -108,6 +111,7 @@ class ThemeExtractor:
             elapsed = time.time() - start_time
             print(f"[ThemeExtractor] Error after {elapsed:.1f}s: {e}")
             import traceback
+
             traceback.print_exc()
             return []
 
@@ -182,23 +186,27 @@ class ConceptExtractor:
                     continue
 
                 chunk_ids = [row[0] for row in chunk_rows]
-                context = "\n\n".join([f"[Chunk {row[0]}]: {row[1][:600]}" for row in chunk_rows])
+                context = "\n\n".join(
+                    [f"[Chunk {row[0]}]: {row[1][:600]}" for row in chunk_rows]
+                )
 
                 # Extract concept details with timeout handling
                 concept_data = self._extract_single_concept(name, context)
 
                 if concept_data:
-                    embedding = self.client.embed(f"{concept_data.name}: {concept_data.definition}")
+                    embedding = self.client.embed(
+                        f"{concept_data.name}: {concept_data.definition}"
+                    )
 
                     concept = ConceptModel(
                         document_id=document_id,
                         theme_id=theme_ids[0] if theme_ids else None,
                         name=concept_data.name,
                         definition=concept_data.definition,
-                        explanation=getattr(concept_data, 'explanation', None),
+                        explanation=getattr(concept_data, "explanation", None),
                         examples=concept_data.examples,
                         importance_score=concept_data.importance_score,
-                        category=getattr(concept_data, 'category', 'concept'),
+                        category=getattr(concept_data, "category", "concept"),
                         source_chunk_ids=chunk_ids,
                         embedding=embedding,
                     )
@@ -216,10 +224,9 @@ class ConceptExtractor:
     ) -> list[str]:
         """Extract concept names from chapters."""
         # Use first few chapters for concept identification
-        combined = "\n\n---\n\n".join([
-            f"[Section {ch[0]}]:\n{ch[1][:1000]}"
-            for ch in chapters[:3]
-        ])
+        combined = "\n\n---\n\n".join(
+            [f"[Section {ch[0]}]:\n{ch[1][:1000]}" for ch in chapters[:3]]
+        )
 
         prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法）：
 
@@ -283,7 +290,7 @@ class ConceptExtractor:
             explanation=None,
             examples=[],
             importance_score=0.5,
-            category='concept',
+            category="concept",
         )
 
 
@@ -317,10 +324,9 @@ class RelationExtractor:
             return []
 
         # Build concept context
-        concept_list = "\n".join([
-            f"- {c.name}: {c.definition[:100]}..."
-            for c in concepts[:30]
-        ])
+        concept_list = "\n".join(
+            [f"- {c.name}: {c.definition[:100]}..." for c in concepts[:30]]
+        )
 
         # Get context chunks for these concepts
         cursor = conn.cursor()
@@ -395,15 +401,17 @@ class RelationExtractor:
                 target_id = concept_map.get(rel.target_concept)
 
                 if source_id and target_id and source_id != target_id:
-                    relations.append(RelationModel(
-                        document_id=document_id,
-                        source_concept_id=source_id,
-                        target_concept_id=target_id,
-                        relation_type=rel.relation_type,
-                        strength=rel.strength,
-                        evidence=rel.evidence,
-                        explanation=rel.explanation,
-                    ))
+                    relations.append(
+                        RelationModel(
+                            document_id=document_id,
+                            source_concept_id=source_id,
+                            target_concept_id=target_id,
+                            relation_type=rel.relation_type,
+                            strength=rel.strength,
+                            evidence=rel.evidence,
+                            explanation=rel.explanation,
+                        )
+                    )
 
             return relations[:max_relations]
         except Exception as e:
@@ -428,7 +436,11 @@ class QAExtractor:
         Answer a question about the document using concepts and context.
         """
         from ..llm.models import QAResponse
-        from ..database import search_concepts_by_embedding, get_concepts, get_chunks_by_ids
+        from ..database import (
+            search_concepts_by_embedding,
+            get_concepts,
+            get_chunks_by_ids,
+        )
 
         # Get relevant concepts using semantic search
         question_embedding = self.client.embed(question)
@@ -461,15 +473,11 @@ class QAExtractor:
 
         if all_chunk_ids:
             chunks = get_chunks_by_ids(conn, list(set(all_chunk_ids))[:10])
-            context = "\n\n".join([
-                f"[来源]: {c['content'][:400]}"
-                for c in chunks
-            ])
+            context = "\n\n".join([f"[来源]: {c['content'][:400]}" for c in chunks])
         else:
-            context = "\n\n".join([
-                f"概念：{c['name']}\n定义：{c['definition']}"
-                for c in combined[:5]
-            ])
+            context = "\n\n".join(
+                [f"概念：{c['name']}\n定义：{c['definition']}" for c in combined[:5]]
+            )
 
         # Generate answer
         prompt = f"""基于以下上下文信息，请回答用户的问题。

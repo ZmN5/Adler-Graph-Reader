@@ -12,6 +12,7 @@ from typing import Optional
 @dataclass
 class Chunk:
     """Represents a text chunk extracted from a document."""
+
     content: str
     page_number: Optional[int] = None
     chapter_title: Optional[str] = None
@@ -21,6 +22,7 @@ class Chunk:
 @dataclass
 class ParsedDocument:
     """Represents a fully parsed document."""
+
     title: str
     chunks: list[Chunk]
     metadata: dict
@@ -47,8 +49,8 @@ class DocumentParser(ABC):
 
 
 # Import parsers after defining base classes to avoid circular imports
-from .pdf import PDFParser
-from .epub import EPUBParser
+from .pdf import PDFParser  # noqa: E402
+from .epub import EPUBParser  # noqa: E402
 
 
 def create_parser(file_path: Path) -> DocumentParser:

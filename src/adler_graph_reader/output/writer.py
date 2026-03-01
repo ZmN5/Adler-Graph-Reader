@@ -44,8 +44,7 @@ class ObsidianWriter:
 
         # Collect all concept names for cross-linking
         self.known_concepts = [
-            re.sub(r'\.md$', "", cp.filename)
-            for cp in concept_pages
+            re.sub(r"\.md$", "", cp.filename) for cp in concept_pages
         ]
 
         # Write book index

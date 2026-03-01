@@ -18,7 +18,9 @@ from .models import BookSummary, ConceptExtraction
 # Default LM Studio configuration
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MODEL = "local"  # LM Studio uses the currently loaded model
-DEFAULT_EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
+DEFAULT_EMBED_MODEL = (
+    "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
+)
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
 DEFAULT_TIMEOUT = 120.0  # Increased timeout for complex extractions
 
@@ -85,7 +87,7 @@ class OllamaClient(LLMProvider):
     @property
     def struct_client(self) -> OpenAI:
         """Lazy initialization of sync client for structured generation.
-        
+
         Uses MD_JSON mode which is more compatible with LM Studio.
         This mode uses markdown-wrapped JSON responses instead of the
         OpenAI response_format parameter.
@@ -159,6 +161,7 @@ class OllamaClient(LLMProvider):
     def embed(self, text: str, max_retries: int = 3) -> list[float]:
         """Generate embeddings using the embedding model with retry logic."""
         import time
+
         for attempt in range(max_retries):
             try:
                 response = self.client.embeddings.create(
@@ -214,7 +217,9 @@ def get_default_client(
 
 
 # Convenience functions
-def summarize_book(chapters: list[dict], client: Optional[OllamaClient] = None) -> BookSummary:
+def summarize_book(
+    chapters: list[dict], client: Optional[OllamaClient] = None
+) -> BookSummary:
     """
     Map-Reduce style book summarization.
     1. Map: Generate summary for each chapter
@@ -228,21 +233,25 @@ def summarize_book(chapters: list[dict], client: Optional[OllamaClient] = None) 
     for ch in chapters:
         prompt = f"""请阅读以下章节内容，然后用一句话总结本章的核心要点：
 
-章节标题: {ch.get('title', '无标题')}
-章节内容: {ch.get('content', '')[:2000]}...
+章节标题: {ch.get("title", "无标题")}
+章节内容: {ch.get("content", "")[:2000]}...
 
 请直接回答，不要有额外格式。"""
         summary = client.generate(prompt, temperature=0.5)
-        chapter_summaries.append({
-            "title": ch.get("title", "无标题"),
-            "summary": summary,
-        })
+        chapter_summaries.append(
+            {
+                "title": ch.get("title", "无标题"),
+                "summary": summary,
+            }
+        )
 
     # Reduce: Combine into book summary
-    combined = "\n\n".join([
-        f"章节 {i+1}: {s['title']}\n要点: {s['summary']}"
-        for i, s in enumerate(chapter_summaries)
-    ])
+    combined = "\n\n".join(
+        [
+            f"章节 {i + 1}: {s['title']}\n要点: {s['summary']}"
+            for i, s in enumerate(chapter_summaries)
+        ]
+    )
 
     prompt = f"""请根据以下各章摘要，总结这本书的整体内容：
 
@@ -264,7 +273,9 @@ def summarize_book(chapters: list[dict], client: Optional[OllamaClient] = None) 
     )
 
 
-def extract_concepts(context: str, client: Optional[OllamaClient] = None) -> ConceptExtraction:
+def extract_concepts(
+    context: str, client: Optional[OllamaClient] = None
+) -> ConceptExtraction:
     """
     Extract concepts from the given context using structured output.
     """

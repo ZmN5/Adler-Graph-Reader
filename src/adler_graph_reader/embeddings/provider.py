@@ -3,6 +3,7 @@ Embedding provider with dual-mode support:
 - LM Studio API (priority)
 - Local sentence-transformers (fallback)
 """
+
 from typing import Protocol, Optional
 
 
@@ -134,7 +135,9 @@ class EmbeddingProvider:
         local_model: str = "BAAI/bge-m3",
     ):
         if mode not in ("lmstudio", "local", "auto"):
-            raise ValueError(f"Invalid mode: {mode}. Must be 'lmstudio', 'local', or 'auto'.")
+            raise ValueError(
+                f"Invalid mode: {mode}. Must be 'lmstudio', 'local', or 'auto'."
+            )
 
         self.mode = mode
         self.lmstudio_provider: Optional[LMStudioEmbeddingProvider] = None

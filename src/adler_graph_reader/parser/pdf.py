@@ -89,20 +89,24 @@ class PDFParser(DocumentParser):
                 if is_heading(para):
                     # Start a new chapter
                     current_chapter = para
-                    chunks.append(Chunk(
-                        content=para,
-                        page_number=page_num + 1,
-                        chapter_title=para,
-                        level=1,
-                    ))
+                    chunks.append(
+                        Chunk(
+                            content=para,
+                            page_number=page_num + 1,
+                            chapter_title=para,
+                            level=1,
+                        )
+                    )
                 else:
                     # Content chunk
-                    chunks.append(Chunk(
-                        content=para,
-                        page_number=page_num + 1,
-                        chapter_title=current_chapter,
-                        level=2 if current_chapter else 1,
-                    ))
+                    chunks.append(
+                        Chunk(
+                            content=para,
+                            page_number=page_num + 1,
+                            chapter_title=current_chapter,
+                            level=2 if current_chapter else 1,
+                        )
+                    )
 
         return ParsedDocument(
             title=self.get_title(),
