@@ -376,8 +376,10 @@ def init_graph_tables(conn: Optional[sqlite3.Connection] = None) -> sqlite3.Conn
             theme_id INTEGER REFERENCES themes(id) ON DELETE SET NULL,
             name TEXT NOT NULL,
             definition TEXT NOT NULL,
+            explanation TEXT,  -- Detailed explanation
             examples TEXT,  -- JSON array
             importance_score REAL DEFAULT 0.5,
+            category TEXT DEFAULT 'concept',  -- concept, principle, method, tool, person, event
             source_chunk_ids TEXT,  -- JSON array
             embedding BLOB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -391,9 +393,10 @@ def init_graph_tables(conn: Optional[sqlite3.Connection] = None) -> sqlite3.Conn
             document_id TEXT NOT NULL,
             source_concept_id INTEGER REFERENCES concepts(id) ON DELETE CASCADE,
             target_concept_id INTEGER REFERENCES concepts(id) ON DELETE CASCADE,
-            relation_type TEXT,  -- relates_to, contradicts, supports, prerequisite_for, broader_than
+            relation_type TEXT,  -- broader_than, narrower_than, related_to, similar_to, prerequisite_for, causes, contradicts, supports
             strength REAL DEFAULT 0.5,
             evidence TEXT,
+            explanation TEXT,  -- Explanation of the relationship
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -489,6 +492,8 @@ def insert_concept(
     importance_score: float = 0.5,
     source_chunk_ids: list[int] | None = None,
     embedding: list[float] | None = None,
+    explanation: str | None = None,
+    category: str = "concept",
 ) -> int:
     """Insert a concept. Returns the new row ID."""
     import json
@@ -496,11 +501,11 @@ def insert_concept(
     embedding_json = json.dumps(embedding) if embedding else None
     cursor.execute(
         """
-        INSERT INTO concepts (document_id, theme_id, name, definition, examples, importance_score, source_chunk_ids, embedding)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO concepts (document_id, theme_id, name, definition, explanation, examples, importance_score, category, source_chunk_ids, embedding)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (document_id, theme_id, name, definition, json.dumps(examples or []),
-         importance_score, json.dumps(source_chunk_ids or []), embedding_json),
+        (document_id, theme_id, name, definition, explanation, json.dumps(examples or []),
+         importance_score, category, json.dumps(source_chunk_ids or []), embedding_json),
     )
     conn.commit()
     return cursor.lastrowid
@@ -512,7 +517,7 @@ def get_concepts(conn: sqlite3.Connection, document_id: str) -> list[dict[str, A
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT id, document_id, theme_id, name, definition, examples, importance_score, source_chunk_ids, created_at
+        SELECT id, document_id, theme_id, name, definition, explanation, examples, importance_score, category, source_chunk_ids, created_at
         FROM concepts WHERE document_id = ? ORDER BY importance_score DESC
         """,
         (document_id,),
@@ -524,10 +529,12 @@ def get_concepts(conn: sqlite3.Connection, document_id: str) -> list[dict[str, A
             "theme_id": row[2],
             "name": row[3],
             "definition": row[4],
-            "examples": json.loads(row[5]) if row[5] else [],
-            "importance_score": row[6],
-            "source_chunk_ids": json.loads(row[7]) if row[7] else [],
-            "created_at": row[8],
+            "explanation": row[5],
+            "examples": json.loads(row[6]) if row[6] else [],
+            "importance_score": row[7],
+            "category": row[8],
+            "source_chunk_ids": json.loads(row[9]) if row[9] else [],
+            "created_at": row[10],
         }
         for row in cursor.fetchall()
     ]
@@ -539,7 +546,7 @@ def get_concept_by_id(conn: sqlite3.Connection, concept_id: int) -> dict[str, An
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT id, document_id, theme_id, name, definition, examples, importance_score, source_chunk_ids, embedding, created_at
+        SELECT id, document_id, theme_id, name, definition, explanation, examples, importance_score, category, source_chunk_ids, embedding, created_at
         FROM concepts WHERE id = ?
         """,
         (concept_id,),
@@ -553,11 +560,13 @@ def get_concept_by_id(conn: sqlite3.Connection, concept_id: int) -> dict[str, An
         "theme_id": row[2],
         "name": row[3],
         "definition": row[4],
-        "examples": json.loads(row[5]) if row[5] else [],
-        "importance_score": row[6],
-        "source_chunk_ids": json.loads(row[7]) if row[7] else [],
-        "embedding": json.loads(row[8]) if row[8] else None,
-        "created_at": row[9],
+        "explanation": row[5],
+        "examples": json.loads(row[6]) if row[6] else [],
+        "importance_score": row[7],
+        "category": row[8],
+        "source_chunk_ids": json.loads(row[9]) if row[9] else [],
+        "embedding": json.loads(row[10]) if row[10] else None,
+        "created_at": row[11],
     }
 
 
@@ -574,8 +583,8 @@ def search_concepts_by_embedding(
 
     cursor.execute(
         """
-        SELECT c.id, c.document_id, c.theme_id, c.name, c.definition, c.examples,
-               c.importance_score, c.source_chunk_ids, vec_distance_cosine(c.embedding, ?) as distance
+        SELECT c.id, c.document_id, c.theme_id, c.name, c.definition, c.explanation, c.examples,
+               c.importance_score, c.category, c.source_chunk_ids, vec_distance_cosine(c.embedding, ?) as distance
         FROM concepts c
         WHERE c.document_id = ? AND c.embedding IS NOT NULL
         ORDER BY distance
@@ -591,10 +600,12 @@ def search_concepts_by_embedding(
             "theme_id": row[2],
             "name": row[3],
             "definition": row[4],
-            "examples": json.loads(row[5]) if row[5] else [],
-            "importance_score": row[6],
-            "source_chunk_ids": json.loads(row[7]) if row[7] else [],
-            "distance": row[8],
+            "explanation": row[5],
+            "examples": json.loads(row[6]) if row[6] else [],
+            "importance_score": row[7],
+            "category": row[8],
+            "source_chunk_ids": json.loads(row[9]) if row[9] else [],
+            "distance": row[10],
         }
         for row in cursor.fetchall()
     ]
@@ -608,15 +619,16 @@ def insert_relation(
     relation_type: str,
     strength: float = 0.5,
     evidence: str | None = None,
+    explanation: str | None = None,
 ) -> int:
     """Insert a concept relation. Returns the new row ID."""
     cursor = conn.cursor()
     cursor.execute(
         """
-        INSERT INTO concept_relations (document_id, source_concept_id, target_concept_id, relation_type, strength, evidence)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO concept_relations (document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (document_id, source_concept_id, target_concept_id, relation_type, strength, evidence),
+        (document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation),
     )
     conn.commit()
     return cursor.lastrowid
@@ -627,7 +639,7 @@ def get_relations(conn: sqlite3.Connection, document_id: str) -> list[dict[str, 
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT id, document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, created_at
+        SELECT id, document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation, created_at
         FROM concept_relations WHERE document_id = ?
         """,
         (document_id,),
@@ -641,7 +653,8 @@ def get_relations(conn: sqlite3.Connection, document_id: str) -> list[dict[str, 
             "relation_type": row[4],
             "strength": row[5],
             "evidence": row[6],
-            "created_at": row[7],
+            "explanation": row[7],
+            "created_at": row[8],
         }
         for row in cursor.fetchall()
     ]
@@ -652,7 +665,7 @@ def get_concept_relations(conn: sqlite3.Connection, concept_id: int) -> list[dic
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT id, document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, created_at
+        SELECT id, document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation, created_at
         FROM concept_relations
         WHERE source_concept_id = ? OR target_concept_id = ?
         """,
@@ -667,7 +680,8 @@ def get_concept_relations(conn: sqlite3.Connection, concept_id: int) -> list[dic
             "relation_type": row[4],
             "strength": row[5],
             "evidence": row[6],
-            "created_at": row[7],
+            "explanation": row[7],
+            "created_at": row[8],
         }
         for row in cursor.fetchall()
     ]

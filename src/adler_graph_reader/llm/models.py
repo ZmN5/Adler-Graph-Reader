@@ -79,19 +79,58 @@ class ConceptExtractionWithExamples(BaseModel):
     )
 
 
+class EnhancedConceptExtraction(BaseModel):
+    """Enhanced concept extraction for knowledge graph."""
+    concepts: list[EnhancedConcept] = Field(
+        default_factory=list,
+        min_items=1,
+        max_items=30,
+        description="List of enhanced concepts (10-30 key concepts)"
+    )
+
+
 class ConceptWithExamples(BaseModel):
     """A concept with definition and examples."""
     name: str = Field(description="Concept name")
-    definition: str = Field(description="Concept definition")
+    definition: str = Field(description="Concept definition (1-2 sentences)")
     examples: list[str] = Field(
         default_factory=list,
-        description="Examples of the concept"
+        description="2-3 concrete examples of the concept"
     )
     importance_score: float = Field(
         default=0.5,
         ge=0.0,
         le=1.0,
         description="Importance score from 0 to 1"
+    )
+
+
+class EnhancedConcept(BaseModel):
+    """Enhanced concept with rich metadata for knowledge graph."""
+    name: str = Field(description="Concept name (single term or short phrase)")
+    definition: str = Field(
+        description="Clear, precise definition (1-3 sentences)",
+        max_length=500
+    )
+    explanation: str = Field(
+        description="Detailed explanation expanding on the definition",
+        max_length=300
+    )
+    examples: list[str] = Field(
+        default_factory=list,
+        min_items=1,
+        max_items=5,
+        description="Concrete examples (1-5 items)"
+    )
+    importance_score: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Global importance in the document (0-1)"
+    )
+    category: str = Field(
+        default="concept",
+        description="Type: concept, principle, method, tool, person, event"
     )
 
 
@@ -108,7 +147,7 @@ class ConceptRelation(BaseModel):
     source_concept: str = Field(description="Source concept name")
     target_concept: str = Field(description="Target concept name")
     relation_type: str = Field(
-        description="Relationship type: relates_to, contradicts, supports, prerequisite_for, broader_than, similar_to"
+        description="Relationship type: broader_than, narrower_than, related_to, similar_to, prerequisite_for, causes"
     )
     strength: float = Field(
         default=0.5,
@@ -119,6 +158,39 @@ class ConceptRelation(BaseModel):
     evidence: str | None = Field(
         default=None,
         description="Evidence for this relationship from the text"
+    )
+
+
+class EnhancedConceptRelation(BaseModel):
+    """Enhanced relationship with rich metadata."""
+    source_concept: str = Field(description="Source concept name")
+    target_concept: str = Field(description="Target concept name")
+    relation_type: str = Field(
+        description="Type: broader_than, narrower_than, related_to, similar_to, prerequisite_for, causes, contradicts, supports"
+    )
+    strength: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Relationship strength (0.3=weak, 0.7=strong)"
+    )
+    evidence: str = Field(
+        description="Quote or paraphrase from text supporting this relation",
+        max_length=300
+    )
+    explanation: str = Field(
+        description="Brief explanation of why this relationship exists",
+        max_length=200
+    )
+
+
+class EnhancedRelationExtraction(BaseModel):
+    """Container for multiple enhanced relations."""
+    relations: list[EnhancedConceptRelation] = Field(
+        default_factory=list,
+        min_items=1,
+        max_items=50,
+        description="List of concept relationships (20-50 relations)"
     )
 
 

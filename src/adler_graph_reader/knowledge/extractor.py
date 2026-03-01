@@ -10,6 +10,9 @@ from ..llm.models import (
     ConceptExtractionWithExamples,
     ConceptRelationExtraction,
     ThemeExtraction,
+    EnhancedConceptExtraction,
+    EnhancedRelationExtraction,
+    EnhancedConcept,
 )
 from .graph_models import ConceptModel, RelationModel, ThemeModel
 
@@ -33,7 +36,6 @@ class ThemeExtractor:
         - Map: Extract themes from each chapter
         - Reduce: Combine and rank themes
         """
-        # Get a sample of content for theme extraction
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -45,7 +47,7 @@ class ThemeExtractor:
             (document_id,),
         )
         contents = [row[0] for row in cursor.fetchall()]
-        
+
         if not contents:
             cursor.execute(
                 """
@@ -57,10 +59,9 @@ class ThemeExtractor:
                 (document_id,),
             )
             contents = [row[0] for row in cursor.fetchall()]
-        
-        # Combine content for theme extraction
+
         combined_content = "\n\n---\n\n".join([c[:2000] for c in contents[:5]])
-        
+
         prompt = f"""从以下书籍内容中提取{max_themes}个主要主题：
 
 {combined_content}
@@ -105,119 +106,149 @@ class ConceptExtractor:
         conn: sqlite3.Connection,
         document_id: str,
         theme_ids: Optional[list[int]] = None,
-        max_concepts: int = 20,
+        max_concepts: int = 30,
     ) -> list[ConceptModel]:
         """
-        Extract concepts from document using hybrid search.
+        Extract concepts from document using enhanced extraction.
+
+        Pipeline:
+        1. Identify concept candidates from document content
+        2. Extract detailed information for each concept (definition, explanation, examples)
+        3. Evaluate importance based on frequency and centrality
         """
         cursor = conn.cursor()
 
-        # Get key terms from document (first chapters)
+        # Get document content for concept extraction
         cursor.execute(
             """
-            SELECT content FROM document_tree
+            SELECT id, content FROM document_tree
             WHERE document_id = ? AND type = 'chapter'
             ORDER BY id
-            LIMIT 5
+            LIMIT 10
             """,
             (document_id,),
         )
-        chapters = [row[0] for row in cursor.fetchall()]
+        chapters = [(row[0], row[1]) for row in cursor.fetchall()]
 
         if not chapters:
             cursor.execute(
                 """
-                SELECT content FROM document_tree
+                SELECT id, content FROM document_tree
                 WHERE document_id = ?
                 ORDER BY id
-                LIMIT 10
+                LIMIT 15
                 """,
                 (document_id,),
             )
-            chapters = [row[0] for row in cursor.fetchall()]
+            chapters = [(row[0], row[1]) for row in cursor.fetchall()]
 
-        # Identify potential concepts
-        prompt = f"""从以下文本中识别核心概念（关键词/术语），这些概念应该是书中的重要术语：
+        # Combine content for concept extraction
+        combined_content = "\n\n---\n\n".join([
+            f"[Section {ch[0]}]:\n{ch[1][:1500]}"
+            for ch in chapters[:5]
+        ])
 
-{chr(10).join([ch[:1000] for ch in chapters[:3]])}
+        # Step 1: Extract concepts using enhanced model
+        prompt = f"""从以下书籍内容中提取核心概念（关键术语/理论/方法）：
 
-请列出20-30个核心概念名词/术语，按重要性排序。每行一个概念。"""
+{combined_content}
+
+请识别 15-25 个最重要的核心概念，对每个概念提供：
+1. 概念名称（简洁的术语）
+2. 定义（1-2 句清晰定义）
+3. 详细解释（扩展说明）
+4. 1-3 个具体例子
+5. 重要性评分（0-1，根据在书中的核心程度）
+6. 类别（concept 概念/principle 原理/method 方法/tool 工具/person 人物/event 事件）
+
+请按重要性从高到低排序输出。"""
 
         try:
-            concept_names = self.client.generate(
+            result = self.client.generate_structured(
                 prompt,
-                system="你是一个概念识别专家，擅长识别文本中的关键术语和概念。",
+                response_model=EnhancedConceptExtraction,
+                system="你是一个知识提取专家，擅长从学术文本中识别核心概念并提供精确定义。",
                 temperature=0.3,
-            ).strip().split("\n")
-            concept_names = [c.strip().lstrip("0123456789.-* ") for c in concept_names if c.strip()]
+            )
+            concepts_data = result.concepts
         except Exception as e:
-            print(f"Warning: Failed to identify concepts: {e}")
-            concept_names = []
+            print(f"Warning: Enhanced extraction failed, falling back: {e}")
+            concepts_data = self._extract_concepts_basic(conn, document_id, chapters, max_concepts)
 
-        # Extract definition and examples for each concept
+        # Convert to ConceptModel and store
         concepts = []
-        for name in concept_names[:max_concepts]:
+        for concept_data in concepts_data[:max_concepts]:
             try:
-                # Search for context
+                # Find source chunks for this concept
                 cursor.execute(
                     """
-                    SELECT d.id, d.content FROM document_tree d
+                    SELECT d.id FROM document_tree d
                     WHERE d.document_id = ? AND d.content LIKE ?
                     ORDER BY d.id
                     LIMIT 3
                     """,
-                    (document_id, f"%{name}%"),
+                    (document_id, f"%{concept_data.name}%"),
                 )
-                context_rows = cursor.fetchall()
+                chunk_ids = [row[0] for row in cursor.fetchall()]
 
-                if not context_rows:
-                    continue
+                # Generate embedding for the concept
+                embedding = self.client.embed(f"{concept_data.name}: {concept_data.definition}")
 
-                context = "\n\n".join([
-                    f"[Chunk {row[0]}]: {row[1][:500]}"
-                    for row in context_rows
-                ])
-                chunk_ids = [row[0] for row in context_rows]
-
-                # Extract concept details
-                prompt = f"""从以下上下文中提取关于"{name}"的概念信息：
-
-{context}
-
-请提供：
-1. 概念定义（一句话）
-2. 2-3个例子
-3. 重要性评分（0-1）
-
-请严格按照格式输出。"""
-
-                result = self.client.generate_structured(
-                    prompt,
-                    response_model=ConceptExtractionWithExamples,
-                    system="你是一个知识提取专家，擅长提取概念的定义和例子。",
-                    temperature=0.5,
+                concept = ConceptModel(
+                    document_id=document_id,
+                    theme_id=theme_ids[0] if theme_ids else None,
+                    name=concept_data.name,
+                    definition=concept_data.definition,
+                    explanation=getattr(concept_data, 'explanation', None),
+                    examples=concept_data.examples,
+                    importance_score=concept_data.importance_score,
+                    category=getattr(concept_data, 'category', 'concept'),
+                    source_chunk_ids=chunk_ids,
+                    embedding=embedding,
                 )
-
-                if result.concepts:
-                    concept = result.concepts[0]
-                    # Generate embedding for the concept
-                    embedding = self.client.embed(f"{concept.name}: {concept.definition}")
-
-                    concepts.append(ConceptModel(
-                        document_id=document_id,
-                        theme_id=theme_ids[0] if theme_ids else None,
-                        name=concept.name,
-                        definition=concept.definition,
-                        examples=concept.examples,
-                        importance_score=concept.importance_score,
-                        source_chunk_ids=chunk_ids,
-                        embedding=embedding,
-                    ))
+                concepts.append(concept)
             except Exception as e:
-                print(f"Warning: Failed to extract concept {name}: {e}")
+                print(f"Warning: Failed to process concept {concept_data.name}: {e}")
                 continue
 
         return concepts
+
+    def _extract_concepts_basic(
+        self,
+        conn: sqlite3.Connection,
+        document_id: str,
+        chapters: list[tuple[int, str]],
+        max_concepts: int,
+    ) -> list[EnhancedConcept]:
+        """Fallback basic concept extraction."""
+        prompt = f"""从以下文本中识别核心概念（关键词/术语）：
+
+{chr(10).join([ch[1][:1000] for ch in chapters[:3]])}
+
+请列出 15-20 个核心概念名词/术语，按重要性排序。每行一个概念。"""
+
+        try:
+            concept_names = self.client.generate(
+                prompt,
+                system="你是一个概念识别专家。",
+                temperature=0.3,
+            ).strip().split("\n")
+            concept_names = [c.strip().lstrip("0123456789.-* ") for c in concept_names if c.strip()]
+
+            concepts = []
+            for name in concept_names[:max_concepts]:
+                concepts.append(EnhancedConcept(
+                    name=name,
+                    definition=f"{name} 是文中的一个核心概念。",
+                    explanation=None,
+                    examples=[],
+                    importance_score=0.5,
+                    category='concept',
+                ))
+            return concepts
+        except Exception as e:
+            print(f"Warning: Basic extraction also failed: {e}")
+            return []
 
 
 class RelationExtractor:
@@ -231,10 +262,20 @@ class RelationExtractor:
         conn: sqlite3.Connection,
         document_id: str,
         concepts: list[ConceptModel],
-        max_relations: int = 30,
+        max_relations: int = 50,
     ) -> list[RelationModel]:
         """
         Extract relationships between concepts.
+
+        Relation types:
+        - broader_than: A is a broader category/superconcept of B
+        - narrower_than: A is a narrower category/subconcept of B
+        - related_to: A and B are semantically related
+        - similar_to: A and B are similar/analogous concepts
+        - prerequisite_for: Understanding A is required for B
+        - causes: A causes or leads to B
+        - supports: A provides evidence/support for B
+        - contradicts: A contradicts or opposes B
         """
         if len(concepts) < 2:
             return []
@@ -242,52 +283,70 @@ class RelationExtractor:
         # Build concept context
         concept_list = "\n".join([
             f"- {c.name}: {c.definition[:100]}..."
-            for c in concepts[:20]
+            for c in concepts[:30]
         ])
 
         # Get context chunks for these concepts
         cursor = conn.cursor()
         all_chunk_ids = set()
-        for c in concepts[:20]:
+        for c in concepts[:30]:
             all_chunk_ids.update(c.source_chunk_ids or [])
 
         if not all_chunk_ids:
-            return []
+            # If no chunk IDs, get general document content
+            cursor.execute(
+                """
+                SELECT content FROM document_tree
+                WHERE document_id = ?
+                ORDER BY id
+                LIMIT 20
+                """,
+                (document_id,),
+            )
+            context = "\n\n".join([row[0][:500] for row in cursor.fetchall()])
+        else:
+            placeholders = ",".join("?" * len(all_chunk_ids))
+            cursor.execute(
+                f"""
+                SELECT content FROM document_tree
+                WHERE id IN ({placeholders})
+                """,
+                list(all_chunk_ids),
+            )
+            context = "\n\n".join([row[0][:500] for row in cursor.fetchall()])
 
-        placeholders = ",".join("?" * len(all_chunk_ids))
-        cursor.execute(
-            f"""
-            SELECT content FROM document_tree
-            WHERE id IN ({placeholders})
-            """,
-            list(all_chunk_ids),
-        )
-        context = "\n\n".join([row[0][:500] for row in cursor.fetchall()])
-
-        # Extract relations
-        prompt = f"""请分析以下概念列表，识别它们之间的关系：
+        # Extract relations with enhanced model
+        prompt = f"""请分析以下概念列表，识别它们之间的语义关系：
 
 概念列表：
 {concept_list}
 
 上下文参考：
-{context[:3000]}
+{context[:4000]}
 
 请识别概念之间的关系，关系类型包括：
-- relates_to: 相关关系
-- similar_to: 相似关系
-- broader_than: 包含/广义关系
-- prerequisite_for: 前置/基础关系
-- supports: 支持关系
-- contradicts: 矛盾关系
+- broader_than: A 是 B 的上级概念/更广泛的类别（A 包含 B）
+- narrower_than: A 是 B 的下级概念/更具体的类别（A 被 B 包含）
+- related_to: A 和 B 存在语义关联
+- similar_to: A 和 B 是相似/类似的概念
+- prerequisite_for: 理解 A 是学习 B 的前提/基础
+- causes: A 导致/引起 B
+- supports: A 支持/证明 B
+- contradicts: A 与 B 矛盾/对立
+
+对每个关系请提供：
+1. 关系类型
+2. 关系强度（0.3-1.0）
+3. 文本证据（引用或改写）
+4. 关系解释（为什么存在这个关系）
 
 请输出最多{max_relations}个最重要的关系。"""
 
         try:
             result = self.client.generate_structured(
                 prompt,
-                response_model=ConceptRelationExtraction,
-                system="你是一个关系分析专家，擅长识别概念之间的逻辑关系。",
+                response_model=EnhancedRelationExtraction,
+                system="你是一个关系分析专家，擅长识别概念之间的逻辑和语义关系。",
                 temperature=0.5,
             )
 
@@ -307,6 +366,7 @@ class RelationExtractor:
                         relation_type=rel.relation_type,
                         strength=rel.strength,
                         evidence=rel.evidence,
+                        explanation=rel.explanation,
                     ))
 
             return relations[:max_relations]
@@ -372,14 +432,14 @@ class QAExtractor:
             ])
         else:
             context = "\n\n".join([
-                f"概念: {c['name']}\n定义: {c['definition']}"
+                f"概念：{c['name']}\n定义：{c['definition']}"
                 for c in combined[:5]
             ])
 
         # Generate answer
         prompt = f"""基于以下上下文信息，请回答用户的问题。
 
-问题: {question}
+问题：{question}
 
 相关概念和上下文:
 {context}

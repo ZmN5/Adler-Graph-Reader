@@ -28,6 +28,8 @@ class ConceptModel(BaseModel):
     importance_score: float = Field(default=0.5, ge=0.0, le=1.0)
     source_chunk_ids: list[int] = Field(default_factory=list)
     embedding: Optional[list[float]] = None
+    explanation: Optional[str] = None  # Detailed explanation
+    category: Optional[str] = "concept"  # concept, principle, method, tool, person, event
 
 
 class RelationModel(BaseModel):
@@ -36,9 +38,10 @@ class RelationModel(BaseModel):
     document_id: str
     source_concept_id: int
     target_concept_id: int
-    relation_type: str  # relates_to, contradicts, supports, prerequisite_for, broader_than, similar_to
+    relation_type: str  # broader_than, narrower_than, related_to, similar_to, prerequisite_for, causes, contradicts, supports
     strength: float = Field(default=0.5, ge=0.0, le=1.0)
     evidence: Optional[str] = None
+    explanation: Optional[str] = None  # Explanation of why this relationship exists
 
 
 class QAModel(BaseModel):
