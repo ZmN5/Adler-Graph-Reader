@@ -18,7 +18,9 @@ class Config:
     def __post_init__(self):
         """Validate language setting."""
         if self.language not in self.SUPPORTED_LANGUAGES:
-            print(f"Warning: Unsupported language '{self.language}', falling back to 'zh'")
+            print(
+                f"Warning: Unsupported language '{self.language}', falling back to 'zh'"
+            )
             self.language = "zh"
 
     @classmethod

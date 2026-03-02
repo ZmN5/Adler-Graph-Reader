@@ -1,25 +1,24 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-02 19:55) - ✅ 测试通过，项目核心功能完成
+## 当前状态 (2026-03-03 02:55) - ✅ 测试通过，进度跟踪功能完成
 
-### ✅ 本次进展 (2026-03-02 19:55)
+### ✅ 本次进展 (2026-03-03 02:55)
 
-1. **知识图谱完整性验证** - ✅ 通过
-   - 概念数量：52
-   - 关系数量：69
-   - 主题数量：125
+1. **单元测试验证** - ✅ 通过
+   - 37个单元测试全部通过
+   - 覆盖数据库、嵌入、知识提取、解析器、搜索引擎模块
 
-2. **Web UI 测试** - ✅ 通过
-   - Streamlit Web UI 成功启动在端口 8501
-   - HTTP 响应正常
-   - 进程运行中 (pid 41607)
+2. **进度跟踪功能验证** - ✅ 通过
+   - 创建/加载/保存进度记录
+   - 阶段管理（主题→概念→关系）
+   - 概念队列管理
+   - 错误跟踪
+   - 停滞任务检测
+   - 格式化报告输出
 
-3. **关系类型示例验证**
-   - `related_to` (相关)
-   - `broader_than` (上位)
-   - `prerequisite_for` (前置)
-   - `supports` (支持)
-   - `causes` (因果)
+3. **代码质量检查** - ✅ 通过
+   - ruff format: 8个文件已格式化
+   - ruff check: 3个未使用导入已修复
 
 ### ✅ 已完成
 
@@ -63,27 +62,28 @@
    - ✅ 125 个主题
    - ✅ 关系类型：related_to, broader_than, prerequisite_for, supports, causes
 
+8. **进度跟踪模块** (2026-03-03)
+   - ✅ 添加 `src/adler_graph_reader/knowledge/progress.py`
+   - ✅ SQLite 持久化存储
+   - ✅ 分阶段进度追踪（主题→概念→关系）
+   - ✅ 概念队列管理（支持断点续传）
+   - ✅ 错误日志记录
+   - ✅ 停滞任务检测
+
 ### 🔄 下一步工作
 
-**优先级 1: 项目收尾**
-- [x] 文档导入 (28,465 chunks)
-- [x] 主题提取 (125 themes)
-- [x] 概念提取 (52 concepts ✅)
-- [x] 关系提取 (69 relations ✅)
-- [x] Web UI 验证 ✅
-- [x] 生成 README 文档 ✅
-- [x] 添加单元测试 ✅ (37个测试全部通过)
-
-**优先级 2: 增强功能**
-- [ ] 优化概念提取 prompt
+**优先级 1: 增强功能**
+- [ ] 优化关系提取 - 尝试增加关系数量和多样性
+- [ ] 改进图谱可视化 - 增强 D3.js 可视化效果
 - [x] 添加批量处理支持 ✅ (2026-03-02 实现)
   - `uv run adler ingest --batch books/` 批量导入书籍
   - `uv run adler build-graph --all` 对所有已导入书籍构建图谱
-- [ ] 添加进度持久化
+- [x] 添加进度持久化 ✅ (2026-03-03 实现)
 
-**优先级 3: 测试和文档**
-- [x] 添加单元测试 ✅
-- [x] 完善使用文档 ✅
+**优先级 2: 项目完善**
+- [x] 单元测试 ✅ (37个测试全部通过)
+- [x] 代码质量检查 ✅ (ruff format & check 通过)
+- [ ] 更新 README 文档
 
 ### 提取的主题 (Top 10)
 
@@ -129,9 +129,12 @@
 ### 测试报告
 
 - `test-report.md` - Web UI 测试报告 (2026-03-02 19:55)
+- 单元测试: 37 passed, 10 warnings in ~0.63s
+- 进度跟踪功能测试: 9项测试全部通过
 
 ### Git 提交历史
 
+- `084b56b` - feat: add progress tracking module for knowledge graph extraction
 - `1222deb` - chore: update PROGRESS.md with completed extraction status
 - `8e81ba4` - feat: complete knowledge graph extraction with 52 concepts and 69 relations
 - `2a8f86b` - progress: update PROGRESS.md - concepts 23->33, themes 30->70

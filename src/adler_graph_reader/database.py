@@ -538,7 +538,7 @@ def insert_concept(
     import json
 
     cursor = conn.cursor()
-    
+
     # Check if concept with same name already exists for this document
     cursor.execute(
         "SELECT id FROM concepts WHERE document_id = ? AND name = ?",
@@ -548,7 +548,7 @@ def insert_concept(
     if existing:
         # Concept already exists, skip insertion
         return existing[0]
-    
+
     embedding_json = json.dumps(embedding) if embedding else None
     cursor.execute(
         """

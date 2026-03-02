@@ -446,21 +446,24 @@ Please start extraction: {lang_suffix}"""
                 concept = result.concepts[0]
                 # Post-process to ensure quality
                 concept.name = name  # Ensure name consistency
-                
+
                 # Validate and normalize importance score
                 concept.importance_score = max(0.1, min(1.0, concept.importance_score))
-                
+
                 # Ensure examples is a list
                 if concept.examples is None:
                     concept.examples = []
-                
+
                 # Clean up examples - remove empty strings
-                concept.examples = [ex.strip() for ex in concept.examples if ex and ex.strip()]
-                
+                concept.examples = [
+                    ex.strip() for ex in concept.examples if ex and ex.strip()
+                ]
+
                 return concept
         except Exception as e:
             print(f"Warning: Structured extraction failed for '{name}': {e}")
             import traceback
+
             traceback.print_exc()
 
         # Fallback: create minimal concept

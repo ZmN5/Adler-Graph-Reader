@@ -1,6 +1,5 @@
 """Tests for embeddings module."""
 
-
 import pytest
 
 from adler_graph_reader.embeddings.provider import (

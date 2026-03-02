@@ -1,6 +1,5 @@
 """Tests for document parser module."""
 
-
 import pytest
 
 from adler_graph_reader.parser import Chunk, ParsedDocument, create_parser
