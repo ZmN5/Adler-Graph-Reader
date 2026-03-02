@@ -37,8 +37,14 @@ def parse_args() -> argparse.Namespace:
 
     # ingest command
     ingest = subparsers.add_parser("ingest", help="Ingest a document")
-    ingest.add_argument("file", type=Path, help="PDF or EPUB file")
+    ingest.add_argument("file", type=Path, nargs="?", help="PDF or EPUB file")
     ingest.add_argument("--title", help="Override title")
+    ingest.add_argument(
+        "--batch",
+        type=Path,
+        metavar="DIR",
+        help="Batch ingest all PDF/EPUB files from directory",
+    )
 
     # analyze command
     analyze = subparsers.add_parser("analyze", help="Analyze a document")
@@ -86,6 +92,11 @@ def parse_args() -> argparse.Namespace:
     )
     build_graph.add_argument(
         "--document", "-d", help="Document ID (required if file not provided)"
+    )
+    build_graph.add_argument(
+        "--all",
+        action="store_true",
+        help="Build graph for all documents in database",
     )
 
     # graph command
@@ -620,8 +631,31 @@ def main() -> int:
         return 0
 
     if args.command == "ingest":
-        cmd_ingest(args.file, args.title)
-        print("Ingestion complete.")
+        if args.batch:
+            # Batch ingest
+            batch_dir = args.batch
+            if not batch_dir.is_dir():
+                print(f"Error: {batch_dir} is not a directory")
+                return 1
+            supported_exts = (".pdf", ".epub")
+            files = sorted(
+                [f for f in batch_dir.iterdir() if f.suffix.lower() in supported_exts]
+            )
+            if not files:
+                print(f"No PDF/EPUB files found in {batch_dir}")
+                return 1
+            print(f"Found {len(files)} files to ingest")
+            for f in files:
+                print(f"\n--- Ingesting: {f.name} ---")
+                doc_id = cmd_ingest(f)
+                print(f"Done: {doc_id}")
+            print(f"\nBatch ingestion complete: {len(files)} files processed.")
+        else:
+            if not args.file:
+                print("Error: Please provide a file or use --batch")
+                return 1
+            cmd_ingest(args.file, args.title)
+            print("Ingestion complete.")
         return 0
 
     if args.command == "analyze":
@@ -645,7 +679,29 @@ def main() -> int:
         return 0
 
     if args.command == "build-graph":
-        cmd_build_graph(args.file, args.document)
+        if args.all:
+            # Build graph for all documents without concepts
+            conn = database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT DISTINCT document_id FROM document_tree
+                WHERE document_id NOT IN (SELECT DISTINCT document_id FROM concepts)
+                ORDER BY document_id
+                """
+            )
+            doc_ids = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            if not doc_ids:
+                print("No documents found without existing concepts.")
+                return 0
+            print(f"Found {len(doc_ids)} documents without concepts")
+            for doc_id in doc_ids:
+                print(f"\n=== Building graph for: {doc_id} ===")
+                cmd_build_graph(None, doc_id)
+            print(f"\nBatch build-graph complete: {len(doc_ids)} documents processed.")
+        else:
+            cmd_build_graph(args.file, args.document)
         return 0
 
     if args.command == "graph":
