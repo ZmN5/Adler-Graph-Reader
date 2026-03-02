@@ -43,7 +43,7 @@ class RelationModel(BaseModel):
     document_id: str
     source_concept_id: int
     target_concept_id: int
-    relation_type: str  # broader_than, narrower_than, related_to, similar_to, prerequisite_for, causes, contradicts, supports
+    relation_type: str  # broader_than, narrower_than, part_of, implements, uses, produces, evaluates, improves, related_to, similar_to, prerequisite_for, causes, contradicts, supports
     strength: float = Field(default=0.5, ge=0.0, le=1.0)
     evidence: Optional[str] = None
     explanation: Optional[str] = None  # Explanation of why this relationship exists

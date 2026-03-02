@@ -164,7 +164,7 @@ class EnhancedConceptRelation(BaseModel):
     source_concept: str = Field(description="Source concept name")
     target_concept: str = Field(description="Target concept name")
     relation_type: str = Field(
-        description="Type: broader_than, narrower_than, related_to, similar_to, prerequisite_for, causes, contradicts, supports"
+        description="Type: broader_than, narrower_than, part_of, implements, uses, produces, evaluates, improves, related_to, similar_to, prerequisite_for, causes, contradicts, supports"
     )
     strength: float = Field(
         default=0.5,

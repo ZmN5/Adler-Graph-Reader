@@ -1,24 +1,30 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 02:55) - ✅ 测试通过，进度跟踪功能完成
+## 当前状态 (2026-03-03 03:10) - ✅ 关系提取优化完成
 
-### ✅ 本次进展 (2026-03-03 02:55)
+### ✅ 本次进展 (2026-03-03 03:10)
 
-1. **单元测试验证** - ✅ 通过
-   - 37个单元测试全部通过
-   - 覆盖数据库、嵌入、知识提取、解析器、搜索引擎模块
+1. **关系提取优化** - ✅ 完成
+   - 扩展关系提取的概念数量：30 → 50
+   - max_relations 从 50 提升到 120
+   - 新增 6 种关系类型：part_of, implements, uses, produces, evaluates, improves
+   - 优化 prompt 策略：鼓励更全面、更多样化的关系提取
+   - 降低温度参数：0.5 → 0.3，提高输出一致性
+   - 添加关系去重逻辑，避免重复关系
 
-2. **进度跟踪功能验证** - ✅ 通过
-   - 创建/加载/保存进度记录
-   - 阶段管理（主题→概念→关系）
-   - 概念队列管理
-   - 错误跟踪
-   - 停滞任务检测
-   - 格式化报告输出
+2. **图谱可视化增强** - ✅ 完成
+   - 添加节点辉光效果 (glow filter)
+   - 添加关系类型箭头标记
+   - 添加悬停高亮效果
+   - 添加节点/关系类型图例
+   - 添加背景网格
+   - 优化力导向布局参数
+   - 添加点击查看详情卡片
 
 3. **代码质量检查** - ✅ 通过
-   - ruff format: 8个文件已格式化
-   - ruff check: 3个未使用导入已修复
+   - ruff format: 通过
+   - ruff check: 通过
+   - 37个单元测试全部通过
 
 ### ✅ 已完成
 
@@ -58,9 +64,9 @@
 
 7. **知识图谱提取**
    - ✅ 52 个概念
-   - ✅ 69 个关系
+   - ✅ 69+ 关系 (优化后目标 120)
    - ✅ 125 个主题
-   - ✅ 关系类型：related_to, broader_than, prerequisite_for, supports, causes
+   - ✅ 关系类型：related_to, broader_than, prerequisite_for, supports, causes, part_of, implements, uses, produces, evaluates, improves, similar_to, contradicts
 
 8. **进度跟踪模块** (2026-03-03)
    - ✅ 添加 `src/adler_graph_reader/knowledge/progress.py`
@@ -73,8 +79,11 @@
 ### 🔄 下一步工作
 
 **优先级 1: 增强功能**
-- [ ] 优化关系提取 - 尝试增加关系数量和多样性
-- [ ] 改进图谱可视化 - 增强 D3.js 可视化效果
+- [x] 优化关系提取 ✅ (2026-03-03 实现)
+  - 关系数量目标：50 → 120
+  - 新增关系类型：part_of, implements, uses, produces, evaluates, improves
+- [x] 改进图谱可视化 ✅ (2026-03-03 实现)
+  - 辉光效果、箭头标记、悬停高亮、图例
 - [x] 添加批量处理支持 ✅ (2026-03-02 实现)
   - `uv run adler ingest --batch books/` 批量导入书籍
   - `uv run adler build-graph --all` 对所有已导入书籍构建图谱

@@ -478,7 +478,7 @@ Please start extraction: {lang_suffix}"""
 
 
 class RelationExtractor:
-    """Extract relationships between concepts."""
+    """Extract relationships between concepts with enhanced strategies."""
 
     def __init__(self, client: Optional[OllamaClient] = None):
         self.client = client or get_default_client()
@@ -488,12 +488,12 @@ class RelationExtractor:
         conn: sqlite3.Connection,
         document_id: str,
         concepts: list[ConceptModel],
-        max_relations: int = 50,
+        max_relations: int = 120,
     ) -> list[RelationModel]:
         """
-        Extract relationships between concepts.
+        Extract relationships between concepts using multi-strategy approach.
 
-        Relation types:
+        Enhanced relation types:
         - broader_than: A is a broader category/superconcept of B
         - narrower_than: A is a narrower category/subconcept of B
         - related_to: A and B are semantically related
@@ -502,19 +502,31 @@ class RelationExtractor:
         - causes: A causes or leads to B
         - supports: A provides evidence/support for B
         - contradicts: A contradicts or opposes B
+        - part_of: A is a component/part of B
+        - implements: A implements or realizes B
+        - uses: A uses or applies B
+        - produces: A produces or generates B
+        - evaluates: A evaluates or measures B
+        - improves: A improves or enhances B
         """
         if len(concepts) < 2:
             return []
 
-        # Build concept context
+        # Use more concepts for richer relationship extraction
+        concepts_to_use = concepts[:50]  # Increased from 30 to 50
+
+        # Build concept context with richer information
         concept_list = "\n".join(
-            [f"- {c.name}: {c.definition[:100]}..." for c in concepts[:30]]
+            [
+                f"- {c.name} [{c.category}]: {c.definition[:80]}..."
+                for c in concepts_to_use
+            ]
         )
 
         # Get context chunks for these concepts
         cursor = conn.cursor()
         all_chunk_ids = set()
-        for c in concepts[:30]:
+        for c in concepts_to_use:
             all_chunk_ids.update(c.source_chunk_ids or [])
 
         if not all_chunk_ids:
@@ -524,112 +536,187 @@ class RelationExtractor:
                 SELECT content FROM document_tree
                 WHERE document_id = ?
                 ORDER BY id
-                LIMIT 20
+                LIMIT 30
                 """,
                 (document_id,),
             )
-            context = "\n\n".join([row[0][:500] for row in cursor.fetchall()])
+            context = "\n\n".join([row[0][:600] for row in cursor.fetchall()])
         else:
             placeholders = ",".join("?" * len(all_chunk_ids))
             cursor.execute(
                 f"""
                 SELECT content FROM document_tree
                 WHERE id IN ({placeholders})
+                ORDER BY RANDOM()
+                LIMIT 30
                 """,
                 list(all_chunk_ids),
             )
-            context = "\n\n".join([row[0][:500] for row in cursor.fetchall()])
+            context = "\n\n".join([row[0][:600] for row in cursor.fetchall()])
 
         config = get_config()
         lang_suffix = config.get_prompt_suffix()
 
         if config.language == "zh":
-            prompt = f"""请分析以下概念列表，识别它们之间的语义关系：
+            prompt = f"""作为知识图谱构建专家，请深入分析以下概念列表，识别它们之间所有可能的语义关系。
 
-概念列表：
+## 概念列表（共{len(concepts_to_use)}个）：
 {concept_list}
 
-上下文参考：
-{context[:4000]}
+## 上下文参考：
+{context[:5000]}
 
-请识别概念之间的关系，关系类型包括：
-- broader_than: A 是 B 的上级概念/更广泛的类别（A 包含 B）
+## 任务要求
+
+### 关系类型定义（必须优先使用具体类型，少用related_to）：
+**层级关系：**
+- broader_than: A 是 B 的上级概念/更广泛的类别（A 包含 B，如：机器学习 > 监督学习）
 - narrower_than: A 是 B 的下级概念/更具体的类别（A 被 B 包含）
-- related_to: A 和 B 存在语义关联
-- similar_to: A 和 B 是相似/类似的概念
-- prerequisite_for: 理解 A 是学习 B 的前提/基础
-- causes: A 导致/引起 B
-- supports: A 支持/证明 B
-- contradicts: A 与 B 矛盾/对立
+- part_of: A 是 B 的组成部分/子模块（如：特征工程 是 机器学习系统 的一部分）
 
-对每个关系请提供：
-1. 关系类型
-2. 关系强度（0.3-1.0）
-3. 文本证据（引用或改写）
-4. 关系解释（为什么存在这个关系）
+**逻辑关系：**
+- prerequisite_for: 理解/掌握 A 是学习 B 的前提条件（如：线性代数 是 神经网络 的基础）
+- causes: A 导致/引起 B 的发生（因果关系）
+- produces: A 产生/生成 B（如：训练过程 产生 模型）
 
-请输出最多{max_relations}个最重要的关系。{lang_suffix}"""
-            system_msg = "你是一个关系分析专家，擅长识别概念之间的逻辑和语义关系。"
+**功能关系：**
+- implements: A 实现了 B（如：随机森林算法 实现了 集成学习）
+- uses: A 使用/应用了 B（如：深度学习 使用 GPU）
+- evaluates: A 用于评估/测量 B（如：准确率 评估 模型性能）
+- improves: A 改进/提升了 B（如：数据增强 改进 模型泛化能力）
+
+**语义关系：**
+- similar_to: A 和 B 是相似/可类比的概念（如：精确率 ~ 召回率）
+- supports: A 支持/证明 B（如：实验结果 支持 理论假设）
+- contradicts: A 与 B 矛盾/对立（如：过拟合 与 欠拟合）
+- related_to: 仅当以上类型都不适用时使用（通用关联）
+
+### 提取策略：
+1. **全面性**：每个概念至少应该有2-3个出边关系
+2. **多样性**：尽量使用不同类型的关系，不要只使用related_to
+3. **方向性**：注意关系的方向，A→B 和 B→A 是不同的关系
+4. **层次结构**：识别概念之间的层级结构（上下位关系）
+5. **流程关系**：识别ML系统中的工作流程（数据→特征→模型→评估→部署）
+6. **依赖关系**：识别概念之间的依赖和使用关系
+
+### 输出要求：
+- 最少提取 {min(max_relations, len(concepts_to_use) * 2)} 个关系
+- 最多提取 {max_relations} 个关系
+- 每个关系必须包含：源概念、目标概念、关系类型、强度(0.3-1.0)、文本证据、解释
+- 优先选择有明确文本证据支持的关系
+
+请尽可能多地识别有意义的关系，构建丰富的知识图谱。{lang_suffix}"""
+            system_msg = """你是知识图谱构建专家，擅长从学术文献中识别概念间的复杂关系。
+你的任务是：
+1. 深入理解每个概念的含义和作用
+2. 识别概念间的多种关系类型（层级、因果、功能、语义）
+3. 构建完整的概念网络，确保每个概念都有多个连接
+4. 优先使用具体的关系类型，避免过度使用related_to
+5. 确保关系有文本证据支持，不编造不存在的关系"""
         else:  # English
-            prompt = f"""Please analyze the following concept list and identify semantic relationships between them:
+            prompt = f"""As a knowledge graph construction expert, please deeply analyze the following concept list and identify all possible semantic relationships between them.
 
-Concept List:
+## Concept List ({len(concepts_to_use)} concepts):
 {concept_list}
 
-Context Reference:
-{context[:4000]}
+## Context Reference:
+{context[:5000]}
 
-Please identify relationships between concepts, including these types:
-- broader_than: A is a broader category/superconcept of B (A contains B)
-- narrower_than: A is a narrower category/subconcept of B (A is contained by B)
-- related_to: A and B are semantically related
-- similar_to: A and B are similar/analogous concepts
-- prerequisite_for: Understanding A is required for learning B
-- causes: A causes or leads to B
-- supports: A provides evidence/support for B
-- contradicts: A contradicts or opposes B
+## Task Requirements
 
-For each relationship provide:
-1. Relationship type
-2. Strength (0.3-1.0)
-3. Text evidence (quote or paraphrase)
-4. Explanation (why this relationship exists)
+### Relation Type Definitions (use specific types, avoid overusing related_to):
+**Hierarchical Relations:**
+- broader_than: A is a broader category of B (A contains B, e.g., ML > Supervised Learning)
+- narrower_than: A is a narrower category of B (A is contained by B)
+- part_of: A is a component/part of B (e.g., Feature Engineering is part of ML System)
 
-Please output up to {max_relations} most important relationships. {lang_suffix}"""
-            system_msg = "You are a relationship analysis expert, skilled at identifying logical and semantic relationships between concepts."
+**Logical Relations:**
+- prerequisite_for: Understanding A is required for B (e.g., Linear Algebra for Neural Networks)
+- causes: A causes/leads to B (causal relationship)
+- produces: A produces/generates B (e.g., Training produces Model)
+
+**Functional Relations:**
+- implements: A implements/realizes B (e.g., Random Forest implements Ensemble Learning)
+- uses: A uses/applies B (e.g., Deep Learning uses GPUs)
+- evaluates: A evaluates/measures B (e.g., Accuracy evaluates Model Performance)
+- improves: A improves/enhances B (e.g., Data Augmentation improves Generalization)
+
+**Semantic Relations:**
+- similar_to: A and B are similar/analogous (e.g., Precision ~ Recall)
+- supports: A provides evidence for B (e.g., Results support Hypothesis)
+- contradicts: A contradicts/opposes B (e.g., Overfitting vs Underfitting)
+- related_to: Only use when none of above apply (generic association)
+
+### Extraction Strategy:
+1. **Comprehensiveness**: Each concept should have at least 2-3 outgoing relations
+2. **Diversity**: Use various relation types, not just related_to
+3. **Directionality**: Note that A→B and B→A are different relations
+4. **Hierarchy**: Identify hierarchical structures (super/sub-concepts)
+5. **Workflow**: Identify ML system workflows (Data → Features → Model → Eval → Deploy)
+6. **Dependencies**: Identify dependencies and usage relationships
+
+### Output Requirements:
+- Minimum {min(max_relations, len(concepts_to_use) * 2)} relations
+- Maximum {max_relations} relations
+- Each relation must include: source, target, type, strength(0.3-1.0), evidence, explanation
+- Prioritize relations with clear text evidence
+
+Please identify as many meaningful relationships as possible to build a rich knowledge graph. {lang_suffix}"""
+            system_msg = """You are a knowledge graph construction expert skilled at identifying complex relationships in academic literature.
+Your tasks:
+1. Deeply understand each concept's meaning and role
+2. Identify multiple relation types (hierarchical, causal, functional, semantic)
+3. Build a complete concept network with multiple connections per concept
+4. Prefer specific relation types over generic related_to
+5. Ensure relations have text evidence, don't fabricate relationships"""
 
         try:
             result = self.client.generate_structured(
                 prompt,
                 response_model=EnhancedRelationExtraction,
                 system=system_msg,
-                temperature=0.5,
+                temperature=0.3,  # Lower temperature for more consistent output
             )
 
             # Map concept names to IDs
             concept_map = {c.name: c.id for c in concepts}
 
             relations = []
+            seen_pairs = set()  # Track seen pairs to avoid duplicates
+
             for rel in result.relations:
                 source_id = concept_map.get(rel.source_concept)
                 target_id = concept_map.get(rel.target_concept)
 
-                if source_id and target_id and source_id != target_id:
-                    relations.append(
-                        RelationModel(
-                            document_id=document_id,
-                            source_concept_id=source_id,
-                            target_concept_id=target_id,
-                            relation_type=rel.relation_type,
-                            strength=rel.strength,
-                            evidence=rel.evidence,
-                            explanation=rel.explanation,
-                        )
-                    )
+                # Skip invalid relations
+                if not source_id or not target_id or source_id == target_id:
+                    continue
 
+                # Create unique pair identifier (sorted to handle bidirectional)
+                pair_key = tuple(sorted([source_id, target_id, rel.relation_type]))
+                if pair_key in seen_pairs:
+                    continue
+                seen_pairs.add(pair_key)
+
+                relations.append(
+                    RelationModel(
+                        document_id=document_id,
+                        source_concept_id=source_id,
+                        target_concept_id=target_id,
+                        relation_type=rel.relation_type,
+                        strength=max(0.3, min(1.0, rel.strength)),  # Clamp strength
+                        evidence=rel.evidence,
+                        explanation=rel.explanation,
+                    )
+                )
+
+            print(f"[RelationExtractor] Extracted {len(relations)} unique relations")
             return relations[:max_relations]
         except Exception as e:
             print(f"Warning: Failed to extract relations: {e}")
+            import traceback
+
+            traceback.print_exc()
             return []
 
 
