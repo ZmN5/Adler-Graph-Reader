@@ -113,13 +113,14 @@ class EnhancedConcept(BaseModel):
         description="Clear, precise definition (1-3 sentences)", max_length=500
     )
     explanation: str = Field(
-        description="Detailed explanation expanding on the definition", max_length=300
+        default="",
+        description="Detailed explanation expanding on the definition",
+        max_length=300,
     )
     examples: list[str] = Field(
         default_factory=list,
-        min_items=1,
         max_items=5,
-        description="Concrete examples (1-5 items)",
+        description="Concrete examples (0-5 items)",
     )
     importance_score: float = Field(
         default=0.5,
