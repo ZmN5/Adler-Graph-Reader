@@ -28,9 +28,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--language",
         "-l",
-        choices=["zh", "en", "ja"],
+        choices=["zh", "en"],
         default="zh",
-        help="Output language (default: zh for Chinese)",
+        help="Output language (zh=Chinese, en=English; default: zh)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")

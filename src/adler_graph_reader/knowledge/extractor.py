@@ -257,24 +257,38 @@ class ConceptExtractor:
         max_names: int,
     ) -> list[str]:
         """Extract concept names from document chunks."""
+        config = get_config()
+        lang_suffix = config.get_prompt_suffix()
+
         # Use more chunks for better concept coverage - increased from 3 to 10 chunks
         # Each chunk limited to 600 chars, max 10 chunks = 6000 chars total
         combined = "\n\n---\n\n".join(
             [f"[Chunk {ch[0]}]:\n{ch[1][:600]}" for ch in chunks[:10]]
         )
 
-        prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法/技术/原则）：
+        if config.language == "zh":
+            prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法/技术/原则）：
 
 {combined}
 
 请列出 {max_names} 个最重要的核心概念名称（名词术语），按重要性从高到低排序。
 每行一个概念，不要编号，不要额外说明。
-确保提取的概念覆盖机器学习系统设计、模型训练、部署、监控等各个方面。"""
+确保提取的概念覆盖机器学习系统设计、模型训练、部署、监控等各个方面。{lang_suffix}"""
+            system_msg = "你是一个概念识别专家，擅长从学术文本中识别关键术语。请尽可能多地提取重要概念。"
+        else:  # English
+            prompt = f"""Identify core concepts (key terms/theories/methods/technologies/principles) from the following academic text:
+
+{combined}
+
+List the {max_names} most important core concept names (noun terms), ranked by importance.
+One concept per line, no numbering, no extra explanation.
+Ensure the extracted concepts cover ML system design, model training, deployment, monitoring, etc. {lang_suffix}"""
+            system_msg = "You are a concept recognition expert, skilled at identifying key terms from academic texts. Extract as many important concepts as possible."
 
         try:
             response = self.client.generate(
                 prompt,
-                system="你是一个概念识别专家，擅长从学术文本中识别关键术语。请尽可能多地提取重要概念。",
+                system=system_msg,
                 temperature=0.5,
             )
             concept_names = [
@@ -393,8 +407,11 @@ class RelationExtractor:
             )
             context = "\n\n".join([row[0][:500] for row in cursor.fetchall()])
 
-        # Extract relations with enhanced model
-        prompt = f"""请分析以下概念列表，识别它们之间的语义关系：
+        config = get_config()
+        lang_suffix = config.get_prompt_suffix()
+
+        if config.language == "zh":
+            prompt = f"""请分析以下概念列表，识别它们之间的语义关系：
 
 概念列表：
 {concept_list}
@@ -418,13 +435,41 @@ class RelationExtractor:
 3. 文本证据（引用或改写）
 4. 关系解释（为什么存在这个关系）
 
-请输出最多{max_relations}个最重要的关系。"""
+请输出最多{max_relations}个最重要的关系。{lang_suffix}"""
+            system_msg = "你是一个关系分析专家，擅长识别概念之间的逻辑和语义关系。"
+        else:  # English
+            prompt = f"""Please analyze the following concept list and identify semantic relationships between them:
+
+Concept List:
+{concept_list}
+
+Context Reference:
+{context[:4000]}
+
+Please identify relationships between concepts, including these types:
+- broader_than: A is a broader category/superconcept of B (A contains B)
+- narrower_than: A is a narrower category/subconcept of B (A is contained by B)
+- related_to: A and B are semantically related
+- similar_to: A and B are similar/analogous concepts
+- prerequisite_for: Understanding A is required for learning B
+- causes: A causes or leads to B
+- supports: A provides evidence/support for B
+- contradicts: A contradicts or opposes B
+
+For each relationship provide:
+1. Relationship type
+2. Strength (0.3-1.0)
+3. Text evidence (quote or paraphrase)
+4. Explanation (why this relationship exists)
+
+Please output up to {max_relations} most important relationships. {lang_suffix}"""
+            system_msg = "You are a relationship analysis expert, skilled at identifying logical and semantic relationships between concepts."
 
         try:
             result = self.client.generate_structured(
                 prompt,
                 response_model=EnhancedRelationExtraction,
-                system="你是一个关系分析专家，擅长识别概念之间的逻辑和语义关系。",
+                system=system_msg,
                 temperature=0.5,
             )
 
@@ -515,8 +560,11 @@ class QAExtractor:
                 [f"概念：{c['name']}\n定义：{c['definition']}" for c in combined[:5]]
             )
 
-        # Generate answer
-        prompt = f"""基于以下上下文信息，请回答用户的问题。
+        config = get_config()
+        lang_suffix = config.get_prompt_suffix()
+
+        if config.language == "zh":
+            prompt = f"""基于以下上下文信息，请回答用户的问题。
 
 问题：{question}
 
@@ -528,13 +576,29 @@ class QAExtractor:
 2. 引用的概念名称列表
 3. 置信度评分（0-1）
 
-如果无法从上下文中找到答案，请明确说明。"""
+如果无法从上下文中找到答案，请明确说明。{lang_suffix}"""
+            system_msg = "你是一个问答专家，擅长基于给定的上下文回答问题。请只使用提供的上下文信息，不要编造。"
+        else:  # English
+            prompt = f"""Based on the following context information, please answer the user's question.
+
+Question: {question}
+
+Relevant concepts and context:
+{context}
+
+Please provide:
+1. Answer
+2. List of cited concept names
+3. Confidence score (0-1)
+
+If you cannot find the answer from the context, please state clearly. {lang_suffix}"""
+            system_msg = "You are a Q&A expert, skilled at answering questions based on given context. Please only use the provided context information, do not make up answers."
 
         try:
             result = self.client.generate_structured(
                 prompt,
                 response_model=QAResponse,
-                system="你是一个问答专家，擅长基于给定的上下文回答问题。请只使用提供的上下文信息，不要编造。",
+                system=system_msg,
                 temperature=0.5,
             )
 

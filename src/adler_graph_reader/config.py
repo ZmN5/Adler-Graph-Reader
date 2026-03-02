@@ -12,8 +12,8 @@ class Config:
     # Language setting (default: Chinese)
     language: str = field(default="zh")
 
-    # Available languages
-    SUPPORTED_LANGUAGES = {"zh": "中文", "en": "English", "ja": "日本語"}
+    # Available languages (Chinese and English only)
+    SUPPORTED_LANGUAGES = {"zh": "中文", "en": "English"}
 
     def __post_init__(self):
         """Validate language setting."""
@@ -37,7 +37,6 @@ class Config:
         prompts = {
             "zh": "请用中文回答。",
             "en": "Please answer in English.",
-            "ja": "日本語で答えてください。",
         }
         return prompts.get(self.language, prompts["zh"])
 
