@@ -23,7 +23,8 @@ DEFAULT_EMBED_MODEL = (
     "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
 )
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
-DEFAULT_TIMEOUT = 120.0  # Increased timeout for complex extractions
+DEFAULT_TIMEOUT = 300.0  # Increased timeout for complex extractions (5 minutes)
+DEFAULT_ENABLE_THINKING = False  # Disable thinking for faster responses
 
 
 class LLMProvider(ABC):
@@ -73,6 +74,7 @@ class OllamaClient(LLMProvider):
     model: str = DEFAULT_MODEL
     embed_model: str = DEFAULT_EMBED_MODEL
     embedding_mode: str = "lmstudio"  # "lmstudio", "local", or "auto"
+    enable_thinking: bool = DEFAULT_ENABLE_THINKING  # Control model thinking process
     _client: Optional[OpenAI] = None
     _struct_client: Optional[OpenAI] = None
     _async_client: Optional[AsyncOpenAI] = None
@@ -136,10 +138,18 @@ class OllamaClient(LLMProvider):
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        # Build extra_body for thinking control (Qwen models)
+        extra_body = {}
+        if not self.enable_thinking:
+            # Try common parameter names for disabling thinking
+            extra_body["enable_thinking"] = False
+            extra_body["thinking"] = False
+
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,
+            extra_body=extra_body if extra_body else None,
         )
 
         return response.choices[0].message.content
@@ -157,11 +167,19 @@ class OllamaClient(LLMProvider):
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        # Build extra_body for thinking control (Qwen models)
+        extra_body = {}
+        if not self.enable_thinking:
+            # Try common parameter names for disabling thinking
+            extra_body["enable_thinking"] = False
+            extra_body["thinking"] = False
+
         return self.struct_client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,
             response_model=response_model,
+            extra_body=extra_body if extra_body else None,
         )
 
     @property
