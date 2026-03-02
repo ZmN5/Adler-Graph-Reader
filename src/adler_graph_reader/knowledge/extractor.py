@@ -306,32 +306,112 @@ Ensure the extracted concepts cover ML system design, model training, deployment
         name: str,
         context: str,
     ) -> Optional[EnhancedConcept]:
-        """Extract detailed information for a single concept."""
-        prompt = f"""从以下上下文中提取关于"{name}"的概念信息：
+        """Extract detailed information for a single concept with enhanced prompts."""
+        config = get_config()
+        lang_suffix = config.get_prompt_suffix()
+
+        if config.language == "zh":
+            prompt = f"""从以下上下文中提取关于"{name}"的概念信息：
 
 {context}
 
-请提供：
-1. 概念定义（1-2 句清晰定义）
-2. 详细解释（扩展说明，可选）
-3. 1-3 个具体例子
-4. 重要性评分（0-1）
-5. 类别（concept/principle/method/tool/person/event）
+请严格按照以下要求提取：
 
-请严格按照 JSON 格式输出。"""
+**1. 概念定义 (definition)**
+- 必须基于文本中的明确定义或核心描述
+- 使用"X是..."或"X指..."的句式
+- 包含概念的核心特征和关键属性
+- 避免循环定义（不要用概念本身来解释）
+- 长度控制在50-150字
+
+**2. 详细解释 (explanation)**
+- 补充说明概念的背景、用途或意义
+- 可以包含该概念在文本中的角色
+- 如果文本中有相关讨论，简要概括
+
+**3. 具体例子 (examples)**
+- 必须从提供的上下文中提取真实例子
+- 每个例子应该展示概念的具体应用或表现
+- 如果没有具体例子，可以留空
+- 最多3个例子，每个例子简洁明了
+
+**4. 重要性评分 (importance_score)**
+- 0.9-1.0: 核心概念，贯穿全文，是理解主题的关键
+- 0.7-0.89: 重要概念，在多个章节出现
+- 0.5-0.69: 一般概念，局部重要
+- 0.3-0.49: 次要概念，提及较少
+- 基于概念在文本中的出现频率和 centrality 判断
+
+**5. 类别 (category)**
+- concept: 抽象概念、理论、思想
+- principle: 原则、法则、定理、规律
+- method: 方法、技术、算法、流程
+- tool: 工具、框架、平台、软件
+- person: 人物、学者、专家
+- event: 事件、里程碑、历史节点
+
+请以 JSON 格式返回结果。{lang_suffix}"""
+            system_msg = "你是学术知识提取专家，擅长从文本中精确提取概念的定义、例子和元数据。你的回答必须准确、专业、结构化。"
+        else:
+            prompt = f"""Extract concept information for "{name}" from the following context:
+
+{context}
+
+Please follow these requirements strictly:
+
+**1. Definition**
+- Must be based on explicit definition or core description in the text
+- Use "X is..." or "X refers to..." format
+- Include core characteristics and key attributes
+- Avoid circular definitions
+- Length: 50-150 characters
+
+**2. Explanation**
+- Supplementary background, usage, or significance
+- Can include the concept's role in the text
+- Summarize relevant discussions if present
+
+**3. Examples**
+- Must extract real examples from the provided context
+- Each example should demonstrate concrete application
+- Leave empty if no specific examples found
+- Maximum 3 examples, concise and clear
+
+**4. Importance Score (0-1)**
+- 0.9-1.0: Core concept, essential for understanding the topic
+- 0.7-0.89: Important concept, appears in multiple sections
+- 0.5-0.69: General concept, locally important
+- 0.3-0.49: Minor concept, rarely mentioned
+- Based on frequency and centrality in text
+
+**5. Category**
+- concept: Abstract concepts, theories, ideas
+- principle: Principles, laws, theorems, rules
+- method: Methods, techniques, algorithms, processes
+- tool: Tools, frameworks, platforms, software
+- person: People, scholars, experts
+- event: Events, milestones, historical moments
+
+Return result in JSON format. {lang_suffix}"""
+            system_msg = "You are an academic knowledge extraction expert, skilled at precisely extracting concept definitions, examples, and metadata from texts. Your answers must be accurate, professional, and well-structured."
 
         try:
             result = self.client.generate_structured(
                 prompt,
                 response_model=EnhancedConceptExtraction,
-                system="你是一个知识提取专家，擅长提取概念的定义和例子。",
-                temperature=0.4,
+                system=system_msg,
+                temperature=0.3,  # Lower temperature for more consistent output
             )
             if result.concepts:
-                return result.concepts[0]
-        except Exception:
+                concept = result.concepts[0]
+                # Post-process to ensure quality
+                concept.name = name  # Ensure name consistency
+                # Validate and normalize importance score
+                concept.importance_score = max(0.0, min(1.0, concept.importance_score))
+                return concept
+        except Exception as e:
+            print(f"Warning: Structured extraction failed for '{name}': {e}")
             # Fallback to simple extraction
-            pass
 
         # Fallback: create minimal concept
         return EnhancedConcept(
