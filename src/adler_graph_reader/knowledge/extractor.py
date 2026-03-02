@@ -5,6 +5,7 @@ Knowledge extractors for themes, concepts, and relations.
 import sqlite3
 from typing import Any, Optional
 
+from ..config import get_config
 from ..llm import OllamaClient, get_default_client
 from ..llm.models import (
     ThemeExtraction,
@@ -71,7 +72,11 @@ class ThemeExtractor:
         content_size = len(combined_content)
         print(f"[ThemeExtractor] Combined content size: {content_size} chars")
 
-        prompt = f"""从以下书籍内容中提取{max_themes}个主要主题：
+        config = get_config()
+        lang_suffix = config.get_prompt_suffix()
+
+        if config.language == "zh":
+            prompt = f"""从以下书籍内容中提取{max_themes}个主要主题：
 
 {combined_content}
 
@@ -80,7 +85,33 @@ class ThemeExtractor:
 2. 主题描述（一句话）
 3. 重要性评分（0-1）
 
-请严格按照格式输出。"""
+请严格按照格式输出。{lang_suffix}"""
+            system_msg = "你是一个主题提取专家，擅长从文本中识别主要主题。"
+        elif config.language == "en":
+            prompt = f"""Extract {max_themes} major themes from the following book content:
+
+{combined_content}
+
+For each theme provide:
+1. Theme name (concise keywords)
+2. Theme description (one sentence)
+3. Importance score (0-1)
+
+Please output in the specified format. {lang_suffix}"""
+            system_msg = "You are a theme extraction expert, skilled at identifying main themes from text."
+        else:
+            # Default to Chinese
+            prompt = f"""从以下书籍内容中提取{max_themes}个主要主题：
+
+{combined_content}
+
+请为每个主题提供：
+1. 主题名称（简洁的关键词）
+2. 主题描述（一句话）
+3. 重要性评分（0-1）
+
+请严格按照格式输出。{lang_suffix}"""
+            system_msg = "你是一个主题提取专家，擅长从文本中识别主要主题。"
 
         print(
             f"[ThemeExtractor] Calling LLM... (elapsed: {time.time() - start_time:.1f}s)"
@@ -90,7 +121,7 @@ class ThemeExtractor:
             result = self.client.generate_structured(
                 prompt,
                 response_model=ThemeExtraction,
-                system="你是一个主题提取专家，擅长从文本中识别主要主题。",
+                system=system_msg,
                 temperature=0.3,
             )
             elapsed = time.time() - start_time

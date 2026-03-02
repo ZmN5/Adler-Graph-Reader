@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from . import database
+from .config import get_config, set_language
 from .knowledge.models import BookAnalysis, ConceptNode
 from .knowledge.graph import KnowledgeGraph, QATracker
 from .llm import get_default_client, OllamaClient
@@ -21,6 +22,15 @@ def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="艾德勒图谱阅读器 - Extract knowledge from books"
+    )
+
+    # Global options
+    parser.add_argument(
+        "--language",
+        "-l",
+        choices=["zh", "en", "ja"],
+        default="zh",
+        help="Output language (default: zh for Chinese)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
@@ -597,6 +607,12 @@ def cmd_ui(port: int = 8501, open_browser: bool = True):
 def main() -> int:
     """Main entry point."""
     args = parse_args()
+
+    # Set global language configuration
+    if hasattr(args, "language"):
+        set_language(args.language)
+        config = get_config()
+        print(f"Language: {config.get_language_name()}")
 
     if args.command == "init-db":
         database.init_database()
