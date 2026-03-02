@@ -11,10 +11,14 @@
 - 📖 **多格式支持** - PDF / EPUB 文档解析
 - 🧠 **AI 知识提取** - 使用本地 Qwen3 模型提取主题、概念、关系
 - 🔍 **混合搜索** - SQLite FTS5 全文搜索 + sqlite-vec 向量语义搜索
-- 🕸️ **知识图谱** - 自动生成概念间的 bidirectional 关系网络
+- 🕸️ **知识图谱** - 自动生成概念间的 bidirectional 关系网络（12种关系类型）
 - 💬 **智能问答** - 基于提取的知识图谱回答问题
 - 🖥️ **Web UI** - Streamlit 可视化界面，支持图谱浏览和搜索
 - 📝 **Obsidian 输出** - 生成带双向链接的 Markdown 笔记
+- 📤 **批量处理** - 支持批量导入和批量构建知识图谱
+- 📊 **进度跟踪** - SQLite 持久化存储，支持断点续传
+- 🔧 **LM Studio 集成** - 支持本地 LLM 推理和向量 Embedding
+- 🔄 **双模式 Embedding** - `lmstudio` / `local` / `auto` 三种模式，自动回退
 
 ---
 
@@ -24,7 +28,8 @@
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) 包管理器
-- [Ollama](https://ollama.ai) + `qwen3:4b` 模型
+- [LM Studio](https://lmstudio.ai) (推荐) 或 [Ollama](https://ollama.ai)
+- 本地 LLM 模型（如 qwen3.5-35b-a3b）
 
 ### 安装
 
@@ -39,15 +44,26 @@ uv sync
 uv run adler --help
 ```
 
-### 配置 Ollama
+### 配置 LM Studio（推荐）
 
 ```bash
-# 拉取所需模型
-ollama pull qwen3:4b
-ollama pull nomic-embed-text
+# 在 LM Studio 中下载模型
+# 推荐模型：qwen3.5-35b-a3b
+# Embedding 模型：nomic-embed-text-v1.5
 
-# 启动 Ollama 服务（默认 http://localhost:11434）
+# 启动 LM Studio 本地服务器（默认 http://localhost:1234/v1）
+# 或使用 Ollama
 ollama serve
+```
+
+### 批量导入书籍
+
+```bash
+# 批量导入整个目录的书籍
+uv run adler ingest --batch books/
+
+# 对所有已导入的书籍构建知识图谱
+uv run adler build-graph --all
 ```
 
 ---
@@ -230,11 +246,13 @@ books/
 
 ### 待办事项
 
-- [ ] 添加更多单元测试
-- [ ] 支持更多 LLM 后端（Ollama 外的 API）
-- [ ] 改进 Web UI 的图谱可视化（D3.js / Cytoscape）
-- [ ] 支持批量导入书籍
+- [x] 添加更多单元测试 (37个测试全部通过)
+- [x] 支持更多 LLM 后端（LM Studio 集成）
+- [x] 改进 Web UI 的图谱可视化（D3.js / Cytoscape）
+- [x] 支持批量导入书籍
 - [ ] 添加知识图谱导出（GraphML / GEXF）
+- [ ] 支持更多文档格式（MOBI, AZW3, TXT）
+- [ ] 添加 API 服务（FastAPI）
 
 ---
 
