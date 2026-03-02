@@ -534,10 +534,21 @@ def insert_concept(
     explanation: str | None = None,
     category: str = "concept",
 ) -> int:
-    """Insert a concept. Returns the new row ID."""
+    """Insert a concept. Returns the new row ID. Skips if concept with same name already exists."""
     import json
 
     cursor = conn.cursor()
+    
+    # Check if concept with same name already exists for this document
+    cursor.execute(
+        "SELECT id FROM concepts WHERE document_id = ? AND name = ?",
+        (document_id, name),
+    )
+    existing = cursor.fetchone()
+    if existing:
+        # Concept already exists, skip insertion
+        return existing[0]
+    
     embedding_json = json.dumps(embedding) if embedding else None
     cursor.execute(
         """

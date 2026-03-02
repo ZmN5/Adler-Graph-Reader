@@ -158,7 +158,7 @@ class ConceptExtractor:
         conn: sqlite3.Connection,
         document_id: str,
         theme_ids: Optional[list[int]] = None,
-        max_concepts: int = 30,
+        max_concepts: int = 100,
     ) -> list[ConceptModel]:
         """
         Extract concepts from document using enhanced extraction.
@@ -177,8 +177,8 @@ class ConceptExtractor:
             """
             SELECT id, content FROM document_tree
             WHERE document_id = ? AND type = 'chunk'
-            ORDER BY id
-            LIMIT 50
+            ORDER BY RANDOM()
+            LIMIT 200
             """,
             (document_id,),
         )
