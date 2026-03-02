@@ -141,12 +141,13 @@ class ConceptExtractor:
 
         # Get document content for concept extraction
         # Use 'chunk' type since 'chapter' only has titles, not full content
+        # Increased from 20 to 50 chunks for better concept coverage
         cursor.execute(
             """
             SELECT id, content FROM document_tree
             WHERE document_id = ? AND type = 'chunk'
             ORDER BY id
-            LIMIT 20
+            LIMIT 50
             """,
             (document_id,),
         )
@@ -159,7 +160,7 @@ class ConceptExtractor:
                 SELECT id, content FROM document_tree
                 WHERE document_id = ?
                 ORDER BY id
-                LIMIT 20
+                LIMIT 50
                 """,
                 (document_id,),
             )
@@ -225,24 +226,25 @@ class ConceptExtractor:
         max_names: int,
     ) -> list[str]:
         """Extract concept names from document chunks."""
-        # Use first few chunks for concept identification - limit size to avoid timeout
-        # Each chunk limited to 400 chars, max 3 chunks = 1200 chars total
+        # Use more chunks for better concept coverage - increased from 3 to 10 chunks
+        # Each chunk limited to 600 chars, max 10 chunks = 6000 chars total
         combined = "\n\n---\n\n".join(
-            [f"[Chunk {ch[0]}]:\n{ch[1][:400]}" for ch in chunks[:3]]
+            [f"[Chunk {ch[0]}]:\n{ch[1][:600]}" for ch in chunks[:10]]
         )
 
-        prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法）：
+        prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法/技术/原则）：
 
 {combined}
 
 请列出 {max_names} 个最重要的核心概念名称（名词术语），按重要性从高到低排序。
-每行一个概念，不要编号，不要额外说明。"""
+每行一个概念，不要编号，不要额外说明。
+确保提取的概念覆盖机器学习系统设计、模型训练、部署、监控等各个方面。"""
 
         try:
             response = self.client.generate(
                 prompt,
-                system="你是一个概念识别专家，擅长从学术文本中识别关键术语。",
-                temperature=0.3,
+                system="你是一个概念识别专家，擅长从学术文本中识别关键术语。请尽可能多地提取重要概念。",
+                temperature=0.5,
             )
             concept_names = [
                 line.strip().lstrip("0123456789.-* ")
