@@ -140,18 +140,20 @@ class ConceptExtractor:
         cursor = conn.cursor()
 
         # Get document content for concept extraction
+        # Use 'chunk' type since 'chapter' only has titles, not full content
         cursor.execute(
             """
             SELECT id, content FROM document_tree
-            WHERE document_id = ? AND type = 'chapter'
+            WHERE document_id = ? AND type = 'chunk'
             ORDER BY id
-            LIMIT 15
+            LIMIT 20
             """,
             (document_id,),
         )
-        chapters = [(row[0], row[1]) for row in cursor.fetchall()]
+        chunks = [(row[0], row[1]) for row in cursor.fetchall()]
 
-        if not chapters:
+        if not chunks:
+            # Fallback: try any type
             cursor.execute(
                 """
                 SELECT id, content FROM document_tree
@@ -161,10 +163,10 @@ class ConceptExtractor:
                 """,
                 (document_id,),
             )
-            chapters = [(row[0], row[1]) for row in cursor.fetchall()]
+            chunks = [(row[0], row[1]) for row in cursor.fetchall()]
 
         # Step 1: Extract concept names first (lightweight)
-        concept_names = self._extract_concept_names(chapters, max_concepts * 2)
+        concept_names = self._extract_concept_names(chunks, max_concepts * 2)
 
         # Step 2: Extract detailed information for each concept
         concepts = []
@@ -219,13 +221,14 @@ class ConceptExtractor:
 
     def _extract_concept_names(
         self,
-        chapters: list[tuple[int, str]],
+        chunks: list[tuple[int, str]],
         max_names: int,
     ) -> list[str]:
-        """Extract concept names from chapters."""
-        # Use first few chapters for concept identification
+        """Extract concept names from document chunks."""
+        # Use first few chunks for concept identification - limit size to avoid timeout
+        # Each chunk limited to 400 chars, max 3 chunks = 1200 chars total
         combined = "\n\n---\n\n".join(
-            [f"[Section {ch[0]}]:\n{ch[1][:1000]}" for ch in chapters[:3]]
+            [f"[Chunk {ch[0]}]:\n{ch[1][:400]}" for ch in chunks[:3]]
         )
 
         prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法）：
