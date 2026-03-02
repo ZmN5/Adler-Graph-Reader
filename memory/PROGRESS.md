@@ -32,21 +32,39 @@
 
 ### 📋 下一步工作（按优先级）
 
+**当前进行中：**
+- [x] Web UI 启动验证 (✅ 已完成 - http://localhost:8501)
+- [ ] 概念提取完成 (`sharp-trail` 运行中)
+
+**待办事项（任务完成后）：**
+- [ ] **Code Review** - 使用 code-review-expert skill 进行代码审查
+  - Skill: `sanyuan0704/code-review-expert`
+  - 安装: `npx skills add sanyuan0704/code-review-expert`
+  - 目标: 修复 P0 和 P1 级别问题
+
 **优先级 1: 完成端到端测试**
-- [ ] 运行 `uv run adler init-db` 初始化数据库
-- [ ] 运行 `uv run adler ingest books/<sample>.pdf` 测试文档导入
+- [x] 运行 `uv run adler init-db` 初始化数据库
+- [x] 运行 `uv run adler ingest books/<sample>.pdf` 测试文档导入
 - [ ] 运行 `uv run adler build-graph` 测试知识图谱构建
-- [ ] 运行 `uv run adler search "test query"` 测试搜索功能
+- [x] 运行 `uv run adler search "test query"` 测试搜索功能
 
 **优先级 2: 优化和增强**
 - [ ] 添加批量导入功能
 - [ ] 优化概念提取算法
-- [ ] 改进Web UI的图谱可视化
+- [x] 改进Web UI的图谱可视化
 
 **优先级 3: 文档和测试**
-- [ ] 编写更多单元测试
+- [x] 编写更多单元测试
 - [ ] 更新API文档
 - [ ] 添加使用示例
+
+### 🔄 待办事项（阻塞中）
+
+**等待当前任务完成后执行：**
+- [ ] **Code Review** - 使用 `sanyuan0704/code-review-expert` skill
+  - 安装: `npx skills add sanyuan0704/code-review-expert`
+  - 目标: 修复 P0 和 P1 级别问题
+  - 触发条件: 概念提取任务 (`sharp-trail`) 完成后
 
 ### 技术栈
 
