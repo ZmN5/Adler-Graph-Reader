@@ -311,116 +311,166 @@ Ensure the extracted concepts cover ML system design, model training, deployment
         lang_suffix = config.get_prompt_suffix()
 
         if config.language == "zh":
-            prompt = f"""从以下上下文中提取关于"{name}"的概念信息：
+            prompt = f"""从以下学术文献上下文中提取关于"【{name}】"的精确概念信息。
 
+## 上下文内容
 {context}
 
-请严格按照以下要求提取：
+## 提取要求（必须严格遵循）
 
-**1. 概念定义 (definition)**
-- 必须基于文本中的明确定义或核心描述
-- 使用"X是..."或"X指..."的句式
-- 包含概念的核心特征和关键属性
-- 避免循环定义（不要用概念本身来解释）
-- 长度控制在50-150字
+### 1. 概念定义 (definition) - 最关键字段
+- 来源：必须基于文本中的**明确定义句**或**核心描述**
+- 句式：使用"【{name}】是..."或"【{name}】指..."的精准定义句式
+- 内容：必须包含概念的本质特征、关键属性和适用范围
+- 禁止：避免循环定义（同义词重复）、避免空洞描述
+- 长度：80-200字，要完整但不要冗余
 
-**2. 详细解释 (explanation)**
-- 补充说明概念的背景、用途或意义
-- 可以包含该概念在文本中的角色
-- 如果文本中有相关讨论，简要概括
+### 2. 详细解释 (explanation) - 补充说明
+- 背景：概念产生的背景或解决什么问题
+- 用途：在机器学习系统中的实际应用场景
+- 重要性：为什么这个概念值得学习
+- 如果上下文没有足够信息，用"根据上下文无法确定详细解释"代替
 
-**3. 具体例子 (examples)**
-- 必须从提供的上下文中提取真实例子
-- 每个例子应该展示概念的具体应用或表现
-- 如果没有具体例子，可以留空
-- 最多3个例子，每个例子简洁明了
+### 3. 具体例子 (examples) - 必须来自上下文
+- 筛选：选择最能体现概念本质的2-3个例子
+- 要求：每个例子必须可追溯到上下文中的具体描述
+- 格式：简洁的一句话例子，不要解释
+- 如无真实例子，设为空数组[]
 
-**4. 重要性评分 (importance_score)**
-- 0.9-1.0: 核心概念，贯穿全文，是理解主题的关键
-- 0.7-0.89: 重要概念，在多个章节出现
-- 0.5-0.69: 一般概念，局部重要
-- 0.3-0.49: 次要概念，提及较少
-- 基于概念在文本中的出现频率和 centrality 判断
+### 4. 重要性评分 (importance_score) - 0.0-1.0
+评分标准：
+- 0.85-1.0: 核心概念，书中反复出现，是理解全书的关键
+- 0.70-0.84: 重要概念，在多个章节中被详细讨论
+- 0.50-0.69: 常用概念，在部分章节出现
+- 0.30-0.49: 辅助概念，偶尔提及
+- 0.10-0.29: 边缘概念，仅提及一次
 
-**5. 类别 (category)**
-- concept: 抽象概念、理论、思想
+### 5. 类别 (category)
+从以下选项中选择最合适的一个：
+- method: 方法、技术、算法、流程（最常用）
+- concept: 抽象概念、理论、模型
 - principle: 原则、法则、定理、规律
-- method: 方法、技术、算法、流程
 - tool: 工具、框架、平台、软件
 - person: 人物、学者、专家
 - event: 事件、里程碑、历史节点
 
-请以 JSON 格式返回结果。{lang_suffix}"""
-            system_msg = "你是学术知识提取专家，擅长从文本中精确提取概念的定义、例子和元数据。你的回答必须准确、专业、结构化。"
-        else:
-            prompt = f"""Extract concept information for "{name}" from the following context:
+## 输出格式要求
+- 必须返回有效的JSON对象
+- 所有字段都必须在输出中包含
+- examples字段必须是数组，优先使用中文标点符号
 
+## 思考步骤（供你参考，但不要输出）
+1. 首先在上下文中找到【{name}】的定义句
+2. 判断这个概念属于哪个类别
+3. 找出2-3个具体的例子
+4. 根据出现频率和重要性给出评分
+
+请开始提取：{lang_suffix}"""
+            system_msg = """你是一个专业的学术知识提取专家。你的任务是：
+1. 严格基于给定上下文提取信息，不编造
+2. 定义必须精确、可操作
+3. 例子必须真实可查
+4. 评分必须客观公正
+5. 始终保持JSON输出格式正确"""
+        else:
+            prompt = f"""Extract precise concept information for "【{name}]" from the following academic context.
+
+## Context Content
 {context}
 
-Please follow these requirements strictly:
+## Extraction Requirements (Must Follow Strictly)
 
-**1. Definition**
-- Must be based on explicit definition or core description in the text
-- Use "X is..." or "X refers to..." format
-- Include core characteristics and key attributes
-- Avoid circular definitions
-- Length: 50-150 characters
+### 1. Definition (definition) - Most Critical Field
+- Source: Must be based on explicit definition sentences or core descriptions in the text
+- Format: Use precise definition like "【{name}] is..." or "【{name}] refers to..."
+- Content: Must include essential features, key attributes, and applicable scope
+- Forbidden: Avoid circular definitions, avoid vague descriptions
+- Length: 80-200 characters, complete but not redundant
 
-**2. Explanation**
-- Supplementary background, usage, or significance
-- Can include the concept's role in the text
-- Summarize relevant discussions if present
+### 2. Explanation (explanation) - Supplementary
+- Background: Context where the concept emerges or problem it solves
+- Usage: Practical application scenarios in ML systems
+- Importance: Why this concept is worth learning
+- If insufficient info: State "Cannot determine from context"
 
-**3. Examples**
-- Must extract real examples from the provided context
-- Each example should demonstrate concrete application
-- Leave empty if no specific examples found
-- Maximum 3 examples, concise and clear
+### 3. Examples (examples) - Must Be From Context
+- Selection: Choose 2-3 examples that best represent the concept's essence
+- Requirement: Each example must be traceable to specific descriptions in context
+- Format: Concise one-sentence examples without explanation
+- If no real examples: set to empty array []
 
-**4. Importance Score (0-1)**
-- 0.9-1.0: Core concept, essential for understanding the topic
-- 0.7-0.89: Important concept, appears in multiple sections
-- 0.5-0.69: General concept, locally important
-- 0.3-0.49: Minor concept, rarely mentioned
-- Based on frequency and centrality in text
+### 4. Importance Score (importance_score) - 0.0-1.0
+Scoring criteria:
+- 0.85-1.0: Core concept, appears repeatedly, key to understanding the book
+- 0.70-0.84: Important concept, discussed in multiple chapters
+- 0.50-0.69: Common concept, appears in some chapters
+- 0.30-0.49: Supporting concept, mentioned occasionally
+- 0.10-0.29: Marginal concept, mentioned once
 
-**5. Category**
-- concept: Abstract concepts, theories, ideas
+### 5. Category (category)
+Choose the most appropriate:
+- method: Methods, techniques, algorithms, processes (most common)
+- concept: Abstract concepts, theories, models
 - principle: Principles, laws, theorems, rules
-- method: Methods, techniques, algorithms, processes
 - tool: Tools, frameworks, platforms, software
 - person: People, scholars, experts
-- event: Events, milestones, historical moments
+- events: Events, milestones, historical moments
 
-Return result in JSON format. {lang_suffix}"""
-            system_msg = "You are an academic knowledge extraction expert, skilled at precisely extracting concept definitions, examples, and metadata from texts. Your answers must be accurate, professional, and well-structured."
+## Output Format Requirements
+- Must return valid JSON object
+- All fields must be included in output
+- examples field must be an array
+
+## Thinking Steps (For your reference, do not output)
+1. First find definition sentences for 【{name}] in context
+2. Determine which category this concept belongs to
+3. Find 2-3 specific examples
+4. Give score based on frequency and importance
+
+Please start extraction: {lang_suffix}"""
+            system_msg = """You are a professional academic knowledge extraction expert. Your tasks are:
+1. Strictly extract information from given context, do not fabricate
+2. Definitions must be precise and actionable
+3. Examples must be verifiable
+4. Scores must be objective and fair
+5. Always maintain correct JSON output format"""
 
         try:
             result = self.client.generate_structured(
                 prompt,
                 response_model=EnhancedConceptExtraction,
                 system=system_msg,
-                temperature=0.3,  # Lower temperature for more consistent output
+                temperature=0.2,  # Even lower temperature for more consistent quality
             )
             if result.concepts:
                 concept = result.concepts[0]
                 # Post-process to ensure quality
                 concept.name = name  # Ensure name consistency
+                
                 # Validate and normalize importance score
-                concept.importance_score = max(0.0, min(1.0, concept.importance_score))
+                concept.importance_score = max(0.1, min(1.0, concept.importance_score))
+                
+                # Ensure examples is a list
+                if concept.examples is None:
+                    concept.examples = []
+                
+                # Clean up examples - remove empty strings
+                concept.examples = [ex.strip() for ex in concept.examples if ex and ex.strip()]
+                
                 return concept
         except Exception as e:
             print(f"Warning: Structured extraction failed for '{name}': {e}")
-            # Fallback to simple extraction
+            import traceback
+            traceback.print_exc()
 
         # Fallback: create minimal concept
         return EnhancedConcept(
             name=name,
-            definition=f"{name} 是文本中的一个核心概念。",
-            explanation=None,
+            definition=f"{name} 是文本中的一个核心概念，与机器学习系统设计相关。",
+            explanation="该概念在机器学习系统设计中具有重要作用。",
             examples=[],
             importance_score=0.5,
-            category="concept",
+            category="method",
         )
 
 

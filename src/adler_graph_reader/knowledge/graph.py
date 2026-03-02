@@ -19,16 +19,38 @@ from .graph_models import (
     RelationModel,
     ThemeModel,
 )
+from .progress import (
+    ExtractionProgress,
+    ExtractionStage,
+    ProgressManager,
+    format_progress_report,
+)
 
 
 class KnowledgeGraph:
     """Manage the knowledge graph for a document."""
 
-    def __init__(self, conn: Optional[sqlite3.Connection] = None):
+    def __init__(self, conn: Optional[sqlite3.Connection] = None, track_progress: bool = True):
         self.conn = conn or database.get_admin_connection()
+        self.progress_manager = ProgressManager(self.conn) if track_progress else None
+        self.track_progress = track_progress
 
-    def extract_themes(self, document_id: str) -> list[ThemeModel]:
+    def extract_themes(
+        self,
+        document_id: str,
+        progress: Optional[ExtractionProgress] = None,
+    ) -> list[ThemeModel]:
         """Extract and store themes for a document."""
+        # Initialize or load progress
+        if self.track_progress:
+            if progress is None:
+                progress = self.progress_manager.load_progress(document_id)
+                if progress is None:
+                    progress = self.progress_manager.create_progress(document_id)
+            
+            progress.stage = ExtractionStage.THEMES_EXTRACTING
+            self.progress_manager.save_progress(progress)
+
         extractor = ThemeExtractor()
         themes = extractor.extract(self.conn, document_id)
 
@@ -45,6 +67,13 @@ class KnowledgeGraph:
             )
             theme.id = theme_id
             stored_themes.append(theme)
+
+        # Update progress
+        if self.track_progress and progress:
+            progress.total_themes = len(stored_themes)
+            progress.extracted_themes = len(stored_themes)
+            progress.stage = ExtractionStage.THEMES_COMPLETE
+            self.progress_manager.save_progress(progress)
 
         return stored_themes
 
