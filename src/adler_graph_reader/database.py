@@ -38,7 +38,7 @@ def _get_db_path() -> Path:
 
 DB_PATH = _get_db_path()
 VEC_EXTENSION = Path(sqlite_vec.__file__).parent / "vec0.dylib"
-EMBEDDING_DIM = 768  # qwen3-embedding-0.6b output dimension
+EMBEDDING_DIM = 1024  # qwen3-embedding-0.6b output dimension
 
 
 def get_connection() -> sqlite3.Connection:

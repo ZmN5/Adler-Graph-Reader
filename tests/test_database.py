@@ -146,7 +146,7 @@ class TestEmbeddingOperations:
         )
 
         # Insert embedding
-        embedding = [0.1] * 768  # Test embedding vector
+        embedding = [0.1] * 1024  # Test embedding vector (qwen3-embedding-0.6b)
         insert_embedding(conn, tree_id, embedding)
 
         # Verify by querying
