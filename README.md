@@ -57,6 +57,26 @@ uv run adler --help
 ollama serve
 ```
 
+### 使用 OpenAI 或 Anthropic（备用方案）
+
+当 LM Studio 不可用时，可以切换到云 LLM 服务：
+
+```bash
+# 使用 OpenAI
+export ADLER_LLM_BACKEND=openai
+export OPENAI_API_KEY="sk-..."
+export ADLER_LLM_MODEL="gpt-4o-mini"  # 可选，默认 gpt-4o-mini
+
+# 使用 Anthropic
+export ADLER_LLM_BACKEND=anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."
+export ADLER_LLM_MODEL="claude-3-haiku-20240307"  # 可选，默认 claude-3-haiku
+```
+
+**自动回退优先级**：LM Studio > OpenAI > Anthropic
+
+如果未配置任何环境变量，默认使用 LM Studio。
+
 ### 批量导入书籍
 
 ```bash
