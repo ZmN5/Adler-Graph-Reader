@@ -1,6 +1,33 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 16:04) - ⚠️ LM Studio 模型崩溃
+## 当前状态 (2026-03-03 17:25) - ✅ OpenAI/Anthropic Fallback 已实现
+
+### ✅ 本次进展 (2026-03-03 17:25) - LLM 备用方案已完成
+
+1. **Pydantic 弃用警告修复** - ✅ 完成
+   - `models.py` 第 87 行：`max_items` → `max_length`
+   - `models.py` 第 120 行：`max_items` → `max_length`
+   - `models.py` 第 187 行：`max_items` → `max_length`
+
+2. **LLM 客户端备用方案** - ✅ 完成
+   - 添加 `LLMBackend` 枚举（lmstudio/openai/anthropic）
+   - 添加 `get_configured_backend()` 自动检测函数
+   - 支持环境变量配置：
+     - `ADLER_LLM_BACKEND=openai` + `OPENAI_API_KEY`
+     - `ADLER_LLM_BACKEND=anthropic` + `ANTHROPIC_API_KEY`
+   - 自动优先级：LM Studio > OpenAI > Anthropic
+   - 自动切换到 cloud providers 当 LM Studio 不可用时
+
+3. **快速启动脚本** - ✅ 完成
+   - 创建 `scripts/quickstart.sh`
+   - 包含数据库初始化、LM Studio 连接验证
+   - 提供清晰的错误提示
+
+4. **测试** - ✅ 72 个测试通过
+
+---
+
+## 上次状态 (2026-03-03 16:04) - ⚠️ LM Studio 模型崩溃
 
 ### ⚠️ 问题：LM Studio 模型不可用
 
@@ -21,6 +48,7 @@
    - 卸载崩溃的模型
    - 重新加载 qwen3.5-9b 模型
    - 确认模型状态为 "Ready"
+   - **或者**：设置 `OPENAI_API_KEY` 使用 OpenAI 作为备用方案
 
 ---
 

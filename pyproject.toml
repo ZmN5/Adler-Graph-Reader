@@ -8,6 +8,7 @@ dependencies = [
     "ebooklib>=0.20",
     "graphviz>=0.20",
     "instructor>=1.14.5",
+    "mlx-lm>=0.30.7",
     "openai>=2.24.0",
     "pydantic>=2.12.5",
     "pymupdf>=1.27.1",

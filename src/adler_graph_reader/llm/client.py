@@ -1,11 +1,13 @@
 """
 LM Studio client for text generation and embeddings.
 Uses OpenAI SDK with LM Studio's OpenAI-compatible API endpoint.
+Supports fallback to OpenAI and Anthropic APIs when configured.
 """
 
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Optional
 
 import httpx
@@ -15,6 +17,14 @@ from openai import Timeout
 
 from ..embeddings import EmbeddingProvider, create_embedding_provider
 from .models import BookSummary, ConceptExtraction
+
+
+class LLMBackend(Enum):
+    """Supported LLM backends."""
+
+    LM_STUDIO = "lmstudio"
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
 
 
 # Default LM Studio configuration
@@ -31,6 +41,64 @@ DEFAULT_EMBED_MODEL = (
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
 DEFAULT_TIMEOUT = 60.0  # Reduced timeout for faster feedback with small models
 DEFAULT_ENABLE_THINKING = False  # Disable thinking for faster responses
+
+# Environment variable names for API keys
+ENV_OPENAI_API_KEY = "OPENAI_API_KEY"
+ENV_ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY"
+ENV_ADLER_LLM_BACKEND = "ADLER_LLM_BACKEND"  # lmstudio | openai | anthropic
+
+
+def get_configured_backend() -> tuple[LLMBackend, str]:
+    """
+    Determine which LLM backend to use based on environment variables.
+
+    Priority:
+    1. If ADLER_LLM_BACKEND is set explicitly, use that
+    2. If LM Studio is available (default base URL), use LM Studio
+    3. If OPENAI_API_KEY is set, use OpenAI
+    4. If ANTHROPIC_API_KEY is set, use Anthropic
+    5. Default to LM Studio (may fail if not running)
+
+    Returns:
+        Tuple of (backend, api_key)
+    """
+    # Check explicit backend configuration
+    explicit_backend = os.getenv(ENV_ADLER_LLM_BACKEND, "").lower()
+    if explicit_backend:
+        if explicit_backend == "openai":
+            api_key = os.getenv(ENV_OPENAI_API_KEY, "")
+            if api_key:
+                return LLMBackend.OPENAI, api_key
+            raise ValueError(
+                f"ADLER_LLM_BACKEND=openai but {ENV_OPENAI_API_KEY} is not set"
+            )
+        elif explicit_backend == "anthropic":
+            api_key = os.getenv(ENV_ANTHROPIC_API_KEY, "")
+            if api_key:
+                return LLMBackend.ANTHROPIC, api_key
+            raise ValueError(
+                f"ADLER_LLM_BACKEND=anthropic but {ENV_ANTHROPIC_API_KEY} is not set"
+            )
+        elif explicit_backend == "lmstudio":
+            return LLMBackend.LM_STUDIO, "not-needed"
+
+    # Auto-detect based on available credentials
+    # Priority: LM Studio > OpenAI > Anthropic
+    lm_studio_url = os.getenv("ADLER_LLM_BASE_URL", DEFAULT_BASE_URL)
+    if lm_studio_url == DEFAULT_BASE_URL or lm_studio_url.startswith("http://localhost"):
+        # Assume LM Studio is intended if using default local URL
+        return LLMBackend.LM_STUDIO, "not-needed"
+
+    openai_key = os.getenv(ENV_OPENAI_API_KEY, "")
+    if openai_key:
+        return LLMBackend.OPENAI, openai_key
+
+    anthropic_key = os.getenv(ENV_ANTHROPIC_API_KEY, "")
+    if anthropic_key:
+        return LLMBackend.ANTHROPIC, anthropic_key
+
+    # Default to LM Studio
+    return LLMBackend.LM_STUDIO, "not-needed"
 
 
 class LLMProvider(ABC):
@@ -74,6 +142,11 @@ class OllamaClient(LLMProvider):
 
     Uses the new EmbeddingProvider for embeddings with dual-mode support
     (LM Studio API / local sentence-transformers / auto fallback).
+
+    Now supports fallback to OpenAI and Anthropic APIs via environment variables:
+    - Set ADLER_LLM_BACKEND=openai and OPENAI_API_KEY to use OpenAI
+    - Set ADLER_LLM_BACKEND=anthropic and ANTHROPIC_API_KEY to use Anthropic
+    - Defaults to LM Studio if no backend is explicitly configured
     """
 
     base_url: str = DEFAULT_BASE_URL
@@ -86,11 +159,33 @@ class OllamaClient(LLMProvider):
     _struct_client: Optional[OpenAI] = None
     _async_client: Optional[AsyncOpenAI] = None
     _embedding_provider: Optional[EmbeddingProvider] = None
+    _backend: LLMBackend = field(default=None, repr=False)
+    _api_key: str = field(default="not-needed", repr=False)
 
     def __post_init__(self):
-        """Initialize fallback models if not provided."""
+        """Initialize fallback models and detect backend."""
         if self.fallback_models is None:
             self.fallback_models = FALLBACK_MODELS.copy()
+
+        # Detect backend configuration
+        self._backend, self._api_key = get_configured_backend()
+
+        # Update base_url and model based on backend
+        if self._backend == LLMBackend.OPENAI:
+            self.base_url = "https://api.openai.com/v1"
+            # Use GPT-4o mini as default for OpenAI (cost-effective)
+            if self.model == DEFAULT_MODEL:
+                self.model = "gpt-4o-mini"
+        elif self._backend == LLMBackend.ANTHROPIC:
+            # Anthropic uses different client initialization
+            self.base_url = "https://api.anthropic.com/v1"
+            if self.model == DEFAULT_MODEL:
+                self.model = "claude-3-haiku-20240307"
+
+    @property
+    def backend(self) -> LLMBackend:
+        """Get the currently configured backend."""
+        return self._backend
 
     @property
     def client(self) -> OpenAI:
@@ -98,7 +193,7 @@ class OllamaClient(LLMProvider):
         if self._client is None:
             self._client = OpenAI(
                 base_url=self.base_url,
-                api_key="not-needed",
+                api_key=self._api_key,
                 timeout=Timeout(DEFAULT_TIMEOUT, connect=10.0),
                 http_client=httpx.Client(trust_env=False),
             )
@@ -113,14 +208,20 @@ class OllamaClient(LLMProvider):
         OpenAI response_format parameter.
         """
         if self._struct_client is None:
+            # For OpenAI/Anthropic, use JSON mode instead of MD_JSON
+            mode = (
+                instructor.Mode.JSON
+                if self._backend in (LLMBackend.OPENAI, LLMBackend.ANTHROPIC)
+                else instructor.Mode.MD_JSON
+            )
             self._struct_client = instructor.from_openai(
                 OpenAI(
                     base_url=self.base_url,
-                    api_key="not-needed",
+                    api_key=self._api_key,
                     timeout=Timeout(DEFAULT_TIMEOUT, connect=10.0),
                     http_client=httpx.Client(trust_env=False),
                 ),
-                mode=instructor.Mode.MD_JSON,  # Use markdown JSON mode for LM Studio compatibility
+                mode=mode,
             )
         return self._struct_client
 
@@ -128,13 +229,18 @@ class OllamaClient(LLMProvider):
     def async_client(self) -> AsyncOpenAI:
         """Lazy initialization of async client with MD_JSON mode for LM Studio."""
         if self._async_client is None:
+            mode = (
+                instructor.Mode.JSON
+                if self._backend in (LLMBackend.OPENAI, LLMBackend.ANTHROPIC)
+                else instructor.Mode.MD_JSON
+            )
             self._async_client = instructor.from_openai(
                 AsyncOpenAI(
                     base_url=self.base_url,
-                    api_key="not-needed",
+                    api_key=self._api_key,
                     timeout=Timeout(DEFAULT_TIMEOUT, connect=10.0),
                 ),
-                mode=instructor.Mode.MD_JSON,  # Use markdown JSON mode for LM Studio compatibility
+                mode=mode,
             )
         return self._async_client
 
@@ -146,12 +252,16 @@ class OllamaClient(LLMProvider):
         extra_body: dict,
     ) -> str:
         """Try to generate with a specific model."""
-        response = self.client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            extra_body=extra_body if extra_body else None,
-        )
+        # Skip extra_body for cloud providers (OpenAI/Anthropic don't support it)
+        kwargs = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+        }
+        if self._backend == LLMBackend.LM_STUDIO and extra_body:
+            kwargs["extra_body"] = extra_body
+
+        response = self.client.chat.completions.create(**kwargs)
         return response.choices[0].message.content
 
     def generate(
@@ -166,15 +276,18 @@ class OllamaClient(LLMProvider):
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        # Build extra_body for thinking control (Qwen models)
+        # Build extra_body for thinking control (Qwen models) - only for LM Studio
         extra_body = {}
-        if not self.enable_thinking:
+        if self._backend == LLMBackend.LM_STUDIO and not self.enable_thinking:
             # Try common parameter names for disabling thinking
             extra_body["enable_thinking"] = False
             extra_body["thinking"] = False
 
-        # Try primary model first, then fallbacks
-        models_to_try = [self.model] + FALLBACK_MODELS
+        # Try primary model first, then fallbacks (only for LM Studio)
+        models_to_try = [self.model]
+        if self._backend == LLMBackend.LM_STUDIO:
+            models_to_try.extend(FALLBACK_MODELS)
+
         last_error = None
 
         for model in models_to_try:
@@ -196,13 +309,16 @@ class OllamaClient(LLMProvider):
         extra_body: dict,
     ) -> Any:
         """Try structured generation with a specific model."""
-        return self.struct_client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            response_model=response_model,
-            extra_body=extra_body if extra_body else None,
-        )
+        kwargs = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "response_model": response_model,
+        }
+        if self._backend == LLMBackend.LM_STUDIO and extra_body:
+            kwargs["extra_body"] = extra_body
+
+        return self.struct_client.chat.completions.create(**kwargs)
 
     def generate_structured(
         self,
@@ -217,15 +333,18 @@ class OllamaClient(LLMProvider):
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        # Build extra_body for thinking control (Qwen models)
+        # Build extra_body for thinking control (Qwen models) - only for LM Studio
         extra_body = {}
-        if not self.enable_thinking:
+        if self._backend == LLMBackend.LM_STUDIO and not self.enable_thinking:
             # Try common parameter names for disabling thinking
             extra_body["enable_thinking"] = False
             extra_body["thinking"] = False
 
-        # Try primary model first, then fallbacks
-        models_to_try = [self.model] + FALLBACK_MODELS
+        # Try primary model first, then fallbacks (only for LM Studio)
+        models_to_try = [self.model]
+        if self._backend == LLMBackend.LM_STUDIO:
+            models_to_try.extend(FALLBACK_MODELS)
+
         last_error = None
 
         for model in models_to_try:
@@ -254,6 +373,21 @@ class OllamaClient(LLMProvider):
     def embed(self, text: str, max_retries: int = 3) -> list[float]:
         """Generate embeddings using LM Studio API with fallback to embedding provider."""
         import time
+
+        # For cloud providers, use their embedding API
+        if self._backend == LLMBackend.OPENAI:
+            for attempt in range(max_retries):
+                try:
+                    response = self.client.embeddings.create(
+                        model="text-embedding-3-small",
+                        input=text,
+                    )
+                    return response.data[0].embedding
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    raise e
 
         # Primary: Use LM Studio API directly for consistent dimensions
         for attempt in range(max_retries):
