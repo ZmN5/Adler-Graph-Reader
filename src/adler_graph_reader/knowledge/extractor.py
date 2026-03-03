@@ -827,7 +827,11 @@ Your tasks:
                     continue
 
                 # Create unique pair identifier (sorted to handle bidirectional)
-                pair_key = (min(source_id, target_id), max(source_id, target_id), rel.relation_type)
+                pair_key = (
+                    min(source_id, target_id),
+                    max(source_id, target_id),
+                    rel.relation_type,
+                )
                 if pair_key in seen_pairs:
                     continue
                 seen_pairs.add(pair_key)
