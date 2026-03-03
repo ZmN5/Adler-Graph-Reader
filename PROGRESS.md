@@ -1,6 +1,23 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 17:40) - ✅ 任务完成
+## 当前状态 (2026-03-03 17:56) - ✅ OLLAMA Enum 已提交
+
+### ✅ 本次进展 (2026-03-03 17:56) - 代码清理与提交
+
+1. **Git 提交** - ✅ 完成
+   - Commit: `c9fab9e` - feat: add OLLAMA backend enum support + remove test_mlx.py
+   - 更改内容：
+     - 添加 `OLLAMA = "ollama"` 到 `LLMBackend` enum
+     - 添加 Ollama 配置常量：`OLLAMA_BASE_URL`, `DEFAULT_OLLAMA_MODEL`
+     - 删除 `test_mlx.py`（MLX 测试文件已不再需要）
+
+2. **待办事项** - 📝 更新
+   - OLLAMA enum 支持已完成并提交
+   - 完整 OLLAMA 后端实现（包括 API 调用逻辑）仍为可选任务
+
+---
+
+## 上次状态 (2026-03-03 17:40) - ✅ 任务完成
 
 ### ✅ 本次进展 (2026-03-03 17:40) - Claude Code 接管任务完成
 
