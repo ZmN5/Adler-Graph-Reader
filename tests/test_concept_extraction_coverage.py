@@ -118,7 +118,7 @@ class TestConceptExtractionCoverage:
         extractor = ConceptExtractor(client=mock_client)
 
         # Verify batch configuration
-        assert extractor.CHUNKS_PER_BATCH == 500
+        assert extractor.CHUNKS_PER_BATCH == 50
         assert extractor.MAX_CHUNKS_TO_PROCESS == 3000
 
         # Get total chunks
@@ -267,7 +267,7 @@ Data Science
         num_batches = (
             max_to_process + extractor.CHUNKS_PER_BATCH - 1
         ) // extractor.CHUNKS_PER_BATCH
-        assert num_batches <= 6  # 3000 / 500 = 6 batches max
+        assert num_batches <= 60  # 3000 / 50 = 60 batches max
 
 
 class TestEndToEndExtractionPipeline:
