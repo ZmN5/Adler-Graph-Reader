@@ -45,3 +45,5 @@ books/
 # Local database
 knowledge.sqlite
 uv.lock
+
+output/
