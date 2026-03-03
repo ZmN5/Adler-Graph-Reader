@@ -21,7 +21,7 @@ class TestHealthEndpoint:
         response = client.get("/health")
         # Health endpoint may be at root or under api prefix
         if response.status_code == 404:
-            response = client.get("/api/v1/health")
+            response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
         assert "status" in data or data.get("status") == "healthy"
@@ -33,7 +33,7 @@ class TestDocumentsEndpoints:
 
     def test_list_documents(self, client):
         """Test listing documents."""
-        response = client.get("/api/v1/documents")
+        response = client.get("/api/documents")
         assert response.status_code == 200
         data = response.json()
         assert "documents" in data
@@ -41,14 +41,14 @@ class TestDocumentsEndpoints:
 
     def test_list_documents_pagination(self, client):
         """Test document pagination."""
-        response = client.get("/api/v1/documents?page=1&page_size=10")
+        response = client.get("/api/documents?page=1&page_size=10")
         assert response.status_code == 200
         data = response.json()
         assert "documents" in data
 
     def test_get_document_not_found(self, client):
         """Test getting a non-existent document."""
-        response = client.get("/api/v1/documents/nonexistent")
+        response = client.get("/api/documents/nonexistent")
         assert response.status_code == 404
 
 
@@ -57,7 +57,7 @@ class TestConceptsEndpoints:
 
     def test_list_concepts(self, client):
         """Test listing concepts."""
-        response = client.get("/api/v1/concepts")
+        response = client.get("/api/concepts")
         assert response.status_code == 200
         data = response.json()
         assert "concepts" in data
@@ -66,7 +66,7 @@ class TestConceptsEndpoints:
 
     def test_list_concepts_with_filters(self, client):
         """Test listing concepts with filters."""
-        response = client.get("/api/v1/concepts?category=concept&page_size=5")
+        response = client.get("/api/concepts?category=concept&page_size=5")
         assert response.status_code == 200
         data = response.json()
         assert "concepts" in data
@@ -74,7 +74,7 @@ class TestConceptsEndpoints:
     def test_search_concepts(self, client):
         """Test searching concepts."""
         response = client.post(
-            "/api/v1/concepts/search",
+            "/api/concepts/search",
             json={"search": "test", "page_size": 10},
         )
         assert response.status_code == 200
@@ -83,12 +83,12 @@ class TestConceptsEndpoints:
 
     def test_get_concept_not_found(self, client):
         """Test getting a non-existent concept."""
-        response = client.get("/api/v1/concepts/99999")
+        response = client.get("/api/concepts/99999")
         assert response.status_code == 404
 
     def test_get_related_concepts_not_found(self, client):
         """Test getting related concepts for non-existent concept."""
-        response = client.get("/api/v1/concepts/99999/related")
+        response = client.get("/api/concepts/99999/related")
         assert response.status_code == 404
 
 
@@ -97,7 +97,7 @@ class TestRelationsEndpoints:
 
     def test_list_relations(self, client):
         """Test listing relations."""
-        response = client.get("/api/v1/relations")
+        response = client.get("/api/relations")
         assert response.status_code == 200
         data = response.json()
         assert "relations" in data
@@ -105,7 +105,7 @@ class TestRelationsEndpoints:
 
     def test_get_relation_types(self, client):
         """Test getting relation types."""
-        response = client.get("/api/v1/relations/types")
+        response = client.get("/api/relations/types")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -117,14 +117,14 @@ class TestSearchEndpoints:
     def test_search_missing_query(self, client):
         """Test search without required query."""
         response = client.post(
-            "/api/v1/search",
+            "/api/search",
             json={"document_id": "test"},
         )
         assert response.status_code == 422  # Validation error
 
     def test_search_suggestions(self, client):
         """Test search suggestions."""
-        response = client.get("/api/v1/search/suggest?q=machine&document_id=test")
+        response = client.get("/api/search/suggest?q=machine&document_id=test")
         # May return 200 or 404 depending on document existence
         assert response.status_code in [200, 404]
 
@@ -135,14 +135,14 @@ class TestQAEndpoints:
     def test_ask_question_missing_fields(self, client):
         """Test asking a question without required fields."""
         response = client.post(
-            "/api/v1/qa",
+            "/api/qa",
             json={},
         )
         assert response.status_code == 422  # Validation error
 
     def test_create_session(self, client):
         """Test creating a QA session."""
-        response = client.post("/api/v1/qa/sessions")
+        response = client.post("/api/qa/sessions")
         assert response.status_code == 200
         data = response.json()
         assert "session_id" in data
@@ -153,21 +153,21 @@ class TestGraphEndpoints:
 
     def test_get_graph_not_found(self, client):
         """Test getting graph for non-existent document."""
-        response = client.get("/api/v1/graph/nonexistent")
+        response = client.get("/api/graph/nonexistent")
         # May return 404 or 500 depending on error handling
         assert response.status_code in [404, 500]
 
     def test_export_graph_invalid_format(self, client):
         """Test exporting graph with invalid format."""
         response = client.post(
-            "/api/v1/graph/export",
+            "/api/graph/export",
             json={"document_id": "test", "format": "invalid"},
         )
         assert response.status_code == 422  # Validation error
 
     def test_export_graph_get(self, client):
         """Test GET export endpoint."""
-        response = client.get("/api/v1/graph/export/test?format=json")
+        response = client.get("/api/graph/export/test?format=json")
         # May return 200 or 404 depending on document existence
         assert response.status_code in [200, 404, 500]
 

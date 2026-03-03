@@ -88,9 +88,12 @@ def _fts_search_only(conn, request: SearchRequest) -> list[SearchResultItem]:
     )
 
     results = []
+    tree_ids = [item["tree_id"] for item in bm25_results]
+    chunks_map = {c["tree_id"]: c for c in database.get_chunks_by_ids(conn, tree_ids)}
+
     for item in bm25_results:
         tree_id = item["tree_id"]
-        chunk = database.get_chunk_by_id(conn, tree_id)
+        chunk = chunks_map.get(tree_id)
         if not chunk:
             continue
 
@@ -126,9 +129,12 @@ def _vector_search_only(
     )
 
     results = []
+    tree_ids = [item["tree_id"] for item in vector_results]
+    chunks_map = {c["tree_id"]: c for c in database.get_chunks_by_ids(conn, tree_ids)}
+
     for item in vector_results:
         tree_id = item["tree_id"]
-        chunk = database.get_chunk_by_id(conn, tree_id)
+        chunk = chunks_map.get(tree_id)
         if not chunk:
             continue
 
@@ -153,6 +159,48 @@ def _vector_search_only(
         )
 
     return results
+
+
+@router.get("")
+async def search_get(
+    q: str = Query(..., min_length=1, description="Search query"),
+    document_id: str = Query(..., description="Document ID"),
+    top_k: int = Query(default=10, ge=1, le=50),
+    search_type: str = Query(default="hybrid", description="Search type: fts, vector, hybrid"),
+    use_reranker: bool = Query(default=True, description="Use reranker for hybrid search"),
+):
+    """
+    Perform hybrid search (GET version for frontend compatibility).
+
+    Returns chunks ranked by relevance to the query.
+    """
+    request = SearchRequest(
+        query=q,
+        document_id=document_id,
+        top_k=top_k,
+        search_type=search_type,  # type: ignore
+        use_reranker=use_reranker,
+    )
+    return await search(request)
+
+
+@router.get("/semantic")
+async def semantic_search_get(
+    q: str = Query(..., min_length=1, description="Search query"),
+    document_id: str = Query(..., description="Document ID"),
+    limit: int = Query(default=10, ge=1, le=50),
+):
+    """
+    Perform semantic/vector search only (GET version for frontend compatibility).
+    """
+    request = SearchRequest(
+        query=q,
+        document_id=document_id,
+        top_k=limit,
+        search_type="vector",
+        use_reranker=False,
+    )
+    return await search(request)
 
 
 @router.get("/suggest", response_model=list[str])

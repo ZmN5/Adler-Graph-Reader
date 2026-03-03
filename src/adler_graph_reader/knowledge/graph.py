@@ -32,6 +32,7 @@ class KnowledgeGraph:
     def __init__(
         self, conn: Optional[sqlite3.Connection] = None, track_progress: bool = True
     ):
+        self._external_conn = conn is not None
         self.conn = conn or database.get_admin_connection()
         self.progress_manager = ProgressManager(self.conn) if track_progress else None
         self.track_progress = track_progress
@@ -421,14 +422,20 @@ class KnowledgeGraph:
         )
 
     def close(self) -> None:
-        """Close the database connection."""
-        self.conn.close()
+        """Close the database connection.
+
+        Only closes connections that were created internally.
+        External connections passed to __init__ are not closed.
+        """
+        if not self._external_conn:
+            self.conn.close()
 
 
 class QATracker:
     """Track question-answer sessions."""
 
     def __init__(self, conn: Optional[sqlite3.Connection] = None):
+        self._external_conn = conn is not None
         self.conn = conn or database.get_connection()
 
     def create_session(self) -> str:
@@ -478,5 +485,10 @@ class QATracker:
         ]
 
     def close(self) -> None:
-        """Close the database connection."""
-        self.conn.close()
+        """Close the database connection.
+
+        Only closes connections that were created internally.
+        External connections passed to __init__ are not closed.
+        """
+        if not self._external_conn:
+            self.conn.close()

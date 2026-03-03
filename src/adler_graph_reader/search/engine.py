@@ -2,12 +2,15 @@
 Hybrid search engine combining BM25 and vector search with RRF fusion and optional reranking.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from .. import database
 from ..llm import get_default_client
 from .fusion import rrf_fusion
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -147,7 +150,7 @@ class HybridSearchEngine:
 
         except Exception as e:
             # If reranking fails, return original order
-            print(f"Warning: Reranking failed: {e}")
+            logger.warning("Reranking failed: %s", e, exc_info=True)
 
         return candidates
 

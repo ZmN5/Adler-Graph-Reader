@@ -1,5 +1,7 @@
 """Document routes for the API."""
 
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException, Query, status
 
 from ... import database
@@ -377,5 +379,78 @@ async def get_document_stats(document_id: str):
                 "categories": categories,
             },
         }
+    finally:
+        conn.close()
+
+
+@router.get("/{document_id}/export")
+async def export_document(
+    document_id: str,
+    format: str = Query(default="json", description="Export format: json, graphml, gexf, dot"),
+):
+    """Export document knowledge graph to various formats.
+
+    Args:
+        document_id: The document ID
+        format: Export format (json, graphml, gexf, dot)
+
+    Returns:
+        Exported graph data
+    """
+    import tempfile
+    from fastapi.responses import FileResponse
+    from ...knowledge.graph import KnowledgeGraph
+
+    conn = database.get_admin_connection()
+
+    try:
+        # Check if document exists
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM document_tree WHERE document_id = ?",
+            (document_id,),
+        )
+        if cursor.fetchone()[0] == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Document '{document_id}' not found",
+            )
+
+        kg = KnowledgeGraph(conn)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / f"graph.{format}"
+
+            if format == "json":
+                kg.export_json(document_id, output_path)
+                media_type = "application/json"
+            elif format == "graphml":
+                kg.export_graphml(document_id, output_path)
+                media_type = "application/xml"
+            elif format == "gexf":
+                kg.export_gexf(document_id, output_path)
+                media_type = "application/xml"
+            elif format == "dot":
+                kg.export_dot(document_id, output_path)
+                media_type = "text/plain"
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unsupported format: {format}",
+                )
+
+            return FileResponse(
+                output_path,
+                media_type=media_type,
+                filename=f"{document_id}_graph.{format}",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to export document: {str(e)}",
+        )
     finally:
         conn.close()

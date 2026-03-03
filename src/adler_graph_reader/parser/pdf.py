@@ -9,7 +9,7 @@ from typing import Optional
 import fitz  # PyMuPDF
 
 from . import Chunk, DocumentParser, ParsedDocument
-from ..chunking import create_chonkie_splitter
+from ..chunking import create_simple_chunker
 
 
 # Heuristic patterns for detecting chapter/section headings
@@ -113,18 +113,18 @@ class PDFParser(DocumentParser):
             if text.strip():
                 full_text_parts.append((page_num + 1, text))
 
-        # Combine all text for semantic chunking
+        # Combine all text for chunking
         full_text = "\n\n".join([text for _, text in full_text_parts])
 
-        # Use Chonkie for semantic chunking
-        splitter = create_chonkie_splitter()
-        semantic_chunks = splitter.chunk(full_text)
+        # Use simple paragraph chunking (fast, no embeddings needed)
+        splitter = create_simple_chunker(chunk_size=1000, overlap=100)
+        simple_chunks = splitter.chunk(full_text)
 
         # Map chunks back to pages and chapters
         chunks: list[Chunk] = []
         current_chapter: Optional[str] = None
 
-        for chunk in semantic_chunks:
+        for chunk in simple_chunks:
             content = chunk.text
 
             # Find which page this chunk belongs to (approximate)
@@ -169,9 +169,6 @@ class PDFParser(DocumentParser):
                 "pages": len(self.doc),
                 "file_path": str(self.file_path),
                 "total_chunks": len(chunks),
-                "avg_chunk_tokens": sum(c.token_count for c in semantic_chunks)
-                / len(semantic_chunks)
-                if semantic_chunks
-                else 0,
+                "avg_chunk_chars": sum(len(c.content) for c in chunks) / len(chunks) if chunks else 0,
             },
         )

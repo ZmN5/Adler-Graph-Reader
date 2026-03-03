@@ -7,6 +7,7 @@ with a custom embedding class that calls LM Studio's API for qwen3 embeddings.
 
 from typing import Optional
 import numpy as np
+import httpx
 from openai import OpenAI
 
 from chonkie.embeddings.base import BaseEmbeddings
@@ -25,8 +26,8 @@ class LMStudioEmbeddings(BaseEmbeddings):
     def __init__(
         self,
         base_url: str = "http://localhost:1234/v1",
-        model: str = "text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-qwen3-embedding-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b",
-        timeout: float = 60.0,
+        model: str = "text-embedding-qwen3-embedding-0.6b",
+        timeout: float = 300.0,
     ):
         super().__init__()
         self.base_url = base_url
@@ -38,10 +39,13 @@ class LMStudioEmbeddings(BaseEmbeddings):
     def _get_client(self) -> OpenAI:
         """Lazy initialization of OpenAI client."""
         if self._client is None:
+            # Disable proxy by using a custom transport
+            transport = httpx.HTTPTransport(retries=0)
             self._client = OpenAI(
                 base_url=self.base_url,
                 api_key="not-needed",
                 timeout=self.timeout,
+                http_client=httpx.Client(transport=transport),
             )
         return self._client
 
@@ -136,7 +140,7 @@ class ChonkieSplitter:
         similarity_threshold: float = 0.7,
         min_chunk_size: int = 50,
         embedding_base_url: str = "http://localhost:1234/v1",
-        embedding_model: str = "text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-qwen3-embedding-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b",
+        embedding_model: str = "text-embedding-qwen3-embedding-0.6b",
     ):
         """
         Initialize the Chonkie splitter.
@@ -315,7 +319,7 @@ def create_chonkie_splitter(
     chunk_size: int = 400,
     similarity_threshold: float = 0.7,
     embedding_base_url: str = "http://localhost:1234/v1",
-    embedding_model: str = "text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-text-embedding-qwen3-embedding-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b-0.6b",
+    embedding_model: str = "text-embedding-qwen3-embedding-0.6b",
 ) -> ChonkieSplitter:
     """
     Factory function to create a ChonkieSplitter instance.

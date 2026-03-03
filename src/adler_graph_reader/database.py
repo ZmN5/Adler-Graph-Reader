@@ -4,6 +4,7 @@ Database module: SQLite with FTS5 and sqlite-vec for hybrid search.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any, Optional
@@ -11,7 +12,31 @@ from typing import Any, Optional
 import sqlite_vec
 
 
-DB_PATH = Path("knowledge.sqlite")
+def _get_db_path() -> Path:
+    """Get database path from environment or use default.
+
+    Priority:
+    1. ADLER_DB_PATH environment variable
+    2. Project root data/knowledge.sqlite
+    """
+    env_path = os.environ.get("ADLER_DB_PATH")
+    if env_path:
+        return Path(env_path)
+
+    # Default: project root/data/knowledge.sqlite
+    # Find project root by looking for pyproject.toml or .git
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        if (current / "pyproject.toml").exists() or (current / ".git").exists():
+            break
+        current = current.parent
+
+    db_dir = current / "data"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir / "knowledge.sqlite"
+
+
+DB_PATH = _get_db_path()
 VEC_EXTENSION = Path(sqlite_vec.__file__).parent / "vec0.dylib"
 EMBEDDING_DIM = 768  # nomic-embed-text-v1.5 output dimension
 
@@ -337,16 +362,38 @@ def get_ancestors(conn: sqlite3.Connection, tree_id: int) -> list[dict[str, Any]
 def get_chunks_by_ids(
     conn: sqlite3.Connection, tree_ids: list[int]
 ) -> list[dict[str, Any]]:
-    """Get multiple chunks by their IDs."""
+    """Get multiple chunks by their IDs.
+
+    Args:
+        conn: Database connection
+        tree_ids: List of tree IDs (must be integers)
+
+    Returns:
+        List of chunk dictionaries
+
+    Raises:
+        ValueError: If any tree_id is not a valid integer
+    """
+    # Validate all tree_ids are integers
+    if not tree_ids:
+        return []
+
+    validated_ids = []
+    for tid in tree_ids:
+        try:
+            validated_ids.append(int(tid))
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid tree_id: {tid}. All IDs must be integers.") from e
+
     cursor = conn.cursor()
-    placeholders = ",".join("?" * len(tree_ids))
+    placeholders = ",".join("?" * len(validated_ids))
     cursor.execute(
         f"""
         SELECT id, content, page_number, type
         FROM document_tree
         WHERE id IN ({placeholders})
         """,
-        tree_ids,
+        validated_ids,
     )
     return [
         {"tree_id": row[0], "content": row[1], "page_number": row[2], "type": row[3]}

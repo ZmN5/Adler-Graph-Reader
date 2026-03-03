@@ -63,7 +63,7 @@
 ### ✅ 本次进展 (2026-03-03 10:30) - UI 构建成功
 
 1. **UI 组件开发** - ✅ 完成
-   - ✅ Backend: ui/backend/main.py (复用 src/adler_graph_reader/api/)
+   - ✅ Backend: `src/adler_graph_reader/api/` (核心 FastAPI，前缀 `/api`)
    - ✅ Frontend: React + TypeScript + Vite + D3.js
    - ✅ 页面组件: App.tsx, DocumentsPage.tsx, GraphPage.tsx, ConceptsPage.tsx, SearchPage.tsx, QAPage.tsx
    - ✅ 样式文件: App.css, index.css
