@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
         "--language",
         "-l",
         choices=["zh", "en"],
-        default="zh",
+        default="en",
         help="Output language (zh=Chinese, en=English; default: zh)",
     )
 

@@ -10,7 +10,7 @@ class Config:
     """Global configuration for Adler-Graph-Reader."""
 
     # Language setting (default: Chinese)
-    language: str = field(default="zh")
+    language: str = field(default="en")
 
     # LLM Model configuration
     # Default: qwen3.5-9b (loaded in LM Studio)
@@ -37,7 +37,7 @@ class Config:
     def from_env(cls) -> "Config":
         """Create config from environment variables."""
         return cls(
-            language=os.getenv("ADLER_LANGUAGE", "zh"),
+            language=os.getenv("ADLER_LANGUAGE", "en"),
             llm_model=os.getenv("ADLER_LLM_MODEL", "qwen3.5-9b"),
             llm_base_url=os.getenv("ADLER_LLM_BASE_URL", "http://localhost:1234/v1"),
         )
