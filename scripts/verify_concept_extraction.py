@@ -36,11 +36,18 @@ def main():
     test_sizes = [1000, 5000, 10000, 20000, 28465, 50000]
     for chunks in test_sizes:
         target = int(chunks * extractor_class.CONCEPTS_PER_CHUNK_RATIO)
-        target = max(extractor_class.MIN_CONCEPTS, min(target, extractor_class.MAX_CONCEPTS_HARD_LIMIT))
+        target = max(
+            extractor_class.MIN_CONCEPTS,
+            min(target, extractor_class.MAX_CONCEPTS_HARD_LIMIT),
+        )
         batches = min(
-            (min(chunks, extractor_class.MAX_CHUNKS_TO_PROCESS) + extractor_class.CHUNKS_PER_BATCH - 1)
+            (
+                min(chunks, extractor_class.MAX_CHUNKS_TO_PROCESS)
+                + extractor_class.CHUNKS_PER_BATCH
+                - 1
+            )
             // extractor_class.CHUNKS_PER_BATCH,
-            6
+            6,
         )
         print(f"  {chunks:>6} chunks -> {target:>4} concepts ({batches} batches)")
 
@@ -66,23 +73,24 @@ def main():
 
             # Get concept count
             cursor.execute(
-                "SELECT COUNT(*) FROM concepts WHERE document_id = ?",
-                (doc_id,)
+                "SELECT COUNT(*) FROM concepts WHERE document_id = ?", (doc_id,)
             )
             concept_count = cursor.fetchone()[0]
             print(f"    Concepts: {concept_count}")
 
             # Get theme count
             cursor.execute(
-                "SELECT COUNT(*) FROM themes WHERE document_id = ?",
-                (doc_id,)
+                "SELECT COUNT(*) FROM themes WHERE document_id = ?", (doc_id,)
             )
             theme_count = cursor.fetchone()[0]
             print(f"    Themes: {theme_count}")
 
             # Calculate expected
             expected = int(chunk_count * extractor_class.CONCEPTS_PER_CHUNK_RATIO)
-            expected = max(extractor_class.MIN_CONCEPTS, min(expected, extractor_class.MAX_CONCEPTS_HARD_LIMIT))
+            expected = max(
+                extractor_class.MIN_CONCEPTS,
+                min(expected, extractor_class.MAX_CONCEPTS_HARD_LIMIT),
+            )
             print(f"    Expected concepts: {expected}")
 
             # Ratio check

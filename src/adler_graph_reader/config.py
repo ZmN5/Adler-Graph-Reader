@@ -49,7 +49,9 @@ class Config:
             llm_model=os.getenv("ADLER_LLM_MODEL", "qwen3.5-2b"),
             llm_base_url=os.getenv("ADLER_LLM_BASE_URL", "http://localhost:1234/v1"),
             embedding_model=os.getenv("ADLER_EMBEDDING_MODEL", "qwen3-embedding-0.6b"),
-            embedding_base_url=os.getenv("ADLER_EMBEDDING_BASE_URL", "http://localhost:1234/v1"),
+            embedding_base_url=os.getenv(
+                "ADLER_EMBEDDING_BASE_URL", "http://localhost:1234/v1"
+            ),
             embedding_max_tokens=int(os.getenv("ADLER_EMBEDDING_MAX_TOKENS", "6000")),
         )
 

@@ -29,11 +29,12 @@ class TestConceptExtractionCoverage:
         # Mock embed method
         client.embed.return_value = [0.1] * 1024
         # Mock generate method for concept name extraction
-        client.generate.return_value = "\n".join([
-            f"Concept {i}" for i in range(50)
-        ])
+        client.generate.return_value = "\n".join([f"Concept {i}" for i in range(50)])
         # Mock generate_structured for single concept extraction
-        from adler_graph_reader.llm.models import EnhancedConcept, EnhancedConceptExtraction
+        from adler_graph_reader.llm.models import (
+            EnhancedConcept,
+            EnhancedConceptExtraction,
+        )
 
         def mock_structured(prompt, response_model, **kwargs):
             # Extract concept name from prompt
@@ -42,16 +43,18 @@ class TestConceptExtractionCoverage:
             else:
                 name = "Test Concept"
 
-            return EnhancedConceptExtraction(concepts=[
-                EnhancedConcept(
-                    name=name,
-                    definition=f"{name} is a test concept definition that describes what it means in detail.",
-                    explanation=f"Explanation of {name}",
-                    examples=[f"Example of {name}"],
-                    importance_score=0.7,
-                    category="method",
-                )
-            ])
+            return EnhancedConceptExtraction(
+                concepts=[
+                    EnhancedConcept(
+                        name=name,
+                        definition=f"{name} is a test concept definition that describes what it means in detail.",
+                        explanation=f"Explanation of {name}",
+                        examples=[f"Example of {name}"],
+                        importance_score=0.7,
+                        category="method",
+                    )
+                ]
+            )
 
         client.generate_structured.side_effect = mock_structured
         return client
@@ -177,7 +180,9 @@ Data Science
         extractor = ConceptExtractor(client=mock_client)
 
         # Mock to return fewer concepts for testing
-        mock_client.generate.return_value = "\n".join([f"Concept {i}" for i in range(5)])
+        mock_client.generate.return_value = "\n".join(
+            [f"Concept {i}" for i in range(5)]
+        )
 
         # Extract with progress tracking
         concepts = extractor.extract(
@@ -259,7 +264,9 @@ Data Science
 
         # Should process limited number of chunks
         max_to_process = min(num_chunks, extractor.MAX_CHUNKS_TO_PROCESS)
-        num_batches = (max_to_process + extractor.CHUNKS_PER_BATCH - 1) // extractor.CHUNKS_PER_BATCH
+        num_batches = (
+            max_to_process + extractor.CHUNKS_PER_BATCH - 1
+        ) // extractor.CHUNKS_PER_BATCH
         assert num_batches <= 6  # 3000 / 500 = 6 batches max
 
 

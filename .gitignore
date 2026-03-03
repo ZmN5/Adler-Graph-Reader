@@ -47,3 +47,4 @@ knowledge.sqlite
 uv.lock
 
 output/
+.claude/

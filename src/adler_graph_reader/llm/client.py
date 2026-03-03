@@ -39,9 +39,7 @@ DEFAULT_OLLAMA_MODEL = "qwen2.5:3b"
 DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-2b")
 # Fallback models to try if primary fails
 FALLBACK_MODELS = ["qwen3.5-9b", "qwen3.5-35b-a3b"]
-DEFAULT_EMBED_MODEL = (
-    "qwen3-embedding-0.6b"  # Qwen3 embedding model
-)
+DEFAULT_EMBED_MODEL = "qwen3-embedding-0.6b"  # Qwen3 embedding model
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
 DEFAULT_TIMEOUT = 180.0  # Reduced timeout for faster feedback with small models
 DEFAULT_ENABLE_THINKING = False  # Disable thinking for faster responses

@@ -215,7 +215,9 @@ class ConceptExtractor:
         all_new_names: list[str] = []
 
         # 递归处理函数
-        def process_chunk_group(chunk_group: list[tuple[int, str]], level: int = 0) -> list[str]:
+        def process_chunk_group(
+            chunk_group: list[tuple[int, str]], level: int = 0
+        ) -> list[str]:
             if not chunk_group:
                 return []
 
