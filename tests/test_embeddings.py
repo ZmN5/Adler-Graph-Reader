@@ -40,12 +40,13 @@ class TestLMStudioEmbeddingProvider:
         """Test LMStudioEmbeddingProvider initialization."""
         provider = LMStudioEmbeddingProvider(
             base_url="http://localhost:1234/v1",
-            model="qwen3-embedding-0.6b",
+            model="text-embedding-nomic-embed-text-v1.5",
+            timeout=120.0,
         )
 
         assert provider.base_url == "http://localhost:1234/v1"
-        assert provider.model == "qwen3-embedding-0.6b"
-        assert provider.timeout == 60.0
+        assert provider.model == "text-embedding-nomic-embed-text-v1.5"
+        assert provider.timeout == 120.0
 
 
 class TestEmbeddingProvider:
