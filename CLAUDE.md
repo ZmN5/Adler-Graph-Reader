@@ -35,6 +35,28 @@ uv run adler analyze <file.pdf> -o output/
 uv run python main.py --help
 ```
 
+## Code Quality Standards (NO Dirty Code)
+
+### ❌ 禁止事项
+- **重复设计/实现**: 同一功能不得有多个独立实现（如两个 FastAPI 服务）
+- **代码复制**: 相同逻辑必须提取为共享函数/类
+- **临时方案长期化**: TODO/FIXME 必须在下一个迭代解决
+- **未使用的代码**: 废弃代码立即删除，不要注释保留
+
+### ✅ 架构原则
+- **Single Source of Truth**: 每个功能只有一个官方实现位置
+- **DRY (Don't Repeat Yourself)**: 提取公共逻辑到 `utils/` 或共享模块
+- **Explicit over Implicit**: 配置显式化，拒绝魔法值
+- **Composition over Inheritance**: 优先组合而非继承
+
+### 🔍 Code Review Checklist
+提交前必须检查：
+- [ ] 是否有类似功能的现有实现？
+- [ ] 是否复制了其他模块的代码？
+- [ ] 新增 API 端点是否与现有端点重叠？
+- [ ] 是否可以复用现有数据模型？
+- [ ] 单元测试是否覆盖新增代码？
+
 ## Architecture (SOLID Principles)
 
 ```

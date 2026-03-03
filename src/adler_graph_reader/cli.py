@@ -150,6 +150,18 @@ def parse_args() -> argparse.Namespace:
     # init-db command
     subparsers.add_parser("init-db", help="Initialize database")
 
+    # api command
+    api = subparsers.add_parser("api", help="Start FastAPI server")
+    api.add_argument(
+        "--host", type=str, default="0.0.0.0", help="Host to bind (default: 0.0.0.0)"
+    )
+    api.add_argument(
+        "--port", "-p", type=int, default=8000, help="Port number (default: 8000)"
+    )
+    api.add_argument(
+        "--reload", "-r", action="store_true", help="Enable auto-reload"
+    )
+
     # ui command (disabled - new UI in development)
     ui = subparsers.add_parser("ui", help="Launch web UI (temporarily disabled)")
     ui.add_argument(
@@ -626,6 +638,22 @@ def cmd_ui(port: int = 8501, open_browser: bool = True):
     print("Please use the CLI commands or API directly for now.")
 
 
+def cmd_api(host: str = "0.0.0.0", port: int = 8000, reload: bool = False) -> None:
+    """Start the FastAPI server."""
+    import uvicorn
+    from .api.main import app
+
+    print(f"Starting API server at http://{host}:{port}")
+    print(f"API docs available at http://{host}:{port}/docs")
+
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        reload=reload,
+    )
+
+
 def main() -> int:
     """Main entry point."""
     args = parse_args()
@@ -731,6 +759,10 @@ def main() -> int:
 
     if args.command == "ui":
         cmd_ui(args.port, args.browser)
+        return 0
+
+    if args.command == "api":
+        cmd_api(args.host, args.port, args.reload)
         return 0
 
     print("Usage: adler-graph-reader <command>")

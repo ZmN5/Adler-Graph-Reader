@@ -1,6 +1,24 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 09:10) - ✅ FastAPI API 基础完成，Streamlit UI 已移除
+## 当前状态 (2026-03-03 09:25) - ✅ FastAPI Routes 完成
+
+### ✅ 本次进展 (2026-03-03 09:25)
+
+1. **FastAPI Routes 实现** - ✅ 完成
+   - `routes/__init__.py` - 路由汇总，导入所有子路由
+   - `routes/documents.py` - GET /documents, GET /documents/{document_id}
+   - `routes/concepts.py` - GET /concepts, GET /concepts/{concept_id}, POST /concepts/search
+   - `routes/relations.py` - GET /relations, GET /relations/concept/{concept_id}
+   - `routes/search.py` - POST /search (混合搜索)
+   - `routes/qa.py` - POST /qa (问答接口)
+   - `routes/graph.py` - GET /graph/{document_id}, POST /graph/export
+
+2. **CLI API 命令** - ✅ 完成
+   - 添加 `api` 子命令启动 FastAPI 服务
+   - 支持参数：--host, --port, --reload
+   - 使用 uvicorn 运行服务
+
+3. **测试验证** - ✅ 51个测试全部通过
 
 ### ✅ 本次进展 (2026-03-03 09:10)
 
@@ -135,13 +153,15 @@
 - [x] 代码质量检查 ✅ (ruff format & check 通过)
 - [x] 更新 README 文档 ✅ (2026-03-03 实现)
 
-### 🔜 下一步工作 (2026-03-03 08:55)
+### 🔜 下一步工作 (2026-03-03 09:24)
 
 1. **✅ GraphML/GEXF 导出** - 已完成 ✅
 2. **🔄 API 服务** - FastAPI 服务层开发中
 3. **❌ 更多文档格式** - 已取消（按需求暂停）
-4. **🆕 删除 Streamlit UI** - 迁移到新 UI 技术栈后清理旧代码
-5. **🆕 升级 LM Studio 模型** - Qwen 3.5 35b → Qwen 3.5 9b（更小效果更好）
+4. **🔄 删除 Streamlit UI** - 进行中
+5. **🔄 升级 LM Studio 模型** - Qwen 3.5 35b → Qwen 3.5 9b
+6. **🆕 UI Frontend** - React + D3.js 可视化界面
+7. **🆕 🔍 Code Review: 消除重复设计** - 检查 API Service vs UI Backend 等重复实现，合并/重构
 
 ### 提取的主题 (Top 10)
 
