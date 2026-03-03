@@ -1,28 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import GraphPage from './components/GraphPage';
 import DocumentsPage from './components/DocumentsPage';
-
-// 临时占位页面
-const SearchPage = () => (
-  <div className="page-container">
-    <h1>搜索</h1>
-    <p>全文搜索 + 语义搜索功能即将上线...</p>
-  </div>
-);
-
-const QAPage = () => (
-  <div className="page-container">
-    <h1>智能问答</h1>
-    <p>基于知识图谱的问答功能即将上线...</p>
-  </div>
-);
-
-const ConceptsPage = () => (
-  <div className="page-container">
-    <h1>概念管理</h1>
-    <p>概念列表和详情功能即将上线...</p>
-  </div>
-);
+import { SearchPage } from './components/SearchPage';
+import { QAPage } from './components/QAPage';
+import { ConceptsPage } from './components/ConceptsPage';
 
 const HomePage = () => (
   <div className="home-page">
@@ -39,6 +20,11 @@ const HomePage = () => (
           <div className="card-icon">🕸️</div>
           <h3>知识图谱</h3>
           <p>可视化展示文档中的概念关系</p>
+        </Link>
+        <Link to="/concepts" className="feature-card">
+          <div className="card-icon">📚</div>
+          <h3>概念浏览</h3>
+          <p>探索核心概念及其关联关系</p>
         </Link>
         <Link to="/search" className="feature-card">
           <div className="card-icon">🔍</div>

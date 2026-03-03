@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { graphApi } from '../services/api';
+import { graphApi, api } from '../services/api';
 
 interface GraphNode {
   id: string;
@@ -58,6 +58,9 @@ export default function GraphPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<D3Node[]>([]);
+  const [showLegend, setShowLegend] = useState(true);
 
   // Fetch graph data
   useEffect(() => {
@@ -128,8 +131,8 @@ export default function GraphPage() {
         d3.drag<SVGGElement, D3Node>()
           .on('start', (event, d) => {
             if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
+            d.fx = d.x ?? null;
+            d.fy = d.y ?? null;
           })
           .on('drag', (event, d) => {
             d.fx = event.x;
@@ -199,6 +202,36 @@ export default function GraphPage() {
     };
   }, [graphData]);
 
+  // Handle search
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (!graphData || !query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const filtered = graphData.nodes
+      .filter((n) => n.name.toLowerCase().includes(query.toLowerCase()))
+      .map((n) => n as unknown as D3Node);
+    setSearchResults(filtered);
+  };
+
+  // Handle export
+  const handleExport = async (format: 'json' | 'graphml' | 'gexf' | 'dot') => {
+    try {
+      const blob = await api.exportGraph('', format);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `graph.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('导出失败:', err);
+      alert('导出失败，请稍后重试');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -226,43 +259,228 @@ export default function GraphPage() {
             节点: {graphData?.nodes.length || 0} | 关系: {graphData?.links.length || 0}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          {Object.entries(colorMap).map(([type, color]) => (
-            <div key={type} className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></span>
-              <span className="text-gray-600 capitalize">{type}</span>
+        
+        {/* Search Box */}
+        <div style={{ position: 'relative', width: '300px' }}>
+          <input
+            type="text"
+            placeholder="搜索节点..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              fontSize: '14px'
+            }}
+          />
+          {searchResults.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              marginTop: '4px',
+              maxHeight: '200px',
+              overflowY: 'auto',
+              zIndex: 50,
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}>
+              {searchResults.map((node) => (
+                <div
+                  key={node.id}
+                  onClick={() => {
+                    setSelectedNode(node);
+                    setSearchQuery(node.name);
+                    setSearchResults([]);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid #f3f4f6'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f9fafb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{node.name}</span>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    color: '#6b7280',
+                    marginLeft: '8px'
+                  }}>
+                    ({node.type})
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+        </div>
+
+        {/* Export Button */}
+        <div style={{ position: 'relative' }}>
+          <select
+            onChange={(e) => {
+              if (e.target.value) {
+                handleExport(e.target.value as 'json' | 'graphml' | 'gexf' | 'dot');
+                e.target.value = '';
+              }
+            }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              background: 'white',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            <option value="">📥 导出图谱</option>
+            <option value="json">JSON</option>
+            <option value="graphml">GraphML</option>
+            <option value="gexf">GEXF</option>
+            <option value="dot">DOT</option>
+          </select>
         </div>
       </div>
 
       {/* Graph Container */}
-      <div ref={containerRef} className="flex-1 relative bg-gray-50">
-        <svg ref={svgRef} className="w-full h-full"></svg>
+      <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#f9fafb' }}>
+        <svg ref={svgRef} style={{ width: '100%', height: '100%' }}></svg>
+
+        {/* Legend */}
+        {showLegend && (
+          <div style={{
+            position: 'absolute',
+            right: '16px',
+            top: '16px',
+            background: 'white',
+            padding: '16px',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '12px'
+            }}>
+              <span style={{ fontWeight: 600, fontSize: '14px' }}>图例</span>
+              <button
+                onClick={() => setShowLegend(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9ca3af',
+                  fontSize: '18px',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {Object.entries(colorMap).map(([type, color]) => (
+                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: color
+                  }}></span>
+                  <span style={{ fontSize: '13px', color: '#4b5563', textTransform: 'capitalize' }}>
+                    {type === 'default' ? '其他' : type}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Show Legend Button (when hidden) */}
+        {!showLegend && (
+          <button
+            onClick={() => setShowLegend(true)}
+            style={{
+              position: 'absolute',
+              right: '16px',
+              top: '16px',
+              padding: '8px 16px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
+          >
+            显示图例
+          </button>
+        )}
 
         {/* Selected Node Panel */}
         {selectedNode && (
-          <div className="absolute right-4 top-4 w-72 bg-white rounded-lg shadow-lg p-4">
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-800">{selectedNode.name}</h3>
+          <div style={{
+            position: 'absolute',
+            right: '16px',
+            bottom: '16px',
+            width: '280px',
+            background: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            padding: '16px'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '12px'
+            }}>
+              <h3 style={{ 
+                fontSize: '16px', 
+                fontWeight: 600,
+                color: '#111827'
+              }}>
+                {selectedNode.name}
+              </h3>
               <button
                 onClick={() => setSelectedNode(null)}
-                className="text-gray-400 hover:text-gray-600"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9ca3af',
+                  fontSize: '20px',
+                  lineHeight: 1
+                }}
               >
-                ✕
+                ×
               </button>
             </div>
-            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
-              <p>类型: {selectedNode.type}</p>
-              <p>ID: {selectedNode.id}</p>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              <p style={{ marginBottom: '4px' }}>
+                <span style={{ color: '#9ca3af' }}>类型:</span> {selectedNode.type}
+              </p>
+              <p style={{ marginBottom: '4px' }}>
+                <span style={{ color: '#9ca3af' }}>ID:</span> {selectedNode.id}
+              </p>
+              {selectedNode.confidence && (
+                <p>
+                  <span style={{ color: '#9ca3af' }}>置信度:</span>{' '}
+                  {(selectedNode.confidence * 100).toFixed(1)}%
+                </p>
+              )}
             </div>
-            <button
-              className="btn btn-secondary"
-              style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}
-              onClick={() => setSelectedNode(null)}
-            >
-              关闭
-            </button>
           </div>
         )}
       </div>
