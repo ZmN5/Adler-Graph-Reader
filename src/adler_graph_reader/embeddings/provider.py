@@ -10,7 +10,7 @@ from typing import Protocol, Optional
 class EmbeddingBackend(Protocol):
     """Protocol for embedding backends."""
 
-    def embed(self, text: str) -> list[float]:
+    def embed(self, text: str, max_retries: int = 3) -> list[float]:
         """Generate embedding for a single text."""
         ...
 
@@ -25,8 +25,8 @@ class LMStudioEmbeddingProvider:
     def __init__(
         self,
         base_url: str = "http://localhost:1234/v1",
-        model: str = "qwen3-embedding-0.6b",
-        timeout: float = 60.0,
+        model: str = "text-embedding-nomic-embed-text-v1.5",
+        timeout: float = 120.0,  # Increased timeout for large documents
     ):
         self.base_url = base_url
         self.model = model
@@ -45,23 +45,47 @@ class LMStudioEmbeddingProvider:
             )
         return self._client
 
-    def embed(self, text: str) -> list[float]:
-        """Generate embedding for a single text."""
-        response = self._get_client().embeddings.create(
-            model=self.model,
-            input=text,
-        )
-        return response.data[0].embedding
+    def embed(self, text: str, max_retries: int = 3) -> list[float]:
+        """Generate embedding for a single text with retry."""
+        import time
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = self._get_client().embeddings.create(
+                    model=self.model,
+                    input=text,
+                )
+                return response.data[0].embedding
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2
+                    print(f"LM Studio embedding failed (attempt {attempt+1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    # Reset client to force reconnection
+                    self._client = None
+        raise RuntimeError(f"LM Studio embedding failed after {max_retries} attempts: {last_error}")
 
-    def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for multiple texts."""
-        response = self._get_client().embeddings.create(
-            model=self.model,
-            input=texts,
-        )
-        # Sort by index to ensure correct order
-        sorted_data = sorted(response.data, key=lambda x: x.index)
-        return [item.embedding for item in sorted_data]
+    def embed_batch(self, texts: list[str], max_retries: int = 3) -> list[list[float]]:
+        """Generate embeddings for multiple texts with retry."""
+        import time
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = self._get_client().embeddings.create(
+                    model=self.model,
+                    input=texts,
+                )
+                sorted_data = sorted(response.data, key=lambda x: x.index)
+                return [item.embedding for item in sorted_data]
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2
+                    print(f"LM Studio batch embedding failed (attempt {attempt+1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    self._client = None
+        raise RuntimeError(f"LM Studio batch embedding failed after {max_retries} attempts: {last_error}")
 
 
 class LocalEmbeddingProvider:
@@ -99,7 +123,7 @@ class LocalEmbeddingProvider:
             self._model = SentenceTransformer(self.model_name, device=self.device)
         return self._model
 
-    def embed(self, text: str) -> list[float]:
+    def embed(self, text: str, max_retries: int = 3) -> list[float]:
         """Generate embedding for a single text."""
         model = self._get_model()
         embedding = model.encode(text, normalize_embeddings=self.normalize)
@@ -164,15 +188,27 @@ class EmbeddingProvider:
             return 1024  # Default for qwen3-embedding-0.6b
         return 1024
 
-    def embed(self, text: str) -> list[float]:
+    def embed(self, text: str, max_retries: int = 3) -> list[float]:
         """Generate embedding for a single text."""
         provider = self._get_active_provider()
         return provider.embed(text)
 
-    def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for multiple texts."""
-        provider = self._get_active_provider()
-        return provider.embed_batch(texts)
+    def embed_batch(self, texts: list[str], max_retries: int = 3) -> list[list[float]]:
+        """Generate embeddings for multiple texts with retry."""
+        import time
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                provider = self._get_active_provider()
+                return provider.embed_batch(texts)
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 3
+                    print(f"Batch embedding failed (attempt {attempt+1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    self._active_provider = None
+        raise RuntimeError(f"Batch embedding failed after {max_retries} attempts: {last_error}")
 
     def _get_active_provider(self) -> EmbeddingBackend:
         """Get the active provider, initializing if needed."""
@@ -185,18 +221,32 @@ class EmbeddingProvider:
             self._active_provider = self.local_provider
             return self._active_provider
 
-        # For "auto" or "lmstudio" mode
-        if self.lmstudio_provider is not None:
+        # For "lmstudio" mode - use LM Studio with retry, no fallback
+        if self.mode == "lmstudio" and self.lmstudio_provider is not None:
+            import time
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self._active_provider = self.lmstudio_provider
+                    return self._active_provider
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 2  # 2s, 4s
+                        print(f"LM Studio connection failed (attempt {attempt+1}/{max_retries}), retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                    else:
+                        raise RuntimeError(f"LM Studio embedding failed after {max_retries} attempts: {e}")
+
+        # For "auto" mode - try LM Studio first, then fallback
+        if self.mode == "auto" and self.lmstudio_provider is not None:
             try:
-                # Test if LM Studio is available
-                self.lmstudio_provider.embed("test")
                 self._active_provider = self.lmstudio_provider
                 return self._active_provider
             except Exception as e:
-                print(f"LM Studio not available: {e}")
+                print(f"LM Studio not available, falling back to local: {e}")
                 self._fallback_occurred = True
 
-        # Fallback to local
+        # Fallback to local only for "auto" mode
         if self.local_provider is None:
             self.local_provider = LocalEmbeddingProvider()
         self._active_provider = self.local_provider
