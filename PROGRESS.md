@@ -1,6 +1,21 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 10:00) - ✅ 概念提取覆盖率修复完成
+## 当前状态 (2026-03-03 10:14) - 🔄 UI 构建修复中
+
+### 🔄 本次进展 (2026-03-03 10:14) - UI 构建修复
+
+1. **UI 组件开发** - ✅ 完成
+   - ✅ Backend: ui/backend/main.py (复用 src/adler_graph_reader/api/)
+   - ✅ Frontend: React + TypeScript + Vite + D3.js
+   - ✅ 页面组件: App.tsx, DocumentsPage.tsx, GraphPage.tsx, ConceptsPage.tsx, SearchPage.tsx, QAPage.tsx
+   - ✅ 样式文件: App.css, index.css
+   - ✅ API 客户端: services/api.ts
+
+2. **UI 构建修复** - 🔄 进行中
+   - 修复 TypeScript 编译错误（子 agent 处理中）
+   - 问题：未使用的导入、API 导出方式、D3 类型、import.meta.env
+
+### ✅ 上次进展 (2026-03-03 10:00) - 概念提取覆盖率修复完成
 
 ### ✅ 本次进展 (2026-03-03 10:00) - 概念提取覆盖率修复
 

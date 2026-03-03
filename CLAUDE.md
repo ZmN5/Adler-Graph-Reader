@@ -16,24 +16,58 @@ Adler-Graph-Reader is a Python CLI tool that reads PDF/EPUB documents, extracts 
 
 - **Python**: 3.12+ (managed by uv)
 - **Runtime**: LM Studio (http://localhost:1234/v1)
-- **Models**: Any locally loaded model in LM Studio
+- **LLM Model**: `qwen3.5-9b-a3b` (对话模型)
+- **Embedding Model**: `qwen3-embedding` (⚠️ **必须使用此模型，不可用其他**)
 - **Database**: knowledge.sqlite (SQLite + FTS5 + sqlite-vec)
+
+### Embedding 配置（重要！）
+```python
+# 正确的 embedding 调用方式
+client.embed(text)  # 使用 qwen3-embedding via LM Studio
+
+# ❌ 禁止直接使用 sentence-transformers
+# ❌ 禁止使用 openai/text-embedding-ada-002
+# ❌ 禁止使用其他 embedding 模型
+```
 
 ## Commands
 
-```bash
-# Install dependencies
-uv add pymupdf openai pydantic instructor sqlite-vec ebooklib
+### 环境要求
+- **Python**: 3.12+
+- **包管理器**: [uv](https://github.com/astral-sh/uv) (必须)
+- **LM Studio**: http://localhost:1234/v1
 
-# Run the CLI
+### 安装依赖
+```bash
+# 使用 uv 安装所有依赖
+uv sync
+
+# 添加新依赖
+uv add <package-name>
+
+# 添加开发依赖
+uv add --dev pytest ruff
+```
+
+### 运行 CLI
+```bash
+# 所有命令必须通过 uv run 执行
 uv run adler --help
 uv run adler init-db
 uv run adler ingest <file.pdf>
 uv run adler analyze <file.pdf> -o output/
 
-# Or use python directly
-uv run python main.py --help
+# 代码质量检查（必须用 uv run）
+uv run ruff check src/
+uv run ruff format src/
+
+# 运行测试
+uv run pytest tests/ -v
 ```
+
+### ⚠️ 常见错误
+❌ ~~`ruff check src/`~~ → ✅ `uv run ruff check src/`
+❌ ~~`python main.py`~~ → ✅ `uv run python main.py`
 
 ## Code Quality Standards (NO Dirty Code)
 
