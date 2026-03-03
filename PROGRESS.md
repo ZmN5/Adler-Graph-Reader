@@ -1,6 +1,30 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 08:35) - ✅ GraphML 导出功能完成
+## 当前状态 (2026-03-03 09:10) - ✅ FastAPI API 基础完成，Streamlit UI 已移除
+
+### ✅ 本次进展 (2026-03-03 09:10)
+
+1. **FastAPI API 服务层基础** - ✅ 完成
+   - 创建 `src/adler_graph_reader/api/` 模块结构
+   - 实现 `main.py` - FastAPI 应用入口，包含 CORS 中间件和 lifespan 管理
+   - 实现 `models.py` - Pydantic 数据模型（Document, Concept, Relation, Search, Query, Graph, Export）
+   - 添加健康检查端点 `/health`
+   - pyproject.toml 添加 `fastapi` 和 `uvicorn` 可选依赖 (`pip install -e ".[api]")`
+
+2. **删除旧 Streamlit UI** - ✅ 完成
+   - 删除 `src/adler_graph_reader/ui.py` (266行旧代码)
+   - CLI `ui` 命令现在提示用户新 UI 正在开发中
+   - 从 pyproject.toml 移除 streamlit 依赖
+
+3. **升级 LM Studio 模型配置** - ✅ 完成
+   - 默认模型从 `qwen3.5-35b-a3b` 升级到 `qwen3.5-9b-a3b`（更小更快效果更好）
+   - 添加环境变量支持：`ADLER_LLM_MODEL` 和 `ADLER_LLM_BASE_URL`
+   - config.py 添加 LLM 配置字段
+
+4. **代码质量修复** - ✅ 完成
+   - 修复 llm/client.py 缺少 `os` 导入的问题
+   - 51个单元测试全部通过
+   - ruff format & check 通过
 
 ### ✅ 本次进展 (2026-03-03 08:35)
 
