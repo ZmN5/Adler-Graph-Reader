@@ -43,25 +43,27 @@ class ThemeExtractor:
         cursor = conn.cursor()
         print(f"[ThemeExtractor] Querying database for document: {document_id}")
 
+        # Get actual content from chunks, not just chapter titles
         cursor.execute(
             """
             SELECT content FROM document_tree
-            WHERE document_id = ? AND type = 'chapter'
+            WHERE document_id = ? AND type = 'chunk'
+            AND length(content) > 100
             ORDER BY id
-            LIMIT 5
+            LIMIT 10
             """,
             (document_id,),
         )
         contents = [row[0] for row in cursor.fetchall()]
-        print(f"[ThemeExtractor] Found {len(contents)} chapters")
+        print(f"[ThemeExtractor] Found {len(contents)} chunks with content")
 
         if not contents:
             cursor.execute(
                 """
                 SELECT content FROM document_tree
-                WHERE document_id = ?
+                WHERE document_id = ? AND type = 'chunk'
                 ORDER BY id
-                LIMIT 3
+                LIMIT 10
                 """,
                 (document_id,),
             )

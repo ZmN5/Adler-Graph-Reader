@@ -20,9 +20,11 @@ from .models import BookSummary, ConceptExtraction
 # Default LM Studio configuration
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 # Model configuration - can be overridden via environment variable ADLER_LLM_MODEL
-# Default: qwen3.5-9b-a3b (smaller, faster, better performance)
-# Previous default was qwen3.5-35b-a3b
-DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-9b-a3b")
+# Default: qwen3.5-9b (must match the model loaded in LM Studio)
+# Fallback models are tried in order if the primary fails
+DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-9b")
+# Fallback models to try if primary fails
+FALLBACK_MODELS = ["qwen3.5-35b-a3b"]
 DEFAULT_EMBED_MODEL = (
     "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
 )
@@ -79,10 +81,16 @@ class OllamaClient(LLMProvider):
     embed_model: str = DEFAULT_EMBED_MODEL
     embedding_mode: str = "lmstudio"  # "lmstudio", "local", or "auto"
     enable_thinking: bool = DEFAULT_ENABLE_THINKING  # Control model thinking process
+    fallback_models: list = None  # List of fallback models to try
     _client: Optional[OpenAI] = None
     _struct_client: Optional[OpenAI] = None
     _async_client: Optional[AsyncOpenAI] = None
     _embedding_provider: Optional[EmbeddingProvider] = None
+
+    def __post_init__(self):
+        """Initialize fallback models if not provided."""
+        if self.fallback_models is None:
+            self.fallback_models = FALLBACK_MODELS.copy()
 
     @property
     def client(self) -> OpenAI:
@@ -130,13 +138,29 @@ class OllamaClient(LLMProvider):
             )
         return self._async_client
 
+    def _try_generate(
+        self,
+        model: str,
+        messages: list,
+        temperature: float,
+        extra_body: dict,
+    ) -> str:
+        """Try to generate with a specific model."""
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            extra_body=extra_body if extra_body else None,
+        )
+        return response.choices[0].message.content
+
     def generate(
         self,
         prompt: str,
         system: Optional[str] = None,
         temperature: float = 0.7,
     ) -> str:
-        """Generate text using the configured model."""
+        """Generate text using the configured model with fallback support."""
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -149,14 +173,36 @@ class OllamaClient(LLMProvider):
             extra_body["enable_thinking"] = False
             extra_body["thinking"] = False
 
-        response = self.client.chat.completions.create(
-            model=self.model,
+        # Try primary model first, then fallbacks
+        models_to_try = [self.model] + FALLBACK_MODELS
+        last_error = None
+
+        for model in models_to_try:
+            try:
+                return self._try_generate(model, messages, temperature, extra_body)
+            except Exception as e:
+                last_error = e
+                print(f"Model {model} failed: {e}")
+                continue
+
+        raise last_error
+
+    def _try_generate_structured(
+        self,
+        model: str,
+        messages: list,
+        temperature: float,
+        response_model: type,
+        extra_body: dict,
+    ) -> Any:
+        """Try structured generation with a specific model."""
+        return self.struct_client.chat.completions.create(
+            model=model,
             messages=messages,
             temperature=temperature,
+            response_model=response_model,
             extra_body=extra_body if extra_body else None,
         )
-
-        return response.choices[0].message.content
 
     def generate_structured(
         self,
@@ -165,7 +211,7 @@ class OllamaClient(LLMProvider):
         system: Optional[str] = None,
         temperature: float = 0.7,
     ) -> Any:
-        """Generate structured output using instructor."""
+        """Generate structured output using instructor with fallback support."""
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -178,13 +224,21 @@ class OllamaClient(LLMProvider):
             extra_body["enable_thinking"] = False
             extra_body["thinking"] = False
 
-        return self.struct_client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            response_model=response_model,
-            extra_body=extra_body if extra_body else None,
-        )
+        # Try primary model first, then fallbacks
+        models_to_try = [self.model] + FALLBACK_MODELS
+        last_error = None
+
+        for model in models_to_try:
+            try:
+                return self._try_generate_structured(
+                    model, messages, temperature, response_model, extra_body
+                )
+            except Exception as e:
+                last_error = e
+                print(f"Model {model} failed for structured generation: {e}")
+                continue
+
+        raise last_error
 
     @property
     def embedding_provider(self) -> EmbeddingProvider:

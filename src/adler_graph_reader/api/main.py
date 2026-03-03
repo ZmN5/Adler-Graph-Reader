@@ -38,6 +38,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Health check endpoint (before router to avoid prefix)
+    @app.get("/health")
+    async def health_check():
+        """Health check endpoint."""
+        return {"status": "healthy", "version": "0.1.0"}
+
     # Include routers
     app.include_router(router, prefix="/api/v1")
 
@@ -45,9 +51,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "version": "0.1.0"}
