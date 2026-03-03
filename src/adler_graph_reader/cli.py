@@ -36,13 +36,18 @@ def parse_args() -> argparse.Namespace:
 
     # ingest command
     ingest = subparsers.add_parser("ingest", help="Ingest a document")
-    ingest.add_argument("file", type=Path, nargs="?", help="PDF or EPUB file")
+    ingest.add_argument(
+        "file",
+        type=Path,
+        nargs="?",
+        help="PDF, EPUB, MOBI, AZW3, or TXT file",
+    )
     ingest.add_argument("--title", help="Override title")
     ingest.add_argument(
         "--batch",
         type=Path,
         metavar="DIR",
-        help="Batch ingest all PDF/EPUB files from directory",
+        help="Batch ingest all supported files from directory",
     )
 
     # analyze command

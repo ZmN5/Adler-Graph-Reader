@@ -8,7 +8,7 @@
 
 ## ✨ 特性
 
-- 📖 **多格式支持** - PDF / EPUB 文档解析
+- 📖 **多格式支持** - PDF / EPUB / MOBI / AZW3 / TXT 文档解析
 - 🧠 **AI 知识提取** - 使用本地 Qwen3 模型提取主题、概念、关系
 - 🔍 **混合搜索** - SQLite FTS5 全文搜索 + sqlite-vec 向量语义搜索
 - 🕸️ **知识图谱** - 自动生成概念间的 bidirectional 关系网络（12种关系类型）
@@ -198,7 +198,9 @@ src/adler_graph_reader/
 ├── database.py           # SQLite + FTS5 + sqlite-vec 初始化与查询
 ├── parser/               # 文档解析
 │   ├── pdf.py            # PyMuPDF 实现
-│   └── epub.py           # ebooklib 实现
+│   ├── epub.py           # ebooklib 实现
+│   ├── mobi.py           # MOBI/AZW3 实现
+│   └── txt.py            # 纯文本实现
 ├── llm/                  # LLM 集成
 │   ├── client.py         # OllamaClient（OpenAI SDK + instructor）
 │   └── models.py         # Pydantic 响应模型
@@ -304,9 +306,9 @@ books/
 - [x] 支持更多 LLM 后端（LM Studio 集成）
 - [x] 改进 Web UI 的图谱可视化（D3.js / Cytoscape）
 - [x] 支持批量导入书籍
-- [ ] 添加知识图谱导出（GraphML / GEXF）
-- [ ] 支持更多文档格式（MOBI, AZW3, TXT）
-- [ ] 添加 API 服务（FastAPI）
+- [x] 添加知识图谱导出（GraphML / GEXF）
+- [x] 支持更多文档格式（MOBI, AZW3, TXT）
+- [x] 添加 API 服务（FastAPI）
 
 ---
 

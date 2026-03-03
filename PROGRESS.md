@@ -1,6 +1,42 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 18:00) - ✅ OLLAMA 后端已完成
+## 当前状态 (2026-03-03 19:15) - ✅ 更多文档格式支持完成
+
+### ✅ 本次进展 (2026-03-03 19:15) - 添加 MOBI/AZW3/TXT 格式支持
+
+1. **新增 Parser 模块** - ✅ 完成
+   - `src/adler_graph_reader/parser/mobi.py` - MOBI/AZW3 解析器
+   - `src/adler_graph_reader/parser/txt.py` - TXT 纯文本解析器
+
+2. **MOBI/AZW3 支持** - ✅ 完成
+   - 使用 `mobi` Python 包解析 .mobi 和 .azw3 文件
+   - 提取文本内容，保持章节结构
+   - 自动从 HTML 元数据提取标题
+
+3. **TXT 支持** - ✅ 完成
+   - 简单文本文件解析
+   - 智能章节检测（支持中文和英文标题模式）
+   - 多种编码自动检测（UTF-8, GBK, GB2312, Big5 等）
+
+4. **Parser 工厂函数更新** - ✅ 完成
+   - 在 `create_parser()` 中添加新格式支持
+   - 更新 CLI 帮助文档
+
+5. **测试验证** - ✅ 通过
+   - 61 个测试全部通过（跳过 test_api.py 因缺少 fastapi）
+   - ruff format 和 ruff check 全部通过
+   - 新增 3 个 parser 测试用例
+
+6. **依赖更新** - ✅ 完成
+   - 添加 `mobi>=0.3.3` 到 pyproject.toml
+
+7. **文档更新** - ✅ 完成
+   - README.md 更新：多格式支持列表
+   - README.md 更新：待办事项标记完成
+
+---
+
+## 上次状态 (2026-03-03 18:00) - ✅ OLLAMA 后端已完成
 
 ### ✅ 本次进展 (2026-03-03 18:00) - OLLAMA 后端实现完成
 

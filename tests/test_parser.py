@@ -78,11 +78,44 @@ class TestCreateParser:
 
     def test_unsupported_format(self, tmp_path):
         """Test that unsupported formats raise ValueError."""
+        doc_file = tmp_path / "test.doc"
+        doc_file.touch()
+
+        with pytest.raises(ValueError, match="Unsupported file format"):
+            create_parser(doc_file)
+
+    def test_create_mobi_parser(self, tmp_path):
+        """Test creating a MOBI parser."""
+        mobi_file = tmp_path / "test.mobi"
+        mobi_file.touch()
+
+        parser = create_parser(mobi_file)
+
+        from adler_graph_reader.parser.mobi import MOBIParser
+
+        assert isinstance(parser, MOBIParser)
+
+    def test_create_azw3_parser(self, tmp_path):
+        """Test creating an AZW3 parser."""
+        azw3_file = tmp_path / "test.azw3"
+        azw3_file.touch()
+
+        parser = create_parser(azw3_file)
+
+        from adler_graph_reader.parser.mobi import MOBIParser
+
+        assert isinstance(parser, MOBIParser)
+
+    def test_create_txt_parser(self, tmp_path):
+        """Test creating a TXT parser."""
         txt_file = tmp_path / "test.txt"
         txt_file.touch()
 
-        with pytest.raises(ValueError, match="Unsupported file format"):
-            create_parser(txt_file)
+        parser = create_parser(txt_file)
+
+        from adler_graph_reader.parser.txt import TXTParser
+
+        assert isinstance(parser, TXTParser)
 
 
 class TestPDFParser:

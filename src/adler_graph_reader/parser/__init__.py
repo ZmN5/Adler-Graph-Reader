@@ -51,11 +51,14 @@ class DocumentParser(ABC):
 # Import parsers after defining base classes to avoid circular imports
 from .pdf import PDFParser  # noqa: E402
 from .epub import EPUBParser  # noqa: E402
+from .mobi import MOBIParser  # noqa: E402
+from .txt import TXTParser  # noqa: E402
 
 
 def create_parser(file_path: Path) -> DocumentParser:
     """
     Factory function to create the appropriate parser based on file extension.
+    Supports: PDF, EPUB, MOBI, AZW3, TXT.
     """
     suffix = file_path.suffix.lower()
 
@@ -63,5 +66,9 @@ def create_parser(file_path: Path) -> DocumentParser:
         return PDFParser(file_path)
     elif suffix in (".epub",):
         return EPUBParser(file_path)
+    elif suffix in (".mobi", ".azw3"):
+        return MOBIParser(file_path)
+    elif suffix in (".txt", ".text"):
+        return TXTParser(file_path)
     else:
         raise ValueError(f"Unsupported file format: {suffix}")
