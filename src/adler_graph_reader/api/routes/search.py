@@ -166,8 +166,12 @@ async def search_get(
     q: str = Query(..., min_length=1, description="Search query"),
     document_id: str = Query(..., description="Document ID"),
     top_k: int = Query(default=10, ge=1, le=50),
-    search_type: str = Query(default="hybrid", description="Search type: fts, vector, hybrid"),
-    use_reranker: bool = Query(default=True, description="Use reranker for hybrid search"),
+    search_type: str = Query(
+        default="hybrid", description="Search type: fts, vector, hybrid"
+    ),
+    use_reranker: bool = Query(
+        default=True, description="Use reranker for hybrid search"
+    ),
 ):
     """
     Perform hybrid search (GET version for frontend compatibility).

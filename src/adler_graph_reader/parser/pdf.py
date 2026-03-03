@@ -169,6 +169,8 @@ class PDFParser(DocumentParser):
                 "pages": len(self.doc),
                 "file_path": str(self.file_path),
                 "total_chunks": len(chunks),
-                "avg_chunk_chars": sum(len(c.content) for c in chunks) / len(chunks) if chunks else 0,
+                "avg_chunk_chars": sum(len(c.content) for c in chunks) / len(chunks)
+                if chunks
+                else 0,
             },
         )

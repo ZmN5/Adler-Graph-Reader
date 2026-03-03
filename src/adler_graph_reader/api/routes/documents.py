@@ -386,7 +386,9 @@ async def get_document_stats(document_id: str):
 @router.get("/{document_id}/export")
 async def export_document(
     document_id: str,
-    format: str = Query(default="json", description="Export format: json, graphml, gexf, dot"),
+    format: str = Query(
+        default="json", description="Export format: json, graphml, gexf, dot"
+    ),
 ):
     """Export document knowledge graph to various formats.
 

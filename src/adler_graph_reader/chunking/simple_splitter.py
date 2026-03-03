@@ -9,6 +9,7 @@ from dataclasses import dataclass
 @dataclass
 class SimpleChunk:
     """Simple chunk representation."""
+
     text: str
     start_idx: int
     end_idx: int
@@ -17,7 +18,7 @@ class SimpleChunk:
 class SimpleChunker:
     """
     Simple paragraph-based text chunker.
-    
+
     Splits text by paragraphs and groups them into chunks of roughly
     the target size. No embeddings required - much faster than semantic chunking.
     """
@@ -35,10 +36,10 @@ class SimpleChunker:
     def chunk(self, text: str) -> list[SimpleChunk]:
         """
         Split text into chunks.
-        
+
         Args:
             text: Input text to chunk
-            
+
         Returns:
             List of SimpleChunk objects
         """
@@ -46,12 +47,12 @@ class SimpleChunker:
             return []
 
         # Split by double newlines (paragraphs)
-        paragraphs = re.split(r'\n\s*\n', text)
+        paragraphs = re.split(r"\n\s*\n", text)
         paragraphs = [p.strip() for p in paragraphs if p.strip()]
-        
+
         if not paragraphs:
             # Fall back to single lines
-            paragraphs = text.split('\n')
+            paragraphs = text.split("\n")
             paragraphs = [p.strip() for p in paragraphs if p.strip()]
 
         chunks: list[SimpleChunk] = []
@@ -62,19 +63,34 @@ class SimpleChunker:
             para = para.strip()
             if not para:
                 continue
-                
+
             # If adding this paragraph would exceed chunk size, save current chunk
-            if len(current_chunk_text) + len(para) + 2 > self.chunk_size and current_chunk_text:
-                chunks.append(SimpleChunk(
-                    text=current_chunk_text.strip(),
-                    start_idx=current_start,
-                    end_idx=current_start + len(current_chunk_text)
-                ))
-                
+            if (
+                len(current_chunk_text) + len(para) + 2 > self.chunk_size
+                and current_chunk_text
+            ):
+                chunks.append(
+                    SimpleChunk(
+                        text=current_chunk_text.strip(),
+                        start_idx=current_start,
+                        end_idx=current_start + len(current_chunk_text),
+                    )
+                )
+
                 # Start new chunk with overlap
-                overlap_text = current_chunk_text[-self.overlap:] if len(current_chunk_text) > self.overlap else current_chunk_text
+                overlap_text = (
+                    current_chunk_text[-self.overlap :]
+                    if len(current_chunk_text) > self.overlap
+                    else current_chunk_text
+                )
                 current_chunk_text = overlap_text + "\n\n" + para
-                current_start = current_start + len(current_chunk_text) - len(overlap_text) - len(para) - 2
+                current_start = (
+                    current_start
+                    + len(current_chunk_text)
+                    - len(overlap_text)
+                    - len(para)
+                    - 2
+                )
             else:
                 # Add to current chunk
                 if current_chunk_text:
@@ -85,11 +101,13 @@ class SimpleChunker:
 
         # Don't forget the last chunk
         if current_chunk_text.strip():
-            chunks.append(SimpleChunk(
-                text=current_chunk_text.strip(),
-                start_idx=current_start,
-                end_idx=current_start + len(current_chunk_text)
-            ))
+            chunks.append(
+                SimpleChunk(
+                    text=current_chunk_text.strip(),
+                    start_idx=current_start,
+                    end_idx=current_start + len(current_chunk_text),
+                )
+            )
 
         return chunks
 

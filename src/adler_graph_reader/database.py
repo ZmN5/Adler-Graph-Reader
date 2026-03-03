@@ -383,7 +383,9 @@ def get_chunks_by_ids(
         try:
             validated_ids.append(int(tid))
         except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid tree_id: {tid}. All IDs must be integers.") from e
+            raise ValueError(
+                f"Invalid tree_id: {tid}. All IDs must be integers."
+            ) from e
 
     cursor = conn.cursor()
     placeholders = ",".join("?" * len(validated_ids))

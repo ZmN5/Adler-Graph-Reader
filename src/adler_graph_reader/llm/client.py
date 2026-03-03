@@ -93,7 +93,9 @@ def get_configured_backend() -> tuple[LLMBackend, str]:
     # Auto-detect based on available credentials
     # Priority: LM Studio > OLLAMA > OpenAI > Anthropic
     lm_studio_url = os.getenv("ADLER_LLM_BASE_URL", DEFAULT_BASE_URL)
-    if lm_studio_url == DEFAULT_BASE_URL or lm_studio_url.startswith("http://localhost:1234"):
+    if lm_studio_url == DEFAULT_BASE_URL or lm_studio_url.startswith(
+        "http://localhost:1234"
+    ):
         # Assume LM Studio is intended if using default local URL
         return LLMBackend.LM_STUDIO, "not-needed"
 
@@ -384,7 +386,7 @@ class OllamaClient(LLMProvider):
         if self._embedding_provider is None:
             self._embedding_provider = create_embedding_provider(
                 mode=self.embedding_mode,
-                lmstudio_url=self.base_url,
+                lmstudio_url="http://localhost:1234/v1",
                 lmstudio_model=self.embed_model,
             )
         return self._embedding_provider
@@ -408,21 +410,8 @@ class OllamaClient(LLMProvider):
                         continue
                     raise e
 
-        # Primary: Use LM Studio API directly for consistent dimensions
-        for attempt in range(max_retries):
-            try:
-                response = self.client.embeddings.create(
-                    model=self.embed_model,
-                    input=text,
-                )
-                return response.data[0].embedding
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    time.sleep(1)
-                    continue
-                # If LM Studio fails, fall back to embedding provider
-                print(f"LM Studio embedding failed: {e}, falling back to provider...")
-                return self.embedding_provider.embed(text)
+        # Use embedding provider directly (which uses httpx for LM Studio)
+        return self.embedding_provider.embed(text, max_retries=max_retries)
 
     async def agenerate_structured(
         self,
@@ -458,7 +447,7 @@ def get_default_client(
 ) -> OllamaClient:
     """Get or create the default LLM client."""
     global _default_client
-    
+
     # Force reset if requested or if environment variables differ
     if force_reset or _default_client is None:
         # Use environment variables or defaults
@@ -466,7 +455,7 @@ def get_default_client(
         model = model or os.getenv("ADLER_LLM_MODEL", DEFAULT_MODEL)
         embed_model = embed_model or os.getenv("ADLER_EMBED_MODEL", DEFAULT_EMBED_MODEL)
         embedding_mode = embedding_mode or os.getenv("ADLER_EMBEDDING_MODE", "lmstudio")
-        
+
         _default_client = OllamaClient(
             base_url=base_url,
             model=model,
