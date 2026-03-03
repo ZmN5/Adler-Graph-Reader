@@ -40,7 +40,7 @@ class TestConceptExtractor:
     def mock_extractor(self):
         """Create a concept extractor with mocked LLM client."""
         mock_client = Mock()
-        mock_client.embed.return_value = [0.1] * 768
+        mock_client.embed.return_value = [0.1] * 1024
         extractor = ConceptExtractor(client=mock_client)
         return extractor, mock_client
 

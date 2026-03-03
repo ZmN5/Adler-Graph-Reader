@@ -57,7 +57,7 @@ class TestHybridSearchEngine:
         """Create a search engine with mocked dependencies."""
         mock_conn = Mock()
         mock_llm = Mock()
-        mock_llm.embed.return_value = [0.1] * 768
+        mock_llm.embed.return_value = [0.1] * 1024
 
         engine = HybridSearchEngine(
             conn=mock_conn,

@@ -29,7 +29,7 @@ class TestConceptExtractionCoverage:
         """Create a mock LLM client."""
         client = MagicMock()
         # Mock embed method
-        client.embed.return_value = [0.1] * 768
+        client.embed.return_value = [0.1] * 1024
         # Mock generate method for concept name extraction
         client.generate.return_value = "\n".join([
             f"Concept {i}" for i in range(50)
