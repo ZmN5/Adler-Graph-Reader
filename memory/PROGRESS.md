@@ -93,12 +93,12 @@ uv run adler build-graph -d "Designing Machine Learning Systems"
 
 ## 🔄 当前行动
 
-### Claude Code 子代理已启动 (16:54)
-正在执行以下任务：
-1. ✅ 修复 Pydantic 弃用警告 (`max_items` → `max_length`)
-2. 🔄 添加 LLM 备用方案支持（OpenAI 等）
-3. ⏳ 验证文档解析流程独立性
-4. ⏳ 创建快速启动脚本
+### Claude Code 子代理运行中 (16:54-16:59, 5分钟)
+正在修改：
+- `llm/models.py` - Pydantic 警告修复
+- `llm/client.py` - 添加 OpenAI 备用支持
+
+已完成：79个测试全部通过
 
 ---
 
