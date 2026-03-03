@@ -13,10 +13,10 @@ class Config:
     language: str = field(default="en")
 
     # LLM Model configuration
-    # Default: qwen3.5-9b (loaded in LM Studio)
-    # Fallback order: qwen3.5-9b -> qwen3.5-35b-a3b
+    # Default: qwen3.5-2b (loaded in LM Studio)
+    # Fallback order: qwen3.5-2b -> qwen3.5-9b -> qwen3.5-35b-a3b
     # Can be overridden via ADLER_LLM_MODEL environment variable
-    llm_model: str = field(default="qwen3.5-9b")
+    llm_model: str = field(default="qwen3.5-2b")
 
     # LM Studio base URL
     # Can be overridden via ADLER_LLM_BASE_URL environment variable
@@ -46,7 +46,7 @@ class Config:
         """Create config from environment variables."""
         return cls(
             language=os.getenv("ADLER_LANGUAGE", "en"),
-            llm_model=os.getenv("ADLER_LLM_MODEL", "qwen3.5-9b"),
+            llm_model=os.getenv("ADLER_LLM_MODEL", "qwen3.5-2b"),
             llm_base_url=os.getenv("ADLER_LLM_BASE_URL", "http://localhost:1234/v1"),
             embedding_model=os.getenv("ADLER_EMBEDDING_MODEL", "qwen3-embedding-0.6b"),
             embedding_base_url=os.getenv("ADLER_EMBEDDING_BASE_URL", "http://localhost:1234/v1"),

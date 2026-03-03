@@ -34,13 +34,13 @@ DEFAULT_BASE_URL = "http://localhost:1234/v1"
 OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "qwen2.5:3b"
 # Model configuration - can be overridden via environment variable ADLER_LLM_MODEL
-# Default: qwen3.5-9b (must match the model loaded in LM Studio)
+# Default: qwen3.5-2b (must match the model loaded in LM Studio)
 # Fallback models are tried in order if the primary fails
-DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-2b:2")
+DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-2b")
 # Fallback models to try if primary fails
-FALLBACK_MODELS = ["qwen3.5-35b-a3b"]
+FALLBACK_MODELS = ["qwen3.5-9b", "qwen3.5-35b-a3b"]
 DEFAULT_EMBED_MODEL = (
-    "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
+    "qwen3-embedding-0.6b"  # Qwen3 embedding model
 )
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
 DEFAULT_TIMEOUT = 180.0  # Reduced timeout for faster feedback with small models

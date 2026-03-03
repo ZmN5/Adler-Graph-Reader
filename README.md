@@ -29,7 +29,7 @@
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) 包管理器
 - [LM Studio](https://lmstudio.ai) (推荐) 或 [Ollama](https://ollama.ai)
-- 本地 LLM 模型（默认使用 qwen3.5-9b-a3b，更小更快效果更好）
+- 本地 LLM 模型（默认使用 qwen3.5-2b，更小更快）
 
 ### 安装
 
@@ -48,9 +48,10 @@ uv run adler --help
 
 ```bash
 # 在 LM Studio 中下载模型
-# 推荐模型：qwen3.5-9b-a3b（默认，更小更快效果更好）
+# 推荐模型：qwen3.5-2b（默认，轻量级）
+# 可选：qwen3.5-9b（中等大小）
 # 可选：qwen3.5-35b-a3b（更大模型，可通过环境变量配置）
-# Embedding 模型：nomic-embed-text-v1.5
+# Embedding 模型：qwen3-embedding-0.6b
 
 # 启动 LM Studio 本地服务器（默认 http://localhost:1234/v1）
 # 或使用 Ollama

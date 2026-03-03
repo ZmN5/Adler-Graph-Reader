@@ -16,25 +16,25 @@ Adler-Graph-Reader is a Python CLI tool that reads PDF/EPUB documents, extracts 
 
 - **Python**: 3.12+ (managed by uv)
 - **Runtime**: LM Studio (http://localhost:1234/v1)
-- **LLM Model**: `qwen3.5-9b` (对话模型，必须与 LM Studio 中加载的模型名称完全匹配)
-- **Embedding Model**: `text-embedding-nomic-embed-text-v1.5` (⚠️ **LM Studio 必须加载此模型**)
+- **LLM Model**: `qwen3.5-2b` (对话模型，必须与 LM Studio 中加载的模型名称完全匹配)
+- **Embedding Model**: `qwen3-embedding-0.6b` (⚠️ **LM Studio 必须加载此模型**)
 
 ### 模型配置（重要！）
 ```python
 # 默认配置在 src/adler_graph_reader/llm/client.py
-DEFAULT_MODEL = "qwen3.5-9b"  # 主模型
-FALLBACK_MODELS = ["qwen3.5-35b-a3b"]  # 失败时自动回退
-DEFAULT_EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"
+DEFAULT_MODEL = "qwen3.5-2b"  # 主模型
+FALLBACK_MODELS = ["qwen3.5-9b", "qwen3.5-35b-a3b"]  # 失败时自动回退
+DEFAULT_EMBED_MODEL = "qwen3-embedding-0.6b"
 
 # 可通过环境变量覆盖
-export ADLER_LLM_MODEL="qwen3.5-9b"
+export ADLER_LLM_MODEL="qwen3.5-2b"
 export ADLER_LLM_BASE_URL="http://localhost:1234/v1"
 ```
 
 #### LM Studio 模型要求
 必须在 LM Studio 中加载以下模型：
-1. **对话模型**: `qwen3.5-9b` (id: qwen3.5-9b)
-2. **Embedding 模型**: `text-embedding-nomic-embed-text-v1.5`
+1. **对话模型**: `qwen3.5-2b` (id: qwen3.5-2b)
+2. **Embedding 模型**: `qwen3-embedding-0.6b`
 
 可用模型列表检查：`curl http://localhost:1234/v1/models`
 - **Database**: knowledge.sqlite (SQLite + FTS5 + sqlite-vec)

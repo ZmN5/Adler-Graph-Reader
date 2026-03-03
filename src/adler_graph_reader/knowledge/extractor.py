@@ -154,8 +154,8 @@ class ConceptExtractor:
     """Extract concepts with definitions and examples from document."""
 
     # Configuration for full extraction (方案B: 全量抽取)
-    CHUNKS_PER_BATCH = 10   # Small batches to fit LLM context (10 chunks ~ 4k tokens)
-    MAX_CHUNKS_TO_PROCESS = 10000  # Process ALL chunks
+    CHUNKS_PER_BATCH = 500  # Process 500 chunks per batch for efficiency
+    MAX_CHUNKS_TO_PROCESS = 3000  # Process up to 3000 chunks
     CONCEPTS_PER_CHUNK_RATIO = 0.5  # 1 concept per 2 chunks
     MIN_CONCEPTS = 200
     MAX_CONCEPTS_HARD_LIMIT = 3000

@@ -103,7 +103,7 @@ if [ $? -ne 0 ]; then
     if [ "$USING_BACKEND" = "lmstudio" ]; then
         echo "  1. Make sure LM Studio is running"
         echo "     Download: https://lmstudio.ai/"
-        echo "  2. Load a model in LM Studio (e.g., qwen3.5-9b)"
+        echo "  2. Load a model in LM Studio (e.g., qwen3.5-2b)"
         echo "  3. Start the local server on port 1234"
         echo ""
         echo "Alternative: Use OpenAI API instead:"
