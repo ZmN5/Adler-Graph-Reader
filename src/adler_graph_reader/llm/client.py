@@ -49,7 +49,8 @@ DEFAULT_ENABLE_THINKING = False  # Disable thinking for faster responses
 # Environment variable names for API keys
 ENV_OPENAI_API_KEY = "OPENAI_API_KEY"
 ENV_ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY"
-ENV_ADLER_LLM_BACKEND = "ADLER_LLM_BACKEND"  # lmstudio | openai | anthropic
+ENV_ADLER_LLM_BACKEND = "ADLER_LLM_BACKEND"  # lmstudio | ollama | openai | anthropic
+ENV_OLLAMA_BASE_URL = "OLLAMA_BASE_URL"
 
 
 def get_configured_backend() -> tuple[LLMBackend, str]:
@@ -59,9 +60,10 @@ def get_configured_backend() -> tuple[LLMBackend, str]:
     Priority:
     1. If ADLER_LLM_BACKEND is set explicitly, use that
     2. If LM Studio is available (default base URL), use LM Studio
-    3. If OPENAI_API_KEY is set, use OpenAI
-    4. If ANTHROPIC_API_KEY is set, use Anthropic
-    5. Default to LM Studio (may fail if not running)
+    3. If OLLAMA is configured, use OLLAMA
+    4. If OPENAI_API_KEY is set, use OpenAI
+    5. If ANTHROPIC_API_KEY is set, use Anthropic
+    6. Default to LM Studio (may fail if not running)
 
     Returns:
         Tuple of (backend, api_key)
@@ -83,15 +85,22 @@ def get_configured_backend() -> tuple[LLMBackend, str]:
             raise ValueError(
                 f"ADLER_LLM_BACKEND=anthropic but {ENV_ANTHROPIC_API_KEY} is not set"
             )
+        elif explicit_backend == "ollama":
+            return LLMBackend.OLLAMA, "not-needed"
         elif explicit_backend == "lmstudio":
             return LLMBackend.LM_STUDIO, "not-needed"
 
     # Auto-detect based on available credentials
-    # Priority: LM Studio > OpenAI > Anthropic
+    # Priority: LM Studio > OLLAMA > OpenAI > Anthropic
     lm_studio_url = os.getenv("ADLER_LLM_BASE_URL", DEFAULT_BASE_URL)
-    if lm_studio_url == DEFAULT_BASE_URL or lm_studio_url.startswith("http://localhost"):
+    if lm_studio_url == DEFAULT_BASE_URL or lm_studio_url.startswith("http://localhost:1234"):
         # Assume LM Studio is intended if using default local URL
         return LLMBackend.LM_STUDIO, "not-needed"
+
+    # Check for OLLAMA
+    ollama_url = os.getenv(ENV_OLLAMA_BASE_URL, OLLAMA_BASE_URL)
+    if ollama_url.startswith("http://localhost:11434"):
+        return LLMBackend.OLLAMA, "not-needed"
 
     openai_key = os.getenv(ENV_OPENAI_API_KEY, "")
     if openai_key:
@@ -185,6 +194,12 @@ class OllamaClient(LLMProvider):
             self.base_url = "https://api.anthropic.com/v1"
             if self.model == DEFAULT_MODEL:
                 self.model = "claude-3-haiku-20240307"
+        elif self._backend == LLMBackend.OLLAMA:
+            # OLLAMA uses OpenAI-compatible API at /v1 endpoint
+            ollama_base = os.getenv(ENV_OLLAMA_BASE_URL, OLLAMA_BASE_URL)
+            self.base_url = f"{ollama_base}/v1"
+            if self.model == DEFAULT_MODEL:
+                self.model = DEFAULT_OLLAMA_MODEL
 
     @property
     def backend(self) -> LLMBackend:
