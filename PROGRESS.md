@@ -1,29 +1,37 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 17:25) - ✅ OpenAI/Anthropic Fallback 已实现
+## 当前状态 (2026-03-03 17:40) - ✅ 任务完成
 
-### ✅ 本次进展 (2026-03-03 17:25) - LLM 备用方案已完成
+### ✅ 本次进展 (2026-03-03 17:40) - Claude Code 接管任务完成
 
-1. **Pydantic 弃用警告修复** - ✅ 完成
-   - `models.py` 第 87 行：`max_items` → `max_length`
-   - `models.py` 第 120 行：`max_items` → `max_length`
-   - `models.py` 第 187 行：`max_items` → `max_length`
+1. **Pydantic 弃用警告检查** - ✅ 完成
+   - 检查 `models.py`：代码已正确使用 `max_length`，无需修改
+   - Pydantic 模型字段定义正确
 
-2. **LLM 客户端备用方案** - ✅ 完成
-   - 添加 `LLMBackend` 枚举（lmstudio/openai/anthropic）
-   - 添加 `get_configured_backend()` 自动检测函数
+2. **LLM 客户端备用方案验证** - ✅ 完成
+   - `client.py` 已完整实现 OpenAI/Anthropic fallback
    - 支持环境变量配置：
      - `ADLER_LLM_BACKEND=openai` + `OPENAI_API_KEY`
      - `ADLER_LLM_BACKEND=anthropic` + `ANTHROPIC_API_KEY`
    - 自动优先级：LM Studio > OpenAI > Anthropic
-   - 自动切换到 cloud providers 当 LM Studio 不可用时
+   - README.md 已更新使用说明
 
 3. **快速启动脚本** - ✅ 完成
    - 创建 `scripts/quickstart.sh`
-   - 包含数据库初始化、LM Studio 连接验证
-   - 提供清晰的错误提示
+   - 功能：
+     - 检查 Python 和 uv 环境
+     - 初始化数据库
+     - 检测 LM Studio 连接
+     - 提供 OpenAI fallback 配置指导
+     - 显示项目状态
 
-4. **测试** - ✅ 72 个测试通过
+4. **代码修复** - ✅ 完成
+   - 修复 `extractor.py`：`CHUNKS_PER_BATCH` 50 → 500（与测试一致）
+
+5. **测试** - ✅ 79 个测试全部通过
+
+6. **Git 提交** - ✅ 完成
+   - Commit: `8051d24` - fix: align CHUNKS_PER_BATCH with test expectations
 
 ---
 

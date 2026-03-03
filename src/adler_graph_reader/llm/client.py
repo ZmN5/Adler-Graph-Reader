@@ -23,12 +23,16 @@ class LLMBackend(Enum):
     """Supported LLM backends."""
 
     LM_STUDIO = "lmstudio"
+    OLLAMA = "ollama"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
 
 
 # Default LM Studio configuration
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
+# Ollama configuration
+OLLAMA_BASE_URL = "http://localhost:11434"
+DEFAULT_OLLAMA_MODEL = "qwen2.5:3b"
 # Model configuration - can be overridden via environment variable ADLER_LLM_MODEL
 # Default: qwen3.5-9b (must match the model loaded in LM Studio)
 # Fallback models are tried in order if the primary fails
