@@ -82,10 +82,25 @@ class KnowledgeGraph:
         self,
         document_id: str,
         theme_ids: Optional[list[int]] = None,
+        max_concepts: Optional[int] = None,
     ) -> list[ConceptModel]:
-        """Extract and store concepts for a document."""
+        """Extract and store concepts for a document with progress tracking."""
+        # Load or create progress
+        progress = None
+        if self.track_progress and self.progress_manager:
+            progress = self.progress_manager.load_progress(document_id)
+            if progress is None:
+                progress = self.progress_manager.create_progress(document_id)
+
         extractor = ConceptExtractor()
-        concepts = extractor.extract(self.conn, document_id, theme_ids)
+        concepts = extractor.extract(
+            self.conn,
+            document_id,
+            theme_ids,
+            max_concepts=max_concepts,
+            progress=progress,
+            progress_manager=self.progress_manager,
+        )
 
         # Store in database
         stored_concepts = []

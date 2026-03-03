@@ -8,12 +8,13 @@ from typing import Any, Optional
 from ..config import get_config
 from ..llm import OllamaClient, get_default_client
 from ..llm.models import (
-    ThemeExtraction,
+    EnhancedConcept,
     EnhancedConceptExtraction,
     EnhancedRelationExtraction,
-    EnhancedConcept,
+    ThemeExtraction,
 )
 from .graph_models import ConceptModel, RelationModel, ThemeModel
+from .progress import ExtractionProgress, ExtractionStage, ProgressManager
 
 
 class ThemeExtractor:
@@ -150,59 +151,215 @@ Please output in the specified format. {lang_suffix}"""
 class ConceptExtractor:
     """Extract concepts with definitions and examples from document."""
 
+    # Configuration for batch processing
+    CHUNKS_PER_BATCH = 500  # Process 500 chunks per batch
+    MAX_CHUNKS_TO_PROCESS = 3000  # Maximum chunks to process (for large documents)
+    CONCEPTS_PER_CHUNK_RATIO = 0.035  # ~1 concept per 28 chunks
+    MIN_CONCEPTS = 100
+    MAX_CONCEPTS_HARD_LIMIT = 1500
+
     def __init__(self, client: Optional[OllamaClient] = None):
         self.client = client or get_default_client()
+
+    def _get_total_chunks(self, conn: sqlite3.Connection, document_id: str) -> int:
+        """Get total number of chunks for a document."""
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM document_tree
+            WHERE document_id = ? AND type = 'chunk'
+            """,
+            (document_id,),
+        )
+        return cursor.fetchone()[0]
+
+    def _calculate_target_concepts(self, total_chunks: int) -> int:
+        """Calculate target number of concepts based on document size."""
+        target = int(total_chunks * self.CONCEPTS_PER_CHUNK_RATIO)
+        # Clamp between min and max
+        return max(self.MIN_CONCEPTS, min(target, self.MAX_CONCEPTS_HARD_LIMIT))
+
+    def _get_chunk_batch(
+        self,
+        conn: sqlite3.Connection,
+        document_id: str,
+        offset: int,
+        limit: int,
+    ) -> list[tuple[int, str]]:
+        """Get a batch of chunks for processing."""
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, content FROM document_tree
+            WHERE document_id = ? AND type = 'chunk'
+            ORDER BY id
+            LIMIT ? OFFSET ?
+            """,
+            (document_id, limit, offset),
+        )
+        return [(row[0], row[1]) for row in cursor.fetchall()]
+
+    def _extract_concept_names_from_batch(
+        self,
+        chunks: list[tuple[int, str]],
+        max_names: int,
+        existing_names: set[str],
+    ) -> list[str]:
+        """Extract concept names from a batch of chunks."""
+        config = get_config()
+        lang_suffix = config.get_prompt_suffix()
+
+        # Sample chunks for diversity - take up to 15 chunks from the batch
+        sample_size = min(15, len(chunks))
+        sampled_chunks = chunks[:: max(1, len(chunks) // sample_size)][:sample_size]
+
+        combined = "\n\n---\n\n".join(
+            [f"[Chunk {ch[0]}]:\n{ch[1][:800]}" for ch in sampled_chunks]
+        )
+
+        if config.language == "zh":
+            prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法/技术/原则）：
+
+{combined}
+
+请列出最多 {max_names} 个最重要的核心概念名称（名词术语），按重要性从高到低排序。
+每行一个概念，不要编号，不要额外说明。
+确保提取的概念覆盖机器学习系统设计、模型训练、部署、监控等各个方面。{lang_suffix}"""
+            system_msg = "你是一个概念识别专家，擅长从学术文本中识别关键术语。请尽可能多地提取重要概念，但只返回真实存在的概念名称。"
+        else:  # English
+            prompt = f"""Identify core concepts (key terms/theories/methods/technologies/principles) from the following academic text:
+
+{combined}
+
+List up to {max_names} most important core concept names (noun terms), ranked by importance.
+One concept per line, no numbering, no extra explanation.
+Ensure the extracted concepts cover ML system design, model training, deployment, monitoring, etc. {lang_suffix}"""
+            system_msg = "You are a concept recognition expert, skilled at identifying key terms from academic texts. Extract as many important concepts as possible, but only return real concept names."
+
+        try:
+            response = self.client.generate(
+                prompt,
+                system=system_msg,
+                temperature=0.5,
+            )
+            concept_names = [
+                line.strip().lstrip("0123456789.-* ")
+                for line in response.strip().split("\n")
+                if line.strip() and len(line.strip()) > 2
+            ]
+            # Filter out duplicates with existing names (case-insensitive)
+            new_names = []
+            for name in concept_names:
+                name_lower = name.lower()
+                if name_lower not in existing_names:
+                    new_names.append(name)
+                    existing_names.add(name_lower)
+            return new_names[:max_names]
+        except Exception as e:
+            print(f"Warning: Failed to extract concept names from batch: {e}")
+            return []
 
     def extract(
         self,
         conn: sqlite3.Connection,
         document_id: str,
         theme_ids: Optional[list[int]] = None,
-        max_concepts: int = 100,
+        max_concepts: Optional[int] = None,
+        progress: Optional[ExtractionProgress] = None,
+        progress_manager: Optional[ProgressManager] = None,
     ) -> list[ConceptModel]:
         """
-        Extract concepts from document using enhanced extraction.
+        Extract concepts from document using batch processing with progress tracking.
 
         Pipeline:
-        1. Identify concept candidates from document content
-        2. Extract detailed information for each concept (definition, explanation, examples)
-        3. Evaluate importance based on frequency and centrality
+        1. Calculate target concept count based on document size
+        2. Process chunks in batches to collect concept candidates
+        3. Extract detailed information for each unique concept
+        4. Support resumable extraction via progress tracking
         """
         cursor = conn.cursor()
 
-        # Get document content for concept extraction
-        # Use 'chunk' type since 'chapter' only has titles, not full content
-        # Increased from 20 to 50 chunks for better concept coverage
-        cursor.execute(
-            """
-            SELECT id, content FROM document_tree
-            WHERE document_id = ? AND type = 'chunk'
-            ORDER BY RANDOM()
-            LIMIT 200
-            """,
-            (document_id,),
-        )
-        chunks = [(row[0], row[1]) for row in cursor.fetchall()]
+        # Get total chunks and calculate target
+        total_chunks = self._get_total_chunks(conn, document_id)
+        target_concepts = max_concepts or self._calculate_target_concepts(total_chunks)
+        target_concepts = min(target_concepts, self.MAX_CONCEPTS_HARD_LIMIT)
 
-        if not chunks:
-            # Fallback: try any type
-            cursor.execute(
-                """
-                SELECT id, content FROM document_tree
-                WHERE document_id = ?
-                ORDER BY id
-                LIMIT 50
-                """,
-                (document_id,),
-            )
-            chunks = [(row[0], row[1]) for row in cursor.fetchall()]
+        print(f"[ConceptExtractor] Document has {total_chunks} chunks")
+        print(f"[ConceptExtractor] Target concepts: {target_concepts}")
 
-        # Step 1: Extract concept names first (lightweight)
-        concept_names = self._extract_concept_names(chunks, max_concepts * 2)
+        # Update progress
+        if progress and progress_manager:
+            progress.stage = ExtractionStage.CONCEPTS_EXTRACTING
+            progress.total_concepts = target_concepts
+            progress_manager.save_progress(progress)
+
+        # Step 1: Collect concept candidates from batches
+        all_concept_names: list[str] = []
+        existing_names: set[str] = set()
+
+        # Check if we have a partially processed queue
+        if progress and progress.concept_queue:
+            print(f"[ConceptExtractor] Resuming with {len(progress.concept_queue)} concepts in queue")
+            all_concept_names = progress.concept_queue.copy()
+            existing_names = {name.lower() for name in progress.processed_concepts}
+            existing_names.update({name.lower() for name in all_concept_names})
+        else:
+            # Determine how many chunks to process
+            chunks_to_process = min(total_chunks, self.MAX_CHUNKS_TO_PROCESS)
+            num_batches = (chunks_to_process + self.CHUNKS_PER_BATCH - 1) // self.CHUNKS_PER_BATCH
+
+            print(f"[ConceptExtractor] Processing {chunks_to_process} chunks in {num_batches} batches")
+
+            for batch_idx in range(num_batches):
+                offset = batch_idx * self.CHUNKS_PER_BATCH
+                chunks = self._get_chunk_batch(
+                    conn, document_id, offset, self.CHUNKS_PER_BATCH
+                )
+
+                if not chunks:
+                    break
+
+                # Calculate how many new concepts to extract from this batch
+                remaining_slots = target_concepts * 2 - len(all_concept_names)
+                if remaining_slots <= 0:
+                    break
+
+                batch_max = min(50, remaining_slots // (num_batches - batch_idx + 1) + 10)
+
+                print(f"[ConceptExtractor] Batch {batch_idx + 1}/{num_batches}: extracting up to {batch_max} concepts")
+
+                batch_names = self._extract_concept_names_from_batch(
+                    chunks, batch_max, existing_names
+                )
+                all_concept_names.extend(batch_names)
+
+                print(f"[ConceptExtractor] Batch {batch_idx + 1}: found {len(batch_names)} new concepts (total: {len(all_concept_names)})")
+
+                # Early termination if we have enough candidates
+                if len(all_concept_names) >= target_concepts * 1.5:
+                    print(f"[ConceptExtractor] Collected enough concept candidates ({len(all_concept_names)})")
+                    break
 
         # Step 2: Extract detailed information for each concept
-        concepts = []
-        for name in concept_names[:max_concepts]:
+        concepts: list[ConceptModel] = []
+
+        # Initialize progress queue if needed
+        if progress:
+            if not progress.concept_queue:
+                progress.concept_queue = all_concept_names.copy()
+            progress.total_concepts = min(len(all_concept_names), target_concepts)
+            if progress_manager:
+                progress_manager.save_progress(progress)
+
+        # Process concepts
+        names_to_process = all_concept_names[:target_concepts]
+        processed_count = 0
+
+        for idx, name in enumerate(names_to_process):
+            # Skip already processed concepts when resuming
+            if progress and name in progress.processed_concepts:
+                continue
+
             try:
                 # Find source chunks for this concept
                 cursor.execute(
@@ -210,13 +367,17 @@ class ConceptExtractor:
                     SELECT d.id, d.content FROM document_tree d
                     WHERE d.document_id = ? AND d.content LIKE ?
                     ORDER BY d.id
-                    LIMIT 2
+                    LIMIT 3
                     """,
                     (document_id, f"%{name}%"),
                 )
                 chunk_rows = cursor.fetchall()
 
                 if not chunk_rows:
+                    # Mark as processed even if no chunks found
+                    if progress and progress_manager:
+                        progress.mark_concept_processed(name)
+                        progress_manager.save_progress(progress)
                     continue
 
                 chunk_ids = [row[0] for row in chunk_rows]
@@ -224,7 +385,7 @@ class ConceptExtractor:
                     [f"[Chunk {row[0]}]: {row[1][:600]}" for row in chunk_rows]
                 )
 
-                # Extract concept details with timeout handling
+                # Extract concept details
                 concept_data = self._extract_single_concept(name, context)
 
                 if concept_data:
@@ -245,61 +406,35 @@ class ConceptExtractor:
                         embedding=embedding,
                     )
                     concepts.append(concept)
+                    processed_count += 1
+
+                    # Update progress every 5 concepts
+                    if progress and progress_manager and processed_count % 5 == 0:
+                        progress.mark_concept_processed(name)
+                        progress.extracted_concepts = len(concepts)
+                        progress_manager.save_progress(progress)
+                        print(f"[ConceptExtractor] Progress: {len(concepts)}/{target_concepts} concepts extracted")
+
+                # Mark as processed
+                if progress and progress_manager:
+                    progress.mark_concept_processed(name)
+                    progress_manager.save_progress(progress)
+
             except Exception as e:
                 print(f"Warning: Failed to process concept {name}: {e}")
+                if progress and progress_manager:
+                    progress.add_error(str(e), f"Processing concept: {name}")
+                    progress_manager.save_progress(progress)
                 continue
 
+        # Final progress update
+        if progress and progress_manager:
+            progress.stage = ExtractionStage.CONCEPTS_COMPLETE
+            progress.extracted_concepts = len(concepts)
+            progress_manager.save_progress(progress)
+
+        print(f"[ConceptExtractor] Completed: extracted {len(concepts)} concepts")
         return concepts
-
-    def _extract_concept_names(
-        self,
-        chunks: list[tuple[int, str]],
-        max_names: int,
-    ) -> list[str]:
-        """Extract concept names from document chunks."""
-        config = get_config()
-        lang_suffix = config.get_prompt_suffix()
-
-        # Use more chunks for better concept coverage - increased from 3 to 10 chunks
-        # Each chunk limited to 600 chars, max 10 chunks = 6000 chars total
-        combined = "\n\n---\n\n".join(
-            [f"[Chunk {ch[0]}]:\n{ch[1][:600]}" for ch in chunks[:10]]
-        )
-
-        if config.language == "zh":
-            prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法/技术/原则）：
-
-{combined}
-
-请列出 {max_names} 个最重要的核心概念名称（名词术语），按重要性从高到低排序。
-每行一个概念，不要编号，不要额外说明。
-确保提取的概念覆盖机器学习系统设计、模型训练、部署、监控等各个方面。{lang_suffix}"""
-            system_msg = "你是一个概念识别专家，擅长从学术文本中识别关键术语。请尽可能多地提取重要概念。"
-        else:  # English
-            prompt = f"""Identify core concepts (key terms/theories/methods/technologies/principles) from the following academic text:
-
-{combined}
-
-List the {max_names} most important core concept names (noun terms), ranked by importance.
-One concept per line, no numbering, no extra explanation.
-Ensure the extracted concepts cover ML system design, model training, deployment, monitoring, etc. {lang_suffix}"""
-            system_msg = "You are a concept recognition expert, skilled at identifying key terms from academic texts. Extract as many important concepts as possible."
-
-        try:
-            response = self.client.generate(
-                prompt,
-                system=system_msg,
-                temperature=0.5,
-            )
-            concept_names = [
-                line.strip().lstrip("0123456789.-* ")
-                for line in response.strip().split("\n")
-                if line.strip() and len(line.strip()) > 2
-            ]
-            return concept_names[:max_names]
-        except Exception as e:
-            print(f"Warning: Failed to extract concept names: {e}")
-            return []
 
     def _extract_single_concept(
         self,
@@ -497,52 +632,31 @@ class RelationExtractor:
         - broader_than: A is a broader category/superconcept of B
         - narrower_than: A is a narrower category/subconcept of B
         - related_to: A and B are semantically related
-        - similar_to: A and B are similar/analogous concepts
-        - prerequisite_for: Understanding A is required for B
-        - causes: A causes or leads to B
-        - supports: A provides evidence/support for B
-        - contradicts: A contradicts or opposes B
-        - part_of: A is a component/part of B
-        - implements: A implements or realizes B
-        - uses: A uses or applies B
-        - produces: A produces or generates B
-        - evaluates: A evaluates or measures B
-        - improves: A improves or enhances B
         """
         if len(concepts) < 2:
+            print("[RelationExtractor] Not enough concepts to extract relations")
             return []
 
-        # Use more concepts for richer relationship extraction
-        concepts_to_use = concepts[:50]  # Increased from 30 to 50
+        # Use more concepts for relation extraction (up to 60)
+        concepts_to_use = concepts[:60] if len(concepts) > 60 else concepts
 
-        # Build concept context with richer information
+        print(f"[RelationExtractor] Extracting relations for {len(concepts_to_use)} concepts")
+
+        # Build concept list for prompt
         concept_list = "\n".join(
-            [
-                f"- {c.name} [{c.category}]: {c.definition[:80]}..."
-                for c in concepts_to_use
-            ]
+            [f"- {c.name} ({c.category or 'concept'})" for c in concepts_to_use]
         )
 
-        # Get context chunks for these concepts
-        cursor = conn.cursor()
+        # Get chunk IDs from all concepts
         all_chunk_ids = set()
         for c in concepts_to_use:
             all_chunk_ids.update(c.source_chunk_ids or [])
 
-        if not all_chunk_ids:
-            # If no chunk IDs, get general document content
-            cursor.execute(
-                """
-                SELECT content FROM document_tree
-                WHERE document_id = ?
-                ORDER BY id
-                LIMIT 30
-                """,
-                (document_id,),
-            )
-            context = "\n\n".join([row[0][:600] for row in cursor.fetchall()])
-        else:
-            placeholders = ",".join("?" * len(all_chunk_ids))
+        # Get context from chunks
+        cursor = conn.cursor()
+        context = ""
+        if all_chunk_ids:
+            placeholders = ",".join(["?"] * len(all_chunk_ids))
             cursor.execute(
                 f"""
                 SELECT content FROM document_tree
@@ -736,12 +850,12 @@ class QAExtractor:
         """
         Answer a question about the document using concepts and context.
         """
-        from ..llm.models import QAResponse
         from ..database import (
-            search_concepts_by_embedding,
-            get_concepts,
             get_chunks_by_ids,
+            get_concepts,
+            search_concepts_by_embedding,
         )
+        from ..llm.models import QAResponse
 
         # Get relevant concepts using semantic search
         question_embedding = self.client.embed(question)
