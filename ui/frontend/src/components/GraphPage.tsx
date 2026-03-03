@@ -1,6 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { graphApi, GraphData, GraphNode, GraphLink } from '../services/api';
+import { graphApi } from '../services/api';
+
+interface GraphNode {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface GraphLink {
+  source: string;
+  target: string;
+  type: string;
+}
 
 interface D3Node extends d3.SimulationNodeDatum {
   id: string;
@@ -23,6 +35,11 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   confidence?: number;
 }
 
+interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
+
 const colorMap: Record<string, string> = {
   person: '#4f46e5',
   organization: '#10b981',
@@ -41,12 +58,6 @@ export default function GraphPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
-  const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; content: string }>({
-    visible: false,
-    x: 0,
-    y: 0,
-    content: '',
-  });
 
   // Fetch graph data
   useEffect(() => {
@@ -103,7 +114,7 @@ export default function GraphPage() {
       .enter()
       .append('line')
       .attr('stroke', '#999')
-      .attr('stroke-width', (d) => Math.sqrt(d.confidence || 1) * 2)
+      .attr('stroke-width', 2)
       .attr('stroke-opacity', 0.6);
 
     // Create nodes
@@ -133,7 +144,7 @@ export default function GraphPage() {
 
     // Add circles to nodes
     node.append('circle')
-      .attr('r', (d) => 8 + (d.confidence || 0.5) * 12)
+      .attr('r', 8)
       .attr('fill', (d) => getNodeColor(d.type))
       .attr('stroke', '#fff')
       .attr('stroke-width', 2);
@@ -148,36 +159,23 @@ export default function GraphPage() {
       .style('pointer-events', 'none');
 
     // Node interactions
-    node
-      .on('mouseover', (event, d) => {
-        setTooltip({
-          visible: true,
-          x: event.pageX + 10,
-          y: event.pageY - 10,
-          content: `<strong>${d.name}</strong><br/>类型: ${d.type}<br/>置信度: ${((d.confidence || 0) * 100).toFixed(1)}%`,
-        });
-      })
-      .on('mousemove', (event) => {
-        setTooltip((prev) => ({ ...prev, x: event.pageX + 10, y: event.pageY - 10 }));
-      })
-      .on('mouseout', () => setTooltip((prev) => ({ ...prev, visible: false })))
-      .on('click', (event, d) => {
-        event.stopPropagation();
-        setSelectedNode(d);
-        const connectedIds = new Set<string>([d.id]);
-        links.forEach((l) => {
-          const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
-          const targetId = typeof l.target === 'string' ? l.target : l.target.id;
-          if (sourceId === d.id) connectedIds.add(targetId);
-          if (targetId === d.id) connectedIds.add(sourceId);
-        });
-        node.style('opacity', (n) => (connectedIds.has(n.id) ? 1 : 0.2));
-        link.style('opacity', (l) => {
-          const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
-          const targetId = typeof l.target === 'string' ? l.target : l.target.id;
-          return sourceId === d.id || targetId === d.id ? 1 : 0.1;
-        });
+    node.on('click', (event, d) => {
+      event.stopPropagation();
+      setSelectedNode(d);
+      const connectedIds = new Set<string>([d.id]);
+      links.forEach((l) => {
+        const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
+        const targetId = typeof l.target === 'string' ? l.target : l.target.id;
+        if (sourceId === d.id) connectedIds.add(targetId);
+        if (targetId === d.id) connectedIds.add(sourceId);
       });
+      node.style('opacity', (n) => (connectedIds.has(n.id) ? 1 : 0.2));
+      link.style('opacity', (l) => {
+        const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
+        const targetId = typeof l.target === 'string' ? l.target : l.target.id;
+        return sourceId === d.id || targetId === d.id ? 1 : 0.1;
+      });
+    });
 
     // Click background to reset
     svg.on('click', () => {
@@ -196,7 +194,9 @@ export default function GraphPage() {
       node.attr('transform', (d) => `translate(${d.x || 0},${d.y || 0})`);
     });
 
-    return () => simulation.stop();
+    return () => {
+      simulation.stop();
+    };
   }, [graphData]);
 
   if (loading) {
@@ -226,15 +226,13 @@ export default function GraphPage() {
             节点: {graphData?.nodes.length || 0} | 关系: {graphData?.links.length || 0}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 text-sm">
-            {Object.entries(colorMap).map(([type, color]) => (
-              <div key={type} className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></span>
-                <span className="text-gray-600 capitalize">{type}</span>
-              </div>
-            ))}
-          </div>
+        <div className="flex items-center gap-3 text-sm">
+          {Object.entries(colorMap).map(([type, color]) => (
+            <div key={type} className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></span>
+              <span className="text-gray-600 capitalize">{type}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -242,59 +240,31 @@ export default function GraphPage() {
       <div ref={containerRef} className="flex-1 relative bg-gray-50">
         <svg ref={svgRef} className="w-full h-full"></svg>
 
-        {/* Tooltip */}
-        {tooltip.visible && (
-          <div className="tooltip" style={{ left: tooltip.x, top: tooltip.y }} dangerouslySetInnerHTML={{ __html: tooltip.content }} />
-        )}
-
         {/* Selected Node Panel */}
         {selectedNode && (
-          <div className="absolute right-4 top-4 w-80 bg-white rounded-lg shadow-lg p-4" style={{ animation: 'fadeIn 0.3s ease' }}>
+          <div className="absolute right-4 top-4 w-72 bg-white rounded-lg shadow-lg p-4">
             <div className="flex items-start justify-between mb-3">
               <h3 className="text-lg font-semibold text-gray-800">{selectedNode.name}</h3>
               <button
-                onClick={() => {
-                  setSelectedNode(null);
-                  d3.select(svgRef.current).selectAll('.nodes g').style('opacity', 1);
-                  d3.select(svgRef.current).selectAll('.links line').style('opacity', 0.6);
-                }}
+                onClick={() => setSelectedNode(null)}
                 className="text-gray-400 hover:text-gray-600"
               >
                 ✕
               </button>
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500">类型:</span>
-                <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: getNodeColor(selectedNode.type) }}>
-                  {selectedNode.type}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500">置信度:</span>
-                <span>{((selectedNode.confidence || 0) * 100).toFixed(1)}%</span>
-              </div>
-              {selectedNode.description && (
-                <div>
-                  <span className="text-gray-500">描述:</span>
-                  <p className="mt-1 text-gray-700">{selectedNode.description}</p>
-                </div>
-              )}
+            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+              <p>类型: {selectedNode.type}</p>
+              <p>ID: {selectedNode.id}</p>
             </div>
+            <button
+              className="btn btn-secondary"
+              style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}
+              onClick={() => setSelectedNode(null)}
+            >
+              关闭
+            </button>
           </div>
         )}
-
-        {/* Controls */}
-        <div className="absolute left-4 bottom-4 flex flex-col gap-2">
-          <button
-            onClick={() => {
-              d3.select(svgRef.current).transition().duration(750).call(d3.zoom().transform, d3.zoomIdentity);
-            }}
-            className="btn btn-secondary shadow"
-          >
-            ⟲ 重置视图
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import api from '../services/api';
+import { api } from '../services/api';
 
 interface Message {
   id: string;

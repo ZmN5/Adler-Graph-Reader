@@ -206,4 +206,44 @@ export const qaApi = {
   },
 };
 
+// Combined API object for convenience
+export const api = {
+  documents: documentsApi,
+  concepts: conceptsApi,
+  relations: relationsApi,
+  graph: graphApi,
+  qa: qaApi,
+  
+  // Additional methods expected by components
+  getConcepts: async (params: { page?: number; page_size?: number; search?: string }) => {
+    const response = await apiClient.get('/concepts', { params });
+    return response.data;
+  },
+  
+  getConcept: async (id: number) => {
+    const response = await apiClient.get(`/concepts/${id}`);
+    return response.data;
+  },
+  
+  query: async (params: { question: string; document_id: string; session_id?: string }) => {
+    const response = await apiClient.post('/qa', params);
+    return response.data;
+  },
+  
+  // Search method expected by SearchPage
+  search: async (params: { query: string; document_id: string; top_k?: number; use_reranker?: boolean }) => {
+    const response = await apiClient.post('/search', params);
+    return response.data;
+  },
+
+  // Export graph
+  exportGraph: async (documentId: string, format: 'json' | 'graphml' | 'gexf' | 'dot') => {
+    const response = await apiClient.post('/graph/export', {
+      document_id: documentId,
+      format,
+    });
+    return response.data;
+  },
+};
+
 export default apiClient;

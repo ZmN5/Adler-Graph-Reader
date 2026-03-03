@@ -1,6 +1,45 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 10:14) - 🔄 UI 构建修复中
+## 当前状态 (2026-03-03 09:48) - ✅ Chonkie 智能 Chunking 完成
+
+### ✅ 本次进展 (2026-03-03 09:48) - Chonkie 集成完成
+
+1. **添加 Chonkie 依赖** - ✅ 完成
+   - `pyproject.toml` 添加 `chonkie>=0.5.0`
+
+2. **创建 chunking 模块** - ✅ 完成
+   - `src/adler_graph_reader/chunking/__init__.py`
+   - `src/adler_graph_reader/chunking/chonkie_splitter.py`
+   - 实现 `ChonkieSplitter` 类，支持 LM Studio embedding API
+   - 使用 `qwen3-embedding-0.6b` 模型（通过 OpenAI API 调用）
+   - chunk_size=400 tokens, similarity_threshold=0.7
+
+3. **更新 PDF Parser** - ✅ 完成
+   - 使用 Chonkie 进行语义切分替代简单段落切分
+   - 保持章节结构信息
+   - 优化后 chunk 数量：28,465 → ~3,000-5,000 (预期)
+
+4. **更新 EPUB Parser** - ✅ 完成
+   - 同样使用 Chonkie 语义切分
+   - 保持章节结构信息
+
+5. **代码质量** - ✅ 通过
+   - `uv run ruff check src/` - 全部通过
+   - 58个单元测试全部通过
+
+### 📊 优化目标
+
+| 指标 | 优化前 | 优化后目标 |
+|------|--------|-----------|
+| Chunks 数量 | 28,465 | 3,000-5,000 |
+| 平均 chunk 大小 | ~50 tokens | ~300-400 tokens |
+| 语义连贯性 | 低（段落级） | 高（语义级） |
+
+---
+
+## 历史进展
+
+### 当前状态 (2026-03-03 10:14) - 🔄 UI 构建修复中
 
 ### 🔄 本次进展 (2026-03-03 10:14) - UI 构建修复
 

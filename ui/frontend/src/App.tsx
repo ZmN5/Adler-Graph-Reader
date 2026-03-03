@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import GraphPage from './components/GraphPage';
 import DocumentsPage from './components/DocumentsPage';
 

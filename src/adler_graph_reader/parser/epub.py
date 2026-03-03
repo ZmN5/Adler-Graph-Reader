@@ -1,5 +1,5 @@
 """
-EPUB parser implementation using ebooklib.
+EPUB parser implementation using ebooklib with Chonkie semantic chunking.
 """
 
 import html
@@ -11,6 +11,7 @@ import ebooklib
 from ebooklib.epub import EpubBook
 
 from . import Chunk, DocumentParser, ParsedDocument
+from ..chunking import create_chonkie_splitter
 
 
 def clean_html_text(html_content: Union[str, bytes]) -> str:
@@ -40,8 +41,25 @@ def clean_html_text(html_content: Union[str, bytes]) -> str:
     return text.strip()
 
 
+def is_heading(text: str) -> bool:
+    """Check if text appears to be a heading."""
+    text = text.strip()
+    if len(text) < 3 or len(text) > 200:
+        return False
+
+    # Short lines without ending punctuation
+    if len(text.split()) <= 10 and not any(c in text for c in ".!?"):
+        return True
+
+    # Numbered headings like "1. Introduction"
+    if re.match(r"^\d+[\.\s]+", text):
+        return True
+
+    return False
+
+
 class EPUBParser(DocumentParser):
-    """Parser for EPUB documents using ebooklib."""
+    """Parser for EPUB documents using ebooklib with Chonkie chunking."""
 
     def __init__(self, file_path: Path):
         super().__init__(file_path)
@@ -67,64 +85,66 @@ class EPUBParser(DocumentParser):
         return self.file_path.stem
 
     def parse(self) -> ParsedDocument:
-        """Parse EPUB into chunks with hierarchical structure."""
+        """Parse EPUB into chunks with hierarchical structure using Chonkie."""
         if self.book is None:
             self.book = ebooklib.epub.read_epub(self.file_path)
 
-        chunks: list[Chunk] = []
-        current_chapter: Optional[str] = None
+        # Collect all document content
+        full_text_parts: list[tuple[str, str]] = []  # (chapter_hint, text)
+        current_chapter_hint = ""
 
         # Get all items in reading order
         items = list(self.book.get_items())
 
         for item in items:
-            # Only process document content (type 0 = document/unknown in this version)
-            # Filter out images, styles, fonts, etc.
+            # Only process document content
             item_type = item.get_type()
             if item_type not in (0, ebooklib.ITEM_DOCUMENT, ebooklib.ITEM_NAVIGATION):
                 continue
 
             content = clean_html_text(item.get_content())
+            if not content.strip():
+                continue
 
-            # Split into paragraphs
-            paragraphs = content.split("\n\n")
-            for para in paragraphs:
-                para = para.strip()
-                if not para:
-                    continue
+            # Try to extract chapter name from content
+            lines = content.split("\n")
+            first_line = lines[0].strip() if lines else ""
 
-                # Check if it's a heading (short, no punctuation, possibly numbered)
-                lines = para.split("\n")
-                first_line = lines[0].strip()
+            if is_heading(first_line):
+                current_chapter_hint = first_line
 
-                # Simple heuristic: short lines without ending punctuation
-                if len(first_line) < 100 and len(first_line.split()) <= 10:
-                    if not any(c in first_line for c in ".!?"):
-                        current_chapter = first_line
-                        chunks.append(
-                            Chunk(
-                                content=first_line,
-                                chapter_title=first_line,
-                                level=1,
-                            )
-                        )
-                        # If there are more lines, treat as chapter intro
-                        if len(lines) > 1:
-                            intro = "\n".join(lines[1:]).strip()
-                            if intro:
-                                chunks.append(
-                                    Chunk(
-                                        content=intro,
-                                        chapter_title=current_chapter,
-                                        level=2,
-                                    )
-                                )
-                        continue
+            full_text_parts.append((current_chapter_hint, content))
 
-                # Regular content
+        # Combine all text for semantic chunking
+        full_text = "\n\n".join([text for _, text in full_text_parts])
+
+        # Use Chonkie for semantic chunking
+        splitter = create_chonkie_splitter()
+        semantic_chunks = splitter.chunk(full_text)
+
+        # Map chunks back to chapters
+        chunks: list[Chunk] = []
+        current_chapter: Optional[str] = None
+
+        for chunk in semantic_chunks:
+            content = chunk.text
+
+            # Check if this chunk starts with a heading
+            first_line = content.split("\n")[0].strip()
+            if is_heading(first_line):
+                current_chapter = first_line
                 chunks.append(
                     Chunk(
-                        content=para,
+                        content=content,
+                        chapter_title=current_chapter,
+                        level=1,
+                    )
+                )
+            else:
+                # Regular content chunk
+                chunks.append(
+                    Chunk(
+                        content=content,
                         chapter_title=current_chapter,
                         level=2 if current_chapter else 1,
                     )
@@ -135,5 +155,7 @@ class EPUBParser(DocumentParser):
             chunks=chunks,
             metadata={
                 "file_path": str(self.file_path),
+                "total_chunks": len(chunks),
+                "avg_chunk_tokens": sum(c.token_count for c in semantic_chunks) / len(semantic_chunks) if semantic_chunks else 0,
             },
         )
