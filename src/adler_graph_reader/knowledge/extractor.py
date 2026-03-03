@@ -299,16 +299,22 @@ Ensure the extracted concepts cover ML system design, model training, deployment
 
         # Check if we have a partially processed queue
         if progress and progress.concept_queue:
-            print(f"[ConceptExtractor] Resuming with {len(progress.concept_queue)} concepts in queue")
+            print(
+                f"[ConceptExtractor] Resuming with {len(progress.concept_queue)} concepts in queue"
+            )
             all_concept_names = progress.concept_queue.copy()
             existing_names = {name.lower() for name in progress.processed_concepts}
             existing_names.update({name.lower() for name in all_concept_names})
         else:
             # Determine how many chunks to process
             chunks_to_process = min(total_chunks, self.MAX_CHUNKS_TO_PROCESS)
-            num_batches = (chunks_to_process + self.CHUNKS_PER_BATCH - 1) // self.CHUNKS_PER_BATCH
+            num_batches = (
+                chunks_to_process + self.CHUNKS_PER_BATCH - 1
+            ) // self.CHUNKS_PER_BATCH
 
-            print(f"[ConceptExtractor] Processing {chunks_to_process} chunks in {num_batches} batches")
+            print(
+                f"[ConceptExtractor] Processing {chunks_to_process} chunks in {num_batches} batches"
+            )
 
             for batch_idx in range(num_batches):
                 offset = batch_idx * self.CHUNKS_PER_BATCH
@@ -324,20 +330,28 @@ Ensure the extracted concepts cover ML system design, model training, deployment
                 if remaining_slots <= 0:
                     break
 
-                batch_max = min(50, remaining_slots // (num_batches - batch_idx + 1) + 10)
+                batch_max = min(
+                    50, remaining_slots // (num_batches - batch_idx + 1) + 10
+                )
 
-                print(f"[ConceptExtractor] Batch {batch_idx + 1}/{num_batches}: extracting up to {batch_max} concepts")
+                print(
+                    f"[ConceptExtractor] Batch {batch_idx + 1}/{num_batches}: extracting up to {batch_max} concepts"
+                )
 
                 batch_names = self._extract_concept_names_from_batch(
                     chunks, batch_max, existing_names
                 )
                 all_concept_names.extend(batch_names)
 
-                print(f"[ConceptExtractor] Batch {batch_idx + 1}: found {len(batch_names)} new concepts (total: {len(all_concept_names)})")
+                print(
+                    f"[ConceptExtractor] Batch {batch_idx + 1}: found {len(batch_names)} new concepts (total: {len(all_concept_names)})"
+                )
 
                 # Early termination if we have enough candidates
                 if len(all_concept_names) >= target_concepts * 1.5:
-                    print(f"[ConceptExtractor] Collected enough concept candidates ({len(all_concept_names)})")
+                    print(
+                        f"[ConceptExtractor] Collected enough concept candidates ({len(all_concept_names)})"
+                    )
                     break
 
         # Step 2: Extract detailed information for each concept
@@ -413,7 +427,9 @@ Ensure the extracted concepts cover ML system design, model training, deployment
                         progress.mark_concept_processed(name)
                         progress.extracted_concepts = len(concepts)
                         progress_manager.save_progress(progress)
-                        print(f"[ConceptExtractor] Progress: {len(concepts)}/{target_concepts} concepts extracted")
+                        print(
+                            f"[ConceptExtractor] Progress: {len(concepts)}/{target_concepts} concepts extracted"
+                        )
 
                 # Mark as processed
                 if progress and progress_manager:
@@ -640,7 +656,9 @@ class RelationExtractor:
         # Use more concepts for relation extraction (up to 60)
         concepts_to_use = concepts[:60] if len(concepts) > 60 else concepts
 
-        print(f"[RelationExtractor] Extracting relations for {len(concepts_to_use)} concepts")
+        print(
+            f"[RelationExtractor] Extracting relations for {len(concepts_to_use)} concepts"
+        )
 
         # Build concept list for prompt
         concept_list = "\n".join(

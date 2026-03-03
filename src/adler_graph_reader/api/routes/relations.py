@@ -37,7 +37,9 @@ async def get_concept_relations(
         # Verify concept exists
         concept = database.get_concept_by_id(conn, concept_id)
         if not concept:
-            raise HTTPException(status_code=404, detail=f"Concept {concept_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Concept {concept_id} not found"
+            )
 
         relations_data = database.get_concept_relations(conn, concept_id)
 

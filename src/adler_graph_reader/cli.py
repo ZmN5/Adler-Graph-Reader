@@ -158,9 +158,7 @@ def parse_args() -> argparse.Namespace:
     api.add_argument(
         "--port", "-p", type=int, default=8000, help="Port number (default: 8000)"
     )
-    api.add_argument(
-        "--reload", "-r", action="store_true", help="Enable auto-reload"
-    )
+    api.add_argument("--reload", "-r", action="store_true", help="Enable auto-reload")
 
     # ui command (disabled - new UI in development)
     ui = subparsers.add_parser("ui", help="Launch web UI (temporarily disabled)")

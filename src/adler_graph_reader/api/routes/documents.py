@@ -26,7 +26,7 @@ async def list_documents() -> DocumentListResponse:
     )
 
     rows = cursor.fetchall()
-    
+
     # Also get theme/concept/relation counts per document
     cursor.execute("""
         SELECT document_id, 
@@ -37,8 +37,15 @@ async def list_documents() -> DocumentListResponse:
         WHERE type = 'chunk'
         GROUP BY document_id
     """)
-    stats = {row[0]: {"theme_count": row[1], "concept_count": row[2], "relation_count": row[3]} for row in cursor.fetchall()}
-    
+    stats = {
+        row[0]: {
+            "theme_count": row[1],
+            "concept_count": row[2],
+            "relation_count": row[3],
+        }
+        for row in cursor.fetchall()
+    }
+
     conn.close()
 
     documents = [
@@ -70,7 +77,9 @@ async def get_document(document_id: str) -> DocumentDetailResponse:
 
     if count == 0:
         conn.close()
-        raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Document '{document_id}' not found"
+        )
 
     # Get chunk count
     cursor.execute(

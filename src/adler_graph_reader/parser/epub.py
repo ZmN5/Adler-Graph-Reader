@@ -156,6 +156,9 @@ class EPUBParser(DocumentParser):
             metadata={
                 "file_path": str(self.file_path),
                 "total_chunks": len(chunks),
-                "avg_chunk_tokens": sum(c.token_count for c in semantic_chunks) / len(semantic_chunks) if semantic_chunks else 0,
+                "avg_chunk_tokens": sum(c.token_count for c in semantic_chunks)
+                / len(semantic_chunks)
+                if semantic_chunks
+                else 0,
             },
         )

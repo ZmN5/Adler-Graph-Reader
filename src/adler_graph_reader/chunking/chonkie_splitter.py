@@ -2,19 +2,21 @@
 Chonkie-based semantic chunking with LM Studio embedding support.
 
 This module provides intelligent text chunking using Chonkie's SemanticChunker,
-with a custom embedding function that calls LM Studio's API for qwen3 embeddings.
+with a custom embedding class that calls LM Studio's API for qwen3 embeddings.
 """
 
 from typing import Optional
 import numpy as np
 from openai import OpenAI
 
+from chonkie.embeddings.base import BaseEmbeddings
+
 from ..parser import Chunk, ParsedDocument
 
 
-class LMStudioEmbeddingFunction:
+class LMStudioEmbeddings(BaseEmbeddings):
     """
-    Custom embedding function for Chonkie that uses LM Studio API.
+    Custom embedding class for Chonkie that uses LM Studio API.
     
     This wraps the LM Studio OpenAI-compatible API to provide embeddings
     for Chonkie's semantic chunking algorithm.
@@ -26,6 +28,7 @@ class LMStudioEmbeddingFunction:
         model: str = "qwen3-embedding",
         timeout: float = 60.0,
     ):
+        super().__init__()
         self.base_url = base_url
         self.model = model
         self.timeout = timeout
@@ -42,9 +45,22 @@ class LMStudioEmbeddingFunction:
             )
         return self._client
     
-    def __call__(self, texts: list[str]) -> np.ndarray:
+    def embed(self, text: str) -> np.ndarray:
         """
-        Generate embeddings for a list of texts.
+        Generate embedding for a single text.
+        
+        Args:
+            text: Text string to embed
+            
+        Returns:
+            numpy array of shape (embedding_dim,)
+        """
+        result = self.embed_batch([text])
+        return result[0]
+    
+    def embed_batch(self, texts: list[str]) -> np.ndarray:
+        """
+        Generate embeddings for multiple texts.
         
         Args:
             texts: List of text strings to embed
@@ -64,19 +80,43 @@ class LMStudioEmbeddingFunction:
         embeddings = [item.embedding for item in sorted_data]
         
         # Store dimension for later reference
-        if embeddings:
+        if embeddings and self._embedding_dim is None:
             self._embedding_dim = len(embeddings[0])
         
         return np.array(embeddings)
     
+    def similarity(self, u: np.ndarray, v: np.ndarray) -> float:
+        """
+        Compute cosine similarity between two embeddings.
+        
+        Args:
+            u: First embedding vector
+            v: Second embedding vector
+            
+        Returns:
+            Cosine similarity score
+        """
+        return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
+    
     @property
-    def embedding_dim(self) -> int:
+    def dimension(self) -> int:
         """Get the embedding dimension."""
         if self._embedding_dim is None:
             # Test embedding to determine dimension
-            test_result = self.__call__(["test"])
-            self._embedding_dim = test_result.shape[1]
+            test_result = self.embed("test")
+            self._embedding_dim = len(test_result)
         return self._embedding_dim
+    
+    @property
+    def model_name(self) -> str:
+        """Get the model name."""
+        return self.model
+    
+    def get_tokenizer(self):
+        """Get a default tokenizer for Chonkie."""
+        # Use a lightweight tokenizer for sentence splitting
+        from chonkie.tokenizer import AutoTokenizer
+        return AutoTokenizer("gpt2")  # gpt2 tokenizer is small and fast
 
 
 class ChonkieSplitter:
@@ -111,8 +151,8 @@ class ChonkieSplitter:
         self.similarity_threshold = similarity_threshold
         self.min_chunk_size = min_chunk_size
         
-        # Create custom embedding function
-        self.embedding_func = LMStudioEmbeddingFunction(
+        # Create custom embedding model for Chonkie
+        self.embedding_model = LMStudioEmbeddings(
             base_url=embedding_base_url,
             model=embedding_model,
         )
@@ -127,9 +167,10 @@ class ChonkieSplitter:
                 from chonkie import SemanticChunker
                 
                 self._chunker = SemanticChunker(
-                    embedding_function=self.embedding_func,
+                    embedding_model=self.embedding_model,
+                    threshold=self.similarity_threshold,
                     chunk_size=self.chunk_size,
-                    similarity_threshold=self.similarity_threshold,
+                    min_sentences_per_chunk=1,
                 )
             except ImportError as e:
                 raise ImportError(
@@ -154,6 +195,19 @@ class ChonkieSplitter:
         
         # Extract text content from Chonkie chunks
         return [chunk.text for chunk in chunks]
+    
+    def chunk(self, text: str):
+        """
+        Chunk text and return Chonkie chunk objects with metadata.
+        
+        Args:
+            text: Input text to split
+            
+        Returns:
+            List of Chonkie chunk objects with .text and .token_count attributes
+        """
+        chunker = self._get_chunker()
+        return chunker.chunk(text)
     
     def process_document(self, parsed_doc: ParsedDocument) -> ParsedDocument:
         """
@@ -194,7 +248,7 @@ class ChonkieSplitter:
         
         # Create new chunks with preserved metadata
         new_chunks: list[Chunk] = []
-
+        
         for chunk_text in semantic_chunks:
             # Find the most appropriate metadata for this chunk
             # Use the first non-empty chapter title we can find
@@ -238,13 +292,18 @@ class ChonkieSplitter:
     
     def get_stats(self) -> dict:
         """Get statistics about the chunker configuration."""
-        return {
+        stats = {
             "chunk_size": self.chunk_size,
             "similarity_threshold": self.similarity_threshold,
             "min_chunk_size": self.min_chunk_size,
-            "embedding_model": self.embedding_func.model,
-            "embedding_dim": self.embedding_func.embedding_dim,
+            "embedding_model": self.embedding_model.model,
         }
+        # Only include dimension if already determined
+        if self.embedding_model._embedding_dim is not None:
+            stats["embedding_dim"] = self.embedding_model._embedding_dim
+        else:
+            stats["embedding_dim"] = "unknown (LM Studio not connected)"
+        return stats
 
 
 def create_chonkie_splitter(
@@ -257,10 +316,10 @@ def create_chonkie_splitter(
     Factory function to create a ChonkieSplitter instance.
     
     Args:
-        chunk_size: Target chunk size in tokens (default 400)
-        similarity_threshold: Semantic similarity threshold (default 0.7)
+        chunk_size: Target chunk size in tokens
+        similarity_threshold: Semantic similarity threshold
         embedding_base_url: LM Studio API URL
-        embedding_model: Embedding model name
+        embedding_model: Model name in LM Studio
         
     Returns:
         Configured ChonkieSplitter instance

@@ -108,7 +108,9 @@ async def get_concept(concept_id: int) -> ConceptDetailResponse:
     try:
         concept = database.get_concept_by_id(conn, concept_id)
         if not concept:
-            raise HTTPException(status_code=404, detail=f"Concept {concept_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Concept {concept_id} not found"
+            )
 
         # Get neighbors and relations
         neighbors_data = database.get_concept_relations(conn, concept_id)
@@ -125,15 +127,17 @@ async def get_concept(concept_id: int) -> ConceptDetailResponse:
         for nid in neighbor_ids:
             n = database.get_concept_by_id(conn, nid)
             if n:
-                neighbors.append({
-                    "id": n["id"],
-                    "name": n["name"],
-                    "definition": n["definition"][:100] + "..."
-                    if len(n["definition"]) > 100
-                    else n["definition"],
-                    "category": n.get("category", "concept"),
-                    "importance_score": n.get("importance_score", 0.5),
-                })
+                neighbors.append(
+                    {
+                        "id": n["id"],
+                        "name": n["name"],
+                        "definition": n["definition"][:100] + "..."
+                        if len(n["definition"]) > 100
+                        else n["definition"],
+                        "category": n.get("category", "concept"),
+                        "importance_score": n.get("importance_score", 0.5),
+                    }
+                )
 
         return ConceptDetailResponse(
             concept=concept,

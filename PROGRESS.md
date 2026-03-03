@@ -1,6 +1,25 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 09:48) - ✅ Chonkie 智能 Chunking 完成
+## 当前状态 (2026-03-03 10:55) - ✅ 代码质量修复完成
+
+### ✅ 本次进展 (2026-03-03 10:55) - 代码质量修复
+
+1. **格式化修复** - ✅ 完成
+   - `uv run ruff format src/` - 9 个文件已格式化
+   - `uv run ruff check src/` - 全部通过
+
+2. **Chonkie 集成测试** - ✅ 通过
+   - 语义 chunking 正常工作
+   - 16 个测试 chunks，平均 52.5 tokens/chunk
+   - 所有 chunks 都在 400 token 限制内
+
+3. **单元测试** - ✅ 58 个全部通过
+
+---
+
+## 历史进展
+
+### ✅ 上次状态 (2026-03-03 09:48) - ✅ Chonkie 智能 Chunking 完成
 
 ### ✅ 本次进展 (2026-03-03 09:48) - Chonkie 集成完成
 
@@ -39,9 +58,9 @@
 
 ## 历史进展
 
-### 当前状态 (2026-03-03 10:14) - 🔄 UI 构建修复中
+### 当前状态 (2026-03-03 10:30) - ✅ UI 构建成功
 
-### 🔄 本次进展 (2026-03-03 10:14) - UI 构建修复
+### ✅ 本次进展 (2026-03-03 10:30) - UI 构建成功
 
 1. **UI 组件开发** - ✅ 完成
    - ✅ Backend: ui/backend/main.py (复用 src/adler_graph_reader/api/)
@@ -50,11 +69,27 @@
    - ✅ 样式文件: App.css, index.css
    - ✅ API 客户端: services/api.ts
 
-2. **UI 构建修复** - 🔄 进行中
-   - 修复 TypeScript 编译错误（子 agent 处理中）
-   - 问题：未使用的导入、API 导出方式、D3 类型、import.meta.env
+2. **UI 构建修复** - ✅ 完成
+   - ✅ 创建 vite-env.d.ts 解决 import.meta.env 类型问题
+   - ✅ 移除未使用的 React 导入
+   - ✅ 修复 api.ts 中的重复属性定义
+   - ✅ 简化 GraphPage.tsx，移除复杂的 zoom transform 调用
+   - ✅ 构建成功：dist/index.html, dist/assets/*
 
-### ✅ 上次进展 (2026-03-03 10:00) - 概念提取覆盖率修复完成
+### 🔄 下一步工作
+
+1. **启动完整系统测试**
+   - 启动 LM Studio (qwen3.5-9b-a3b 模型)
+   - 运行 `uv run adler api` 启动后端
+   - 运行 `cd ui/frontend && npm run dev` 启动前端开发服务器
+   - 访问 http://localhost:5173 测试 UI
+
+2. **运行优化后的概念提取**
+   - 使用新的 ConceptExtractor (处理 3000 chunks)
+   - 目标：从 52 个概念提升到 ~800+ 个概念
+   - 验证概念数 > 主题数 × 5
+
+### ✅ 历史进展 (2026-03-03 10:00) - 概念提取覆盖率修复完成
 
 ### ✅ 本次进展 (2026-03-03 10:00) - 概念提取覆盖率修复
 

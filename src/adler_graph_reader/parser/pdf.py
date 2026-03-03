@@ -132,7 +132,10 @@ class PDFParser(DocumentParser):
             accumulated_text = ""
             for p_num, p_text in full_text_parts:
                 accumulated_text += p_text + "\n\n"
-                if content in accumulated_text or accumulated_text.find(content[:100]) != -1:
+                if (
+                    content in accumulated_text
+                    or accumulated_text.find(content[:100]) != -1
+                ):
                     page_number = p_num
                     break
 
@@ -166,6 +169,9 @@ class PDFParser(DocumentParser):
                 "pages": len(self.doc),
                 "file_path": str(self.file_path),
                 "total_chunks": len(chunks),
-                "avg_chunk_tokens": sum(c.token_count for c in semantic_chunks) / len(semantic_chunks) if semantic_chunks else 0,
+                "avg_chunk_tokens": sum(c.token_count for c in semantic_chunks)
+                / len(semantic_chunks)
+                if semantic_chunks
+                else 0,
             },
         )
