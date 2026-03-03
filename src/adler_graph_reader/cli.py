@@ -190,7 +190,7 @@ def cmd_ingest(
 ) -> str:
     """Ingest a document into the database."""
     if llm_client is None:
-        llm_client = get_default_client()
+        llm_client = get_default_client(force_reset=True)
 
     # Parse document
     print(f"Parsing {file.name}...")

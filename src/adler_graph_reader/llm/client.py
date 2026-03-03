@@ -450,14 +450,23 @@ _default_client: Optional[OllamaClient] = None
 
 
 def get_default_client(
-    base_url: str = DEFAULT_BASE_URL,
-    model: str = DEFAULT_MODEL,
-    embed_model: str = DEFAULT_EMBED_MODEL,
-    embedding_mode: str = "lmstudio",
+    base_url: str = None,
+    model: str = None,
+    embed_model: str = None,
+    embedding_mode: str = None,
+    force_reset: bool = False,
 ) -> OllamaClient:
     """Get or create the default LLM client."""
     global _default_client
-    if _default_client is None:
+    
+    # Force reset if requested or if environment variables differ
+    if force_reset or _default_client is None:
+        # Use environment variables or defaults
+        base_url = base_url or os.getenv("ADLER_LLM_BASE_URL", DEFAULT_BASE_URL)
+        model = model or os.getenv("ADLER_LLM_MODEL", DEFAULT_MODEL)
+        embed_model = embed_model or os.getenv("ADLER_EMBED_MODEL", DEFAULT_EMBED_MODEL)
+        embedding_mode = embedding_mode or os.getenv("ADLER_EMBEDDING_MODE", "lmstudio")
+        
         _default_client = OllamaClient(
             base_url=base_url,
             model=model,
