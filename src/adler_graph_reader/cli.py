@@ -3,7 +3,6 @@ CLI interface for Adler-Graph-Reader.
 """
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
@@ -151,8 +150,8 @@ def parse_args() -> argparse.Namespace:
     # init-db command
     subparsers.add_parser("init-db", help="Initialize database")
 
-    # ui command
-    ui = subparsers.add_parser("ui", help="Launch web UI")
+    # ui command (disabled - new UI in development)
+    ui = subparsers.add_parser("ui", help="Launch web UI (temporarily disabled)")
     ui.add_argument(
         "--port", "-p", type=int, default=8501, help="Port number (default: 8501)"
     )
@@ -621,33 +620,10 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
 
 
 def cmd_ui(port: int = 8501, open_browser: bool = True):
-    """Launch Streamlit web UI."""
-    import os
-
-    ui_path = Path(__file__).parent / "ui.py"
-
-    if not ui_path.exists():
-        print(f"Error: UI file not found at {ui_path}")
-        return
-
-    # Change to project directory so it finds knowledge.sqlite
-    project_dir = Path(__file__).parent.parent.parent
-
-    cmd = [
-        "streamlit",
-        "run",
-        str(ui_path),
-        "--server.port",
-        str(port),
-        "--server.headless",
-        "false" if open_browser else "true",
-    ]
-
-    print(f"Starting UI at http://localhost:{port}")
-    print("Press Ctrl+C to stop")
-
-    os.chdir(project_dir)
-    subprocess.run(cmd)
+    """Launch web UI (temporarily disabled - new UI in development)."""
+    print("UI command is temporarily disabled.")
+    print("The new UI (FastAPI backend + React frontend) is under development.")
+    print("Please use the CLI commands or API directly for now.")
 
 
 def main() -> int:
@@ -744,7 +720,9 @@ def main() -> int:
         return 0
 
     if args.command == "export-graph":
-        cmd_export_graph(args.document, args.output, args.formats, args.layout)
+        # Handle both --format and --formats arguments
+        formats = args.formats if args.formats else [args.format]
+        cmd_export_graph(args.document, args.output, formats, args.layout)
         return 0
 
     if args.command == "qa":

@@ -12,11 +12,16 @@ dependencies = [
     "pymupdf>=1.27.1",
     "sentence-transformers>=5.2.3",
     "sqlite-vec>=0.1.6",
-    "streamlit>=1.28",
 ]
 
 [project.scripts]
 adler = "adler_graph_reader.cli:main"
+
+[project.optional-dependencies]
+api = [
+    "fastapi",
+    "uvicorn",
+]
 
 [build-system]
 requires = ["hatchling"]

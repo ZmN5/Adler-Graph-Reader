@@ -12,7 +12,6 @@ GEXF is the Graph Exchange XML Format, native to Gephi.
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any
 
 
 class GraphMLExporter:
@@ -177,7 +176,9 @@ class GraphMLExporter:
             # Evidence
             self._add_data(edge, "d11", evidence[:500] if evidence else "")
             # Color
-            color = self.RELATION_TYPES.get(rel_type, self.RELATION_TYPES["related_to"])["color"]
+            color = self.RELATION_TYPES.get(
+                rel_type, self.RELATION_TYPES["related_to"]
+            )["color"]
             self._add_data(edge, "d12", color)
 
             edge_id += 1
@@ -285,7 +286,9 @@ class GEXFExporter:
     # Category colors
     CATEGORY_COLORS = GraphMLExporter.CATEGORY_COLORS
 
-    def __init__(self, title: str = "Knowledge Graph", creator: str = "Adler-Graph-Reader"):
+    def __init__(
+        self, title: str = "Knowledge Graph", creator: str = "Adler-Graph-Reader"
+    ):
         self.title = title
         self.creator = creator
 
@@ -320,7 +323,9 @@ class GEXFExporter:
         meta = ET.SubElement(root, f"{{{self.NS}}}meta")
         meta.set("lastmodifieddate", "2026-03-03")
         ET.SubElement(meta, f"{{{self.NS}}}creator").text = self.creator
-        ET.SubElement(meta, f"{{{self.NS}}}description").text = f"Knowledge graph: {self.title}"
+        ET.SubElement(
+            meta, f"{{{self.NS}}}description"
+        ).text = f"Knowledge graph: {self.title}"
 
         # Create graph
         graph = ET.SubElement(root, f"{{{self.NS}}}graph")
@@ -385,7 +390,9 @@ class GEXFExporter:
             self._add_attvalue(attvalues, "1", category)
             definition = concept.get("definition", "")
             self._add_attvalue(attvalues, "2", definition[:500] if definition else "")
-            self._add_attvalue(attvalues, "3", str(concept.get("importance_score", 0.5)))
+            self._add_attvalue(
+                attvalues, "3", str(concept.get("importance_score", 0.5))
+            )
 
             # Add viz:color
             color = self.CATEGORY_COLORS.get(category, self.CATEGORY_COLORS["concept"])
@@ -415,7 +422,9 @@ class GEXFExporter:
             self._add_attvalue(attvalues, "6", evidence[:500] if evidence else "")
 
             # Add viz:color
-            color_hex = self.RELATION_TYPES.get(rel_type, self.RELATION_TYPES["related_to"])["color"]
+            color_hex = self.RELATION_TYPES.get(
+                rel_type, self.RELATION_TYPES["related_to"]
+            )["color"]
             color = self._hex_to_rgb(color_hex)
             color_elem = ET.SubElement(edge, f"{{{self.VIZ_NS}}}color")
             color_elem.set("r", str(color["r"]))
@@ -465,9 +474,7 @@ class GEXFExporter:
         attr.set("title", title)
         attr.set("type", attr_type)
 
-    def _add_attvalue(
-        self, parent: ET.Element, attr_id: str, value: str
-    ) -> None:
+    def _add_attvalue(self, parent: ET.Element, attr_id: str, value: str) -> None:
         """Add attribute value."""
         attvalue = ET.SubElement(parent, f"{{{self.NS}}}attvalue")
         attvalue.set("for", attr_id)

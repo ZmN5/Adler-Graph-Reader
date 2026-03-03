@@ -12,6 +12,15 @@ class Config:
     # Language setting (default: Chinese)
     language: str = field(default="zh")
 
+    # LLM Model configuration
+    # Default: qwen3.5-9b-a3b (upgraded from qwen3.5-35b-a3b)
+    # Can be overridden via ADLER_LLM_MODEL environment variable
+    llm_model: str = field(default="qwen3.5-9b-a3b")
+
+    # LM Studio base URL
+    # Can be overridden via ADLER_LLM_BASE_URL environment variable
+    llm_base_url: str = field(default="http://localhost:1234/v1")
+
     # Available languages (Chinese and English only)
     SUPPORTED_LANGUAGES = {"zh": "中文", "en": "English"}
 
@@ -28,6 +37,8 @@ class Config:
         """Create config from environment variables."""
         return cls(
             language=os.getenv("ADLER_LANGUAGE", "zh"),
+            llm_model=os.getenv("ADLER_LLM_MODEL", "qwen3.5-9b-a3b"),
+            llm_base_url=os.getenv("ADLER_LLM_BASE_URL", "http://localhost:1234/v1"),
         )
 
     def get_language_name(self) -> str:

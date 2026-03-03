@@ -97,9 +97,21 @@ class TestGraphMLExporter:
         exporter = GraphMLExporter()
 
         expected_types = [
-            "related_to", "broader_than", "narrower_than", "prerequisite_for",
-            "supports", "causes", "part_of", "implements", "uses", "produces",
-            "evaluates", "improves", "similar_to", "contradicts", "has_concept",
+            "related_to",
+            "broader_than",
+            "narrower_than",
+            "prerequisite_for",
+            "supports",
+            "causes",
+            "part_of",
+            "implements",
+            "uses",
+            "produces",
+            "evaluates",
+            "improves",
+            "similar_to",
+            "contradicts",
+            "has_concept",
         ]
 
         for rel_type in expected_types:
@@ -112,7 +124,13 @@ class TestGraphMLExporter:
         exporter = GraphMLExporter()
 
         expected_categories = [
-            "theme", "concept", "principle", "method", "tool", "person", "event",
+            "theme",
+            "concept",
+            "principle",
+            "method",
+            "tool",
+            "person",
+            "event",
         ]
 
         for category in expected_categories:
@@ -121,7 +139,9 @@ class TestGraphMLExporter:
             assert "g" in exporter.CATEGORY_COLORS[category]
             assert "b" in exporter.CATEGORY_COLORS[category]
 
-    def test_complete_graphml_export(self, sample_themes, sample_concepts, sample_relations):
+    def test_complete_graphml_export(
+        self, sample_themes, sample_concepts, sample_relations
+    ):
         """Test complete GraphML export to file."""
         exporter = GraphMLExporter(title="Test Knowledge Graph")
 
@@ -152,10 +172,22 @@ class TestGraphMLExporter:
             assert "</graphml>" in content
 
             # Check keys are defined
-            assert '<key id="d0" for="node" attr.name="label" attr.type="string"' in content
-            assert '<key id="d4" for="node" attr.name="importance" attr.type="float"' in content
-            assert '<key id="d9" for="edge" attr.name="relation_type" attr.type="string"' in content
-            assert '<key id="d10" for="edge" attr.name="strength" attr.type="float"' in content
+            assert (
+                '<key id="d0" for="node" attr.name="label" attr.type="string"'
+                in content
+            )
+            assert (
+                '<key id="d4" for="node" attr.name="importance" attr.type="float"'
+                in content
+            )
+            assert (
+                '<key id="d9" for="edge" attr.name="relation_type" attr.type="string"'
+                in content
+            )
+            assert (
+                '<key id="d10" for="edge" attr.name="strength" attr.type="float"'
+                in content
+            )
 
             # Check nodes exist
             assert '<node id="theme_1">' in content
@@ -212,7 +244,7 @@ class TestGraphMLExporter:
             {
                 "id": 1,
                 "name": "Test & Debug <Code>",
-                "description": "Use special chars: \"quotes\" & ampersand <tag>",
+                "description": 'Use special chars: "quotes" & ampersand <tag>',
                 "importance_score": 0.5,
             }
         ]
@@ -311,14 +343,16 @@ class TestGEXFExporter:
         exporter = GEXFExporter(title="Test GEXF")
         assert exporter.title == "Test GEXF"
         # VERSION constant may not exist, check NS instead
-        assert hasattr(exporter, 'NS')
+        assert hasattr(exporter, "NS")
 
     def test_gexf_namespace_and_version(self):
         """Test GEXF namespace and version constants."""
         exporter = GEXFExporter()
         assert "http://www.gexf.net/" in exporter.NS
 
-    def test_complete_gexf_export(self, sample_themes, sample_concepts, sample_relations):
+    def test_complete_gexf_export(
+        self, sample_themes, sample_concepts, sample_relations
+    ):
         """Test complete GEXF export to file."""
         exporter = GEXFExporter(title="Test GEXF Graph")
 
@@ -358,14 +392,15 @@ class TestGEXFExporter:
             assert '<node id="theme_1" label="Machine Learning">' in content
             assert '<node id="concept_1" label="Neural Network">' in content
 
-            # Check node attributes
-            assert '<attvalue for="0" value="theme"/>' in content
-            assert '<attvalue for="0" value="concept"/>' in content
+            # Check node attributes (ElementTree adds space before />)
+            assert 'for="0" value="theme"' in content
+            assert 'for="0" value="concept"' in content
 
             # Check edges
             assert '<edge id="0" source="concept_1" target="concept_1"' in content
             assert 'label="related_to"' in content
-            assert 'weight="0.5"' in content
+            # Strength is stored as attvalue, not weight attribute
+            assert 'for="5" value="0.5"' in content
 
     def test_gexf_viz_attributes(self, sample_themes, sample_concepts):
         """Test that GEXF viz attributes are included."""
@@ -397,16 +432,16 @@ class TestIntegrationWithKnowledgeGraph:
         from adler_graph_reader.knowledge.graph import KnowledgeGraph
 
         # Check method exists
-        assert hasattr(KnowledgeGraph, 'export_graphml')
-        assert callable(getattr(KnowledgeGraph, 'export_graphml'))
+        assert hasattr(KnowledgeGraph, "export_graphml")
+        assert callable(getattr(KnowledgeGraph, "export_graphml"))
 
     def test_knowledge_graph_has_export_gexf_method(self):
         """Test that KnowledgeGraph class has export_gexf method."""
         from adler_graph_reader.knowledge.graph import KnowledgeGraph
 
         # Check method exists
-        assert hasattr(KnowledgeGraph, 'export_gexf')
-        assert callable(getattr(KnowledgeGraph, 'export_gexf'))
+        assert hasattr(KnowledgeGraph, "export_gexf")
+        assert callable(getattr(KnowledgeGraph, "export_gexf"))
 
 
 class TestCLIIntegration:
@@ -414,17 +449,16 @@ class TestCLIIntegration:
 
     def test_cli_export_graph_formats_include_graphml_and_gexf(self):
         """Test that CLI export-graph command supports graphml and gexf formats.
-        
+
         Note: parse_args() doesn't take arguments directly - it reads from sys.argv.
         We verify the choices include our new formats by checking the CLI definition.
         """
-        from adler_graph_reader.cli import parse_args
         import argparse
 
         # Create parser and get subparsers
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers()
-        
+
         # Add export-graph command like in cli.py
         export_graph = subparsers.add_parser("export-graph")
         export_graph.add_argument("--document", "-d", required=True)
@@ -434,20 +468,23 @@ class TestCLIIntegration:
             choices=["dot", "svg", "json", "graphml", "gexf"],
             default=["dot", "json"],
         )
-        
+
         # Test parsing with graphml
-        args = parser.parse_args(["export-graph", "-d", "test-doc", "--formats", "graphml"])
+        args = parser.parse_args(
+            ["export-graph", "-d", "test-doc", "--formats", "graphml"]
+        )
         assert args.formats == ["graphml"]
-        
+
         # Test parsing with gexf
-        args = parser.parse_args(["export-graph", "-d", "test-doc", "--formats", "gexf"])
+        args = parser.parse_args(
+            ["export-graph", "-d", "test-doc", "--formats", "gexf"]
+        )
         assert args.formats == ["gexf"]
-        
+
         # Test multiple formats
-        args = parser.parse_args([
-            "export-graph", "-d", "test-doc",
-            "--formats", "graphml", "gexf", "json"
-        ])
+        args = parser.parse_args(
+            ["export-graph", "-d", "test-doc", "--formats", "graphml", "gexf", "json"]
+        )
         assert "graphml" in args.formats
         assert "gexf" in args.formats
         assert "json" in args.formats

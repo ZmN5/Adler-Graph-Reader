@@ -3,6 +3,7 @@ LM Studio client for text generation and embeddings.
 Uses OpenAI SDK with LM Studio's OpenAI-compatible API endpoint.
 """
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -18,7 +19,10 @@ from .models import BookSummary, ConceptExtraction
 
 # Default LM Studio configuration
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
-DEFAULT_MODEL = "local"  # LM Studio uses the currently loaded model
+# Model configuration - can be overridden via environment variable ADLER_LLM_MODEL
+# Default: qwen3.5-9b-a3b (smaller, faster, better performance)
+# Previous default was qwen3.5-35b-a3b
+DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-9b-a3b")
 DEFAULT_EMBED_MODEL = (
     "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
 )
