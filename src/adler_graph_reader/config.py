@@ -22,6 +22,14 @@ class Config:
     # Can be overridden via ADLER_LLM_BASE_URL environment variable
     llm_base_url: str = field(default="http://localhost:1234/v1")
 
+    # Embedding model configuration
+    # Default: qwen3-embedding-0.6b (supports up to 6k tokens)
+    # Can be overridden via ADLER_EMBEDDING_MODEL environment variable
+    embedding_model: str = field(default="qwen3-embedding-0.6b")
+    embedding_base_url: str = field(default="http://localhost:1234/v1")
+    # Max input tokens for embedding model (default 6k for qwen3-embedding)
+    embedding_max_tokens: int = field(default=6000)
+
     # Available languages (Chinese and English only)
     SUPPORTED_LANGUAGES = {"zh": "中文", "en": "English"}
 
@@ -40,6 +48,9 @@ class Config:
             language=os.getenv("ADLER_LANGUAGE", "en"),
             llm_model=os.getenv("ADLER_LLM_MODEL", "qwen3.5-9b"),
             llm_base_url=os.getenv("ADLER_LLM_BASE_URL", "http://localhost:1234/v1"),
+            embedding_model=os.getenv("ADLER_EMBEDDING_MODEL", "qwen3-embedding-0.6b"),
+            embedding_base_url=os.getenv("ADLER_EMBEDDING_BASE_URL", "http://localhost:1234/v1"),
+            embedding_max_tokens=int(os.getenv("ADLER_EMBEDDING_MAX_TOKENS", "6000")),
         )
 
     def get_language_name(self) -> str:

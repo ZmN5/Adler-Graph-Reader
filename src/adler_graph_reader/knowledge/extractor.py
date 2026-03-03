@@ -153,12 +153,12 @@ Please output in the specified format. {lang_suffix}"""
 class ConceptExtractor:
     """Extract concepts with definitions and examples from document."""
 
-    # Configuration for batch processing
-    CHUNKS_PER_BATCH = 500  # Process 500 chunks per batch for better efficiency
-    MAX_CHUNKS_TO_PROCESS = 3000  # Maximum chunks to process (for large documents)
-    CONCEPTS_PER_CHUNK_RATIO = 0.035  # ~1 concept per 28 chunks
-    MIN_CONCEPTS = 100
-    MAX_CONCEPTS_HARD_LIMIT = 1500
+    # Configuration for full extraction (方案B: 全量抽取)
+    CHUNKS_PER_BATCH = 10   # Small batches to fit LLM context (10 chunks ~ 4k tokens)
+    MAX_CHUNKS_TO_PROCESS = 10000  # Process ALL chunks
+    CONCEPTS_PER_CHUNK_RATIO = 0.5  # 1 concept per 2 chunks
+    MIN_CONCEPTS = 200
+    MAX_CONCEPTS_HARD_LIMIT = 3000
 
     def __init__(self, client: Optional[OllamaClient] = None):
         self.client = client or get_default_client()
@@ -207,59 +207,85 @@ class ConceptExtractor:
         max_names: int,
         existing_names: set[str],
     ) -> list[str]:
-        """Extract concept names from a batch of chunks."""
+        """Extract concept names from a batch of chunks using recursive splitting."""
         config = get_config()
         lang_suffix = config.get_prompt_suffix()
 
-        # Sample chunks for diversity - take up to 15 chunks from the batch
-        sample_size = min(15, len(chunks))
-        sampled_chunks = chunks[:: max(1, len(chunks) // sample_size)][:sample_size]
+        # 方案B: 使用递归切分处理所有chunks
+        all_new_names: list[str] = []
 
-        combined = "\n\n---\n\n".join(
-            [f"[Chunk {ch[0]}]:\n{ch[1][:800]}" for ch in sampled_chunks]
-        )
+        # 递归处理函数
+        def process_chunk_group(chunk_group: list[tuple[int, str]], level: int = 0) -> list[str]:
+            if not chunk_group:
+                return []
 
-        if config.language == "zh":
-            prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法/技术/原则）：
+            # 估算token数 (粗略: 1 token ≈ 4 chars for Chinese, 4 chars for English)
+            total_chars = sum(len(ch[1]) for ch in chunk_group)
+            estimated_tokens = total_chars // 4
+
+            # 如果内容太多，递归切分
+            # LLM 上下文通常 8k-32k，但我们需要留出生成空间
+            max_llm_tokens = 4000  # 保守估计，给生成留空间
+            if estimated_tokens > max_llm_tokens and len(chunk_group) > 1 and level < 5:
+                # 切分成两半递归处理
+                mid = len(chunk_group) // 2
+                left_names = process_chunk_group(chunk_group[:mid], level + 1)
+                right_names = process_chunk_group(chunk_group[mid:], level + 1)
+                return left_names + right_names
+
+            # 构建prompt - 使用完整内容，不截断
+            combined = "\n\n---\n\n".join(
+                [f"[Chunk {ch[0]}]:\n{ch[1]}" for ch in chunk_group]
+            )
+
+            if config.language == "zh":
+                prompt = f"""从以下学术文本中识别核心概念（关键术语/理论/方法/技术/原则）：
 
 {combined}
 
 请列出最多 {max_names} 个最重要的核心概念名称（名词术语），按重要性从高到低排序。
 每行一个概念，不要编号，不要额外说明。
 确保提取的概念覆盖机器学习系统设计、模型训练、部署、监控等各个方面。{lang_suffix}"""
-            system_msg = "你是一个概念识别专家，擅长从学术文本中识别关键术语。请尽可能多地提取重要概念，但只返回真实存在的概念名称。"
-        else:  # English
-            prompt = f"""Identify core concepts (key terms/theories/methods/technologies/principles) from the following academic text:
+                system_msg = "你是一个概念识别专家，擅长从学术文本中识别关键术语。请尽可能多地提取重要概念，但只返回真实存在的概念名称。"
+            else:  # English
+                prompt = f"""Identify core concepts (key terms/theories/methods/technologies/principles) from the following academic text:
 
 {combined}
 
 List up to {max_names} most important core concept names (noun terms), ranked by importance.
 One concept per line, no numbering, no extra explanation.
 Ensure the extracted concepts cover ML system design, model training, deployment, monitoring, etc. {lang_suffix}"""
-            system_msg = "You are a concept recognition expert, skilled at identifying key terms from academic texts. Extract as many important concepts as possible, but only return real concept names."
+                system_msg = "You are a concept recognition expert, skilled at identifying key terms from academic texts. Extract as many important concepts as possible, but only return real concept names."
 
-        try:
-            response = self.client.generate(
-                prompt,
-                system=system_msg,
-                temperature=0.5,
-            )
-            concept_names = [
-                line.strip().lstrip("0123456789.-* ")
-                for line in response.strip().split("\n")
-                if line.strip() and len(line.strip()) > 2
-            ]
-            # Filter out duplicates with existing names (case-insensitive)
-            new_names = []
-            for name in concept_names:
-                name_lower = name.lower()
-                if name_lower not in existing_names:
-                    new_names.append(name)
-                    existing_names.add(name_lower)
-            return new_names[:max_names]
-        except Exception as e:
-            print(f"Warning: Failed to extract concept names from batch: {e}")
-            return []
+            try:
+                response = self.client.generate(
+                    prompt,
+                    system=system_msg,
+                    temperature=0.5,
+                )
+                concept_names = [
+                    line.strip().lstrip("0123456789.-* ")
+                    for line in response.strip().split("\n")
+                    if line.strip() and len(line.strip()) > 2
+                ]
+                return concept_names
+            except Exception as e:
+                print(f"Warning: Failed to extract concept names from batch: {e}")
+                return []
+
+        # 处理所有chunks
+        names = process_chunk_group(chunks)
+
+        # 去重并限制数量
+        for name in names:
+            name_lower = name.lower()
+            if name_lower not in existing_names:
+                all_new_names.append(name)
+                existing_names.add(name_lower)
+                if len(all_new_names) >= max_names:
+                    break
+
+        return all_new_names
 
     def extract(
         self,

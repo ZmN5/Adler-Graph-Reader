@@ -280,4 +280,17 @@ def create_embedding_provider(
     Returns:
         EmbeddingProvider instance
     """
-    return EmbeddingProvider(mode=mode, **kwargs)
+    # Load config for model settings
+    from ..config import get_config
+    config = get_config()
+
+    # Use config values if not explicitly provided
+    lmstudio_url = kwargs.get('lmstudio_url', config.embedding_base_url)
+    lmstudio_model = kwargs.get('lmstudio_model', config.embedding_model)
+
+    return EmbeddingProvider(
+        mode=mode,
+        lmstudio_url=lmstudio_url,
+        lmstudio_model=lmstudio_model,
+        **{k: v for k, v in kwargs.items() if k not in ['lmstudio_url', 'lmstudio_model']}
+    )
