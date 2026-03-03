@@ -122,11 +122,18 @@ def parse_args() -> argparse.Namespace:
         help="Output directory",
     )
     export_graph.add_argument(
+        "--format",
+        choices=["dot", "svg", "json", "graphml", "gexf"],
+        default="graphml",
+        help="Export format (default: graphml)",
+    )
+    # Keep --formats for backward compatibility
+    export_graph.add_argument(
         "--formats",
         nargs="+",
-        choices=["dot", "svg", "json"],
-        default=["dot", "json"],
-        help="Export formats",
+        choices=["dot", "svg", "json", "graphml", "gexf"],
+        default=None,
+        help="Export formats (deprecated, use --format instead)",
     )
     export_graph.add_argument(
         "--layout",
@@ -550,6 +557,34 @@ def cmd_export_graph(
         json_path = output_dir / f"{document_id}_graph.json"
         graph.export_json(document_id, json_path)
         print(f"Exported JSON: {json_path}")
+
+    if "graphml" in formats:
+        from .export import GraphMLExporter
+
+        graphml_path = output_dir / f"{document_id}.graphml"
+        exporter = GraphMLExporter()
+        graph_data = graph.get_graph(document_id)
+        exporter.export(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+            output_path=graphml_path,
+        )
+        print(f"Exported GraphML: {graphml_path}")
+
+    if "gexf" in formats:
+        from .export import GEXFExporter
+
+        gexf_path = output_dir / f"{document_id}.gexf"
+        exporter = GEXFExporter()
+        graph_data = graph.get_graph(document_id)
+        exporter.export(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+            output_path=gexf_path,
+        )
+        print(f"Exported GEXF: {gexf_path}")
 
     print("\nExport complete!")
     graph.close()

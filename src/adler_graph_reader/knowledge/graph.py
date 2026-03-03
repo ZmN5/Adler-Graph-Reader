@@ -369,6 +369,42 @@ class KnowledgeGraph:
             output_path=output_path,
         )
 
+    def export_graphml(
+        self,
+        document_id: str,
+        output_path: Path,
+    ) -> Path:
+        """Export graph to GraphML format (for Gephi, Cytoscape)."""
+        from ..export.graphml import GraphMLExporter
+
+        graph_data = self.get_graph(document_id)
+
+        exporter = GraphMLExporter()
+        return exporter.export(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+            output_path=output_path,
+        )
+
+    def export_gexf(
+        self,
+        document_id: str,
+        output_path: Path,
+    ) -> Path:
+        """Export graph to GEXF format (for Gephi)."""
+        from ..export.graphml import GEXFExporter
+
+        graph_data = self.get_graph(document_id)
+
+        exporter = GEXFExporter()
+        return exporter.export(
+            themes=[t.model_dump() for t in graph_data.themes],
+            concepts=[c.model_dump() for c in graph_data.concepts],
+            relations=[r.model_dump() for r in graph_data.relations],
+            output_path=output_path,
+        )
+
     def close(self) -> None:
         """Close the database connection."""
         self.conn.close()

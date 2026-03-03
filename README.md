@@ -107,6 +107,39 @@ uv run adler graph -d "How to Read a Book" --format json
 uv run adler graph -d "How to Read a Book" --format viz
 ```
 
+### 5️⃣ 导出知识图谱
+
+支持多种格式导出，可在 Gephi、Cytoscape 等工具中打开：
+
+```bash
+# 导出为 GraphML 格式（推荐用于 Gephi）
+uv run adler export-graph -d "How to Read a Book" --formats graphml
+
+# 导出为 GEXF 格式（Gephi 原生格式）
+uv run adler export-graph -d "How to Read a Book" --formats gexf
+
+# 导出多种格式
+uv run adler export-graph -d "How to Read a Book" --formats graphml gexf json dot
+
+# 指定输出目录
+uv run adler export-graph -d "How to Read a Book" -o ./exports --formats graphml
+```
+
+**支持的导出格式：**
+| 格式 | 扩展名 | 适用工具 |
+|------|--------|----------|
+| GraphML | `.graphml` | Gephi, Cytoscape, yEd |
+| GEXF | `.gexf` | Gephi (原生支持) |
+| DOT | `.dot` | Graphviz |
+| SVG | `.svg` | 浏览器, 矢量编辑器 |
+| JSON | `.json` | 自定义处理 |
+
+**在 Gephi 中打开 GraphML：**
+1. 打开 Gephi → 数据实验室 → 导入电子表格
+2. 或直接拖拽 `.graphml` 文件到概览界面
+3. 使用「布局」面板选择力导向布局（Force Atlas 2）
+4. 在「外观」面板根据 `node_type` 设置节点颜色
+
 ### 5️⃣ 提问与探索
 
 ```bash

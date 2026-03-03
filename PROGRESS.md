@@ -1,6 +1,23 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-03 06:00) - ✅ README 更新完成
+## 当前状态 (2026-03-03 08:35) - ✅ GraphML 导出功能完成
+
+### ✅ 本次进展 (2026-03-03 08:35)
+
+1. **GraphML/GEXF 导出功能** - ✅ 完成
+   - 创建 `src/adler_graph_reader/export/graphml.py` 模块
+   - 实现 GraphML 导出（支持 Gephi、Cytoscape、yEd）
+   - 实现 GEXF 导出（Gephi 原生格式）
+   - 支持节点属性：id, label, type, importance, definition, description, examples, category
+   - 支持边属性：source, target, type, strength, evidence, explanation
+   - 12种关系类型完整支持
+   - CLI 集成：`uv run adler export-graph --formats graphml gexf`
+   - KnowledgeGraph 类添加 `export_graphml()` 和 `export_gexf()` 方法
+
+2. **代码质量检查** - ✅ 通过
+   - ruff format: 通过
+   - ruff check: 通过
+   - 新增单元测试通过
 
 ### ✅ 本次进展 (2026-03-03 03:10)
 
