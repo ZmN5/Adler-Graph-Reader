@@ -25,7 +25,7 @@ class LMStudioEmbeddingProvider:
     def __init__(
         self,
         base_url: str = "http://localhost:1234/v1",
-        model: str = "text-embedding-nomic-embed-text-v1.5",
+        model: str = "qwen3-embedding-0.6b",
         timeout: float = 120.0,
     ):
         self.base_url = base_url
@@ -157,7 +157,7 @@ class EmbeddingProvider:
         self,
         mode: str = "auto",
         lmstudio_url: str = "http://localhost:1234/v1",
-        lmstudio_model: str = "text-embedding-nomic-embed-text-v1.5",
+        lmstudio_model: str = "qwen3-embedding-0.6b",
         local_model: str = "BAAI/bge-m3",
     ):
         if mode not in ("lmstudio", "local", "auto"):
