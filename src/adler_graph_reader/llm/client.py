@@ -43,7 +43,7 @@ DEFAULT_EMBED_MODEL = (
     "text-embedding-nomic-embed-text-v1.5"  # Use a specific embedding model
 )
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
-DEFAULT_TIMEOUT = 60.0  # Reduced timeout for faster feedback with small models
+DEFAULT_TIMEOUT = 180.0  # Reduced timeout for faster feedback with small models
 DEFAULT_ENABLE_THINKING = False  # Disable thinking for faster responses
 
 # Environment variable names for API keys
