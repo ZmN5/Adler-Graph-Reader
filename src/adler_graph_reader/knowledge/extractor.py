@@ -154,7 +154,7 @@ class ConceptExtractor:
     """Extract concepts with definitions and examples from document."""
 
     # Configuration for batch processing
-    CHUNKS_PER_BATCH = 500  # Process 500 chunks per batch
+    CHUNKS_PER_BATCH = 50  # Reduced from 500 to avoid overwhelming small models
     MAX_CHUNKS_TO_PROCESS = 3000  # Maximum chunks to process (for large documents)
     CONCEPTS_PER_CHUNK_RATIO = 0.035  # ~1 concept per 28 chunks
     MIN_CONCEPTS = 100

@@ -86,8 +86,8 @@ class EnhancedConceptExtraction(BaseModel):
 
     concepts: list[EnhancedConcept] = Field(
         default_factory=list,
-        min_items=1,
-        max_items=30,
+        min_length=1,
+        max_length=30,
         description="List of enhanced concepts (10-30 key concepts)",
     )
 
@@ -119,7 +119,7 @@ class EnhancedConcept(BaseModel):
     )
     examples: list[str] = Field(
         default_factory=list,
-        max_items=5,
+        max_length=5,
         description="Concrete examples (0-5 items)",
     )
     importance_score: float = Field(
@@ -186,8 +186,8 @@ class EnhancedRelationExtraction(BaseModel):
 
     relations: list[EnhancedConceptRelation] = Field(
         default_factory=list,
-        min_items=1,
-        max_items=50,
+        min_length=1,
+        max_length=50,
         description="List of concept relationships (20-50 relations)",
     )
 
