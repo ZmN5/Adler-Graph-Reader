@@ -8,14 +8,12 @@ by processing chunks in batches and extracting an appropriate number of concepts
 import sqlite3
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from adler_graph_reader.knowledge.extractor import ConceptExtractor
-from adler_graph_reader.knowledge.graph_models import ConceptModel
 from adler_graph_reader.knowledge.progress import (
-    ExtractionProgress,
     ExtractionStage,
     ProgressManager,
 )
@@ -214,7 +212,7 @@ Data Science
                 INSERT INTO document_tree (document_id, type, content)
                 VALUES ('test_doc', 'chunk', ?)
                 """,
-                (f"Chunk with Concept A, Concept B, Concept C, Concept D",),
+                ("Chunk with Concept A, Concept B, Concept C, Concept D",),
             )
         conn.commit()
 
