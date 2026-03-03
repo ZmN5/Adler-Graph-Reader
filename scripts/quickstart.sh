@@ -1,106 +1,132 @@
 #!/bin/bash
-# Adler Graph Reader - Quick Start Script
-# This script initializes the database and verifies LM Studio connection
+# Adler-Graph-Reader Quick Start Script
+# This script initializes the database and verifies LLM connectivity
 
-set -e  # Exit on error
+set -e
 
-echo "🚀 Adler Graph Reader - Quick Start"
-echo "===================================="
+echo "=========================================="
+echo "  Adler-Graph-Reader Quick Start"
+echo "=========================================="
 echo ""
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Check if uv is installed
-if ! command -v uv &> /dev/null; then
-    echo -e "${RED}❌ Error: uv is not installed${NC}"
-    echo "Please install uv first: https://github.com/astral-sh/uv"
+# Check if we're in the right directory
+if [ ! -f "pyproject.toml" ]; then
+    echo -e "${RED}Error: Please run this script from the project root directory${NC}"
     exit 1
 fi
 
-echo -e "${BLUE}✓ uv found${NC}"
-
-# Check Python version
-PYTHON_VERSION=$(uv run python --version 2>&1 | awk '{print $2}')
-echo -e "${BLUE}✓ Python version: $PYTHON_VERSION${NC}"
-
-# Step 1: Initialize database
-echo ""
-echo -e "${YELLOW}Step 1: Initializing database...${NC}"
-if uv run adler init-db; then
-    echo -e "${GREEN}✓ Database initialized successfully${NC}"
+# Step 1: Initialize Database
+echo -e "${YELLOW}[Step 1/3] Initializing database...${NC}"
+python -c "
+from adler_graph_reader.database.connection import init_db
+init_db()
+print('✓ Database initialized successfully')
+"
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Database initialized${NC}"
 else
-    echo -e "${RED}❌ Failed to initialize database${NC}"
+    echo -e "${RED}✗ Failed to initialize database${NC}"
     exit 1
 fi
-
-# Step 2: Verify LM Studio connection
 echo ""
-echo -e "${YELLOW}Step 2: Verifying LM Studio connection...${NC}"
 
-LM_STUDIO_URL="${ADLER_LLM_BASE_URL:-http://localhost:1234/v1}"
-echo "Checking LM Studio at: $LM_STUDIO_URL"
+# Step 2: Check LLM Configuration
+echo -e "${YELLOW}[Step 2/3] Checking LLM configuration...${NC}"
 
-# Test connection using curl
-if curl -s "$LM_STUDIO_URL/models" > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ LM Studio is running${NC}"
+# Check environment variables
+BACKEND=${ADLER_LLM_BACKEND:-"lmstudio"}
+OPENAI_KEY=${OPENAI_API_KEY:-""}
+ANTHROPIC_KEY=${ANTHROPIC_API_KEY:-""}
 
-    # Try to get model info
-    MODEL_INFO=$(curl -s "$LM_STUDIO_URL/models" 2>/dev/null || echo "")
-    if [ -n "$MODEL_INFO" ]; then
-        echo -e "${BLUE}  Available models detected${NC}"
+echo "  Backend preference: $BACKEND"
+
+if [ "$BACKEND" = "openai" ] && [ -n "$OPENAI_KEY" ]; then
+    echo -e "${GREEN}  ✓ OpenAI API key configured${NC}"
+    USING_BACKEND="openai"
+elif [ "$BACKEND" = "anthropic" ] && [ -n "$ANTHROPIC_KEY" ]; then
+    echo -e "${GREEN}  ✓ Anthropic API key configured${NC}"
+    USING_BACKEND="anthropic"
+else
+    echo "  Using LM Studio (local)"
+    USING_BACKEND="lmstudio"
+fi
+echo ""
+
+# Step 3: Verify LLM Connection
+echo -e "${YELLOW}[Step 3/3] Verifying LLM connection...${NC}"
+
+python -c "
+import os
+import sys
+
+# Import after setting up path
+from adler_graph_reader.llm.client import get_default_client, LLMBackend
+
+try:
+    client = get_default_client()
+    backend = client.backend
+    
+    if backend == LLMBackend.OPENAI:
+        print('✓ Using OpenAI API')
+        print(f'  Model: {client.model}')
+    elif backend == LLMBackend.ANTHROPIC:
+        print('✓ Using Anthropic API')
+        print(f'  Model: {client.model}')
+    else:
+        print('✓ Using LM Studio (local)')
+        print(f'  Base URL: {client.base_url}')
+        print(f'  Model: {client.model}')
+    
+    # Test simple generation
+    print('\n  Testing connection...')
+    response = client.generate('Say \"Hello from Adler\"', temperature=0)
+    print(f'  ✓ LLM responded: {response[:50]}...')
+    
+except Exception as e:
+    print(f'✗ Connection failed: {e}')
+    sys.exit(1)
+"
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo -e "${RED}==========================================${NC}"
+    echo -e "${RED}  LLM Connection Failed${NC}"
+    echo -e "${RED}==========================================${NC}"
+    echo ""
+    echo "Troubleshooting:"
+    if [ "$USING_BACKEND" = "lmstudio" ]; then
+        echo "  1. Make sure LM Studio is running"
+        echo "     Download: https://lmstudio.ai/"
+        echo "  2. Load a model in LM Studio (e.g., qwen3.5-9b)"
+        echo "  3. Start the local server on port 1234"
+        echo ""
+        echo "Alternative: Use OpenAI API instead:"
+        echo "  export ADLER_LLM_BACKEND=openai"
+        echo "  export OPENAI_API_KEY=your-key-here"
+    else
+        echo "  1. Check your API key is correct"
+        echo "  2. Verify you have internet connectivity"
+        echo "  3. Check the API service status"
     fi
-else
-    echo -e "${RED}❌ Cannot connect to LM Studio at $LM_STUDIO_URL${NC}"
-    echo ""
-    echo -e "${YELLOW}Please ensure:${NC}"
-    echo "  1. LM Studio is running"
-    echo "  2. A model is loaded (e.g., qwen3.5-9b)"
-    echo "  3. The API server is enabled in LM Studio settings"
-    echo "  4. The server is listening on port 1234"
-    echo ""
-    echo -e "${YELLOW}Alternatively, you can:${NC}"
-    echo "  - Set ADLER_LLM_BASE_URL to use a different endpoint"
-    echo "  - Set OPENAI_API_KEY to use OpenAI instead"
-    echo "  - Set ANTHROPIC_API_KEY to use Anthropic instead"
-    echo ""
     exit 1
 fi
 
-# Step 3: Check embedding model
 echo ""
-echo -e "${YELLOW}Step 3: Checking embedding capability...${NC}"
-EMBED_MODEL="${ADLER_EMBED_MODEL:-text-embedding-nomic-embed-text-v1.5}"
-echo "Embedding model: $EMBED_MODEL"
-echo -e "${GREEN}✓ Embedding configured${NC}"
-
-# Step 4: Summary
+echo -e "${GREEN}==========================================${NC}"
+echo -e "${GREEN}  Ready to go!${NC}"
+echo -e "${GREEN}==========================================${NC}"
 echo ""
-echo "===================================="
-echo -e "${GREEN}✅ Setup complete!${NC}"
+echo "Quick commands:"
+echo "  uv run adler --help          # Show all commands"
+echo "  uv run adler ingest <file>   # Import a PDF/EPUB"
+echo "  uv run adler build-graph     # Build knowledge graph"
+echo "  uv run adler api             # Start API server"
 echo ""
-echo -e "${BLUE}Next steps:${NC}"
-echo "  1. Import a book:   uv run adler ingest <path-to-book.pdf>"
-echo "  2. Build graph:     uv run adler build-graph --all"
-echo "  3. Start UI:        uv run adler ui"
-echo "  4. Or start API:    uv run adler api"
+echo "Documentation: README.md"
 echo ""
-echo -e "${BLUE}Configuration:${NC}"
-echo "  LM Studio URL: $LM_STUDIO_URL"
-echo "  LLM Model: ${ADLER_LLM_MODEL:-qwen3.5-9b}"
-echo "  Embed Model: $EMBED_MODEL"
-echo ""
-
-# Show backend info
-if [ -n "$OPENAI_API_KEY" ]; then
-    echo -e "${YELLOW}⚠️  Using OpenAI as fallback (OPENAI_API_KEY is set)${NC}"
-fi
-if [ -n "$ANTHROPIC_API_KEY" ]; then
-    echo -e "${YELLOW}⚠️  Using Anthropic as fallback (ANTHROPIC_API_KEY is set)${NC}"
-fi
-
-echo -e "${GREEN}Happy reading! 🦞${NC}"
