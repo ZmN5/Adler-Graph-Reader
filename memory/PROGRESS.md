@@ -1,85 +1,124 @@
 # Adler-Graph-Reader 项目进度
 
-## 当前状态 (2026-03-01 22:30)
+## 🚨 当前状态 (2026-03-03 16:54) - ⛔ LM Studio 模型崩溃，备用方案开发中
 
-### ✅ 已完成
+### 问题诊断结果
 
-1. **LM Studio 集成** - 项目从Ollama迁移到LM Studio
-   - 支持本地LLM推理
-   - 支持embedding生成
-   - 默认模型: qwen3.5-35b-a3b
-   - Embedding模型: text-embedding-nomic-embed-text-v1.5
+**LM Studio API 状态**: ❌ 不可用
 
-2. **关键Bug修复**
-   - ✅ 修复结构化输出问题：使用 `Mode.MD_JSON` 替代 `Mode.JSON`，解决与LM Studio的兼容性问题
-   - ✅ 修复embedding维度不匹配：将 `EMBEDDING_DIM` 从1024改为768，匹配nomic-embed-text-v1.5模型
+| 模型 | 状态 |
+|------|------|
+| qwen3.5-9b | 崩溃 (crashed) |
+| qwen3.5-35b-a3b | 挂起 (unresponsive) |
+| text-embedding-nomic-embed-text-v1.5 | ✅ 正常 |
 
-3. **核心功能**
-   - PDF/EPUB文档解析
-   - 知识图谱提取
-   - 混合搜索 (FTS5 + 向量)
-   - Streamlit Web UI
+**测试详情**:
+- 多次 API 调用测试均超时或返回空响应
+- 小模型 qwen3.5-2b 同样无响应
+- Embedding 模型工作正常（说明 LM Studio 服务本身在运行）
 
-### ❌ 进行中/待解决
+---
 
-1. **端到端测试**
-   - 需要测试完整的ingest -> analyze -> graph流程
-   - 需要验证数据库初始化、文档导入、知识提取是否正常工作
+## 📊 项目进度快照
 
-2. **代码质量**
-   - 需要添加更多单元测试
-   - 需要完善错误处理
+| 模块 | 数量 | 状态 |
+|------|------|------|
+| **文档** | Designing Machine Learning Systems (387 chunks) | ✅ 完成 |
+| **主题 (Themes)** | 5 个 | ✅ 已提取 |
+| **概念 (Concepts)** | 0 个 | ⛔ 阻塞于 LM Studio |
+| **关系 (Relations)** | 0 个 | ⛔ 阻塞于 LM Studio |
 
-### 📋 下一步工作（按优先级）
+### 已提取的 5 个主题
+1. 机器学习系统设计 (置信度: 0.95)
+2. 数据管理策略 (置信度: 0.85)
+3. 生产就绪应用开发 (置信度: 0.9)
+4. 业务需求整合 (置信度: 0.8)
+5. 实战经验与案例 (置信度: 0.75)
 
-**当前进行中：**
-- [x] Web UI 启动验证 (✅ 已完成 - http://localhost:8501)
-- [ ] 概念提取完成 (`sharp-trail` 运行中)
+---
 
-**待办事项（任务完成后）：**
-- [ ] **Code Review** - 使用 code-review-expert skill 进行代码审查
-  - Skill: `sanyuan0704/code-review-expert`
-  - 安装: `npx skills add sanyuan0704/code-review-expert`
-  - 目标: 修复 P0 和 P1 级别问题
+## 🔧 需要用户操作
 
-**优先级 1: 完成端到端测试**
-- [x] 运行 `uv run adler init-db` 初始化数据库
-- [x] 运行 `uv run adler ingest books/<sample>.pdf` 测试文档导入
-- [ ] 运行 `uv run adler build-graph` 测试知识图谱构建
-- [x] 运行 `uv run adler search "test query"` 测试搜索功能
+### 步骤 1: 修复 LM Studio
 
-**优先级 2: 优化和增强**
-- [ ] 添加批量导入功能
-- [ ] 优化概念提取算法
-- [x] 改进Web UI的图谱可视化
+请按顺序执行以下操作：
 
-**优先级 3: 文档和测试**
-- [x] 编写更多单元测试
-- [ ] 更新API文档
-- [ ] 添加使用示例
+```bash
+# 1. 完全退出 LM Studio
+# 在菜单栏选择: LM Studio → Quit LM Studio (Cmd+Q)
 
-### 🔄 待办事项（阻塞中）
+# 2. 重新启动 LM Studio 应用
+open -a "LM Studio"
 
-**等待当前任务完成后执行：**
-- [ ] **Code Review** - 使用 `sanyuan0704/code-review-expert` skill
-  - 安装: `npx skills add sanyuan0704/code-review-expert`
-  - 目标: 修复 P0 和 P1 级别问题
-  - 触发条件: 概念提取任务 (`sharp-trail`) 完成后
+# 3. 卸载所有 Qwen 模型
+# 在 LM Studio 界面中:
+#   - 左侧导航 → Developer → My Models
+#   - 找到所有 qwen3.5-* 模型
+#   - 点击每个模型的 "Delete" 按钮
 
-### 技术栈
+# 4. 重新下载并加载一个稳定的模型
+# 推荐选项 A: qwen3.5-4b (较小，更稳定)
+# 推荐选项 B: qwen3.5-9b (如果内存充足)
 
-- Python 3.12+ (uv)
-- LM Studio (本地LLM, http://localhost:1234/v1)
-- SQLite + FTS5 + sqlite-vec
-- Streamlit (UI)
-- Pydantic (数据模型)
-- instructor (结构化输出, MD_JSON模式)
-
-### 最近提交
-
+# 5. 确认模型状态为 "Ready"
+# 在 Chat 界面测试简单对话确保模型响应正常
 ```
-b59220e fix: set EMBEDDING_DIM to 768 for nomic-embed-text model
-21ea19a fix: use MD_JSON mode for LM Studio structured output compatibility
-f7f11ea docs: add project progress tracking
-2c707e7 feat: migrate to LM Studio for local LLM support
+
+### 步骤 2: 验证修复
+
+修复完成后，请运行以下命令验证：
+
+```bash
+curl http://localhost:1234/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen3.5-4b",
+    "messages": [{"role": "user", "content": "Hello"}],
+    "max_tokens": 10
+  }'
 ```
+
+如果能收到正常响应，说明修复成功。
+
+### 步骤 3: 继续知识图谱提取
+
+修复成功后，运行以下命令继续：
+
+```bash
+cd /Users/heshi/.openclaw/workspace/Adler-Graph-Reader
+uv run adler build-graph -d "Designing Machine Learning Systems"
+```
+
+---
+
+## 🔄 当前行动
+
+### Claude Code 子代理已启动 (16:54)
+正在执行以下任务：
+1. ✅ 修复 Pydantic 弃用警告 (`max_items` → `max_length`)
+2. 🔄 添加 LLM 备用方案支持（OpenAI 等）
+3. ⏳ 验证文档解析流程独立性
+4. ⏳ 创建快速启动脚本
+
+---
+
+## 📋 历史进度记录
+
+- **2026-03-03 16:54** - 启动子代理开发备用 LLM 方案
+- **2026-03-03 16:46** - 确认 LM Studio 不可用，任务阻塞，等待用户修复
+- **2026-03-03 16:04** - LM Studio 模型崩溃，尝试重启
+- **2026-03-03 10:55** - 代码质量修复完成，58个测试通过
+- **2026-03-03 09:48** - Chonkie 智能 Chunking 完成
+- **2026-03-03 10:00** - 概念提取覆盖率修复（目标 800+ 概念）
+- **2026-03-03 09:25** - FastAPI Routes 完成
+- **2026-03-03 08:35** - GraphML/GEXF 导出完成
+
+---
+
+## 🎯 下一步目标
+
+一旦 LM Studio 恢复：
+
+1. **概念提取** - 目标 800+ 概念
+2. **关系提取** - 目标 400+ 关系
+3. **图谱构建** - 生成完整的知识图谱
