@@ -1,36 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import * as d3 from 'd3';
+import { useEffect, useState, useCallback } from 'react';
+import { SigmaContainer, useSigma, useLoadGraph, useRegisterEvents } from '@react-sigma/core';
+import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2';
+import Graph from 'graphology';
 import { graphApi, api } from '../services/api';
+import '@react-sigma/core/lib/react-sigma.min.css';
 
 interface GraphNode {
   id: string;
   name: string;
   type: string;
+  description?: string;
+  confidence?: number;
 }
 
 interface GraphLink {
   source: string;
   target: string;
-  type: string;
-}
-
-interface D3Node extends d3.SimulationNodeDatum {
-  id: string;
-  name: string;
-  type: string;
-  description?: string;
-  confidence?: number;
-  x?: number;
-  y?: number;
-  vx?: number;
-  vy?: number;
-  fx?: number | null;
-  fy?: number | null;
-}
-
-interface D3Link extends d3.SimulationLinkDatum<D3Node> {
-  source: string | D3Node;
-  target: string | D3Node;
   type: string;
   confidence?: number;
 }
@@ -51,15 +36,134 @@ const colorMap: Record<string, string> = {
 
 const getNodeColor = (type: string) => colorMap[type] || colorMap.default;
 
+// Sigma Graph Controller Component
+function GraphController({
+  graphData,
+  onNodeClick,
+  highlightedNode,
+}: {
+  graphData: GraphData;
+  onNodeClick: (node: GraphNode | null) => void;
+  highlightedNode: string | null;
+}) {
+  const sigma = useSigma();
+  const loadGraph = useLoadGraph();
+  const { start, stop } = useWorkerLayoutForceAtlas2({
+    settings: {
+      gravity: 0.05,
+      scalingRatio: 10,
+      slowDown: 2,
+    },
+  });
+
+  // Register events
+  const registerEvents = useRegisterEvents();
+
+  useEffect(() => {
+    registerEvents({
+      clickNode: (e: { node: string }) => {
+        const nodeId = e.node;
+        const nodeData = graphData.nodes.find((n) => n.id === nodeId);
+        if (nodeData) {
+          onNodeClick(nodeData);
+        }
+      },
+      clickStage: () => {
+        onNodeClick(null);
+      },
+    });
+  }, [registerEvents, graphData, onNodeClick]);
+
+  // Load graph data
+  useEffect(() => {
+    const graph = new Graph();
+
+    // Add nodes
+    graphData.nodes.forEach((node) => {
+      graph.addNode(node.id, {
+        label: node.name,
+        size: 8,
+        color: getNodeColor(node.type),
+        type: node.type,
+        description: node.description,
+        confidence: node.confidence,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+      });
+    });
+
+    // Add edges
+    graphData.links.forEach((link, index) => {
+      if (graph.hasNode(link.source) && graph.hasNode(link.target)) {
+        graph.addEdge(link.source, link.target, {
+          id: `edge-${index}`,
+          label: link.type,
+          size: 1,
+          color: '#999',
+          type: link.type,
+          confidence: link.confidence,
+        });
+      }
+    });
+
+    loadGraph(graph);
+    start();
+
+    return () => {
+      stop();
+    };
+  }, [graphData, loadGraph, start, stop]);
+
+  // Handle node highlighting
+  useEffect(() => {
+    const graph = sigma.getGraph();
+
+    if (highlightedNode) {
+      // Get connected nodes
+      const connectedNodes = new Set<string>([highlightedNode]);
+      graph.forEachEdge((_, __, source, target) => {
+        if (source === highlightedNode) connectedNodes.add(target);
+        if (target === highlightedNode) connectedNodes.add(source);
+      });
+
+      // Update node colors
+      graph.forEachNode((node, attributes) => {
+        if (connectedNodes.has(node)) {
+          graph.setNodeAttribute(node, 'color', getNodeColor(attributes.type as string));
+        } else {
+          graph.setNodeAttribute(node, 'color', '#e5e7eb');
+        }
+      });
+
+      // Update edge colors
+      graph.forEachEdge((edge, _, source, target) => {
+        if (source === highlightedNode || target === highlightedNode) {
+          graph.setEdgeAttribute(edge, 'color', '#999');
+        } else {
+          graph.setEdgeAttribute(edge, 'color', '#e5e7eb');
+        }
+      });
+    } else {
+      // Reset colors
+      graph.forEachNode((node, attributes) => {
+        graph.setNodeAttribute(node, 'color', getNodeColor(attributes.type as string));
+      });
+      graph.forEachEdge((edge) => {
+        graph.setEdgeAttribute(edge, 'color', '#999');
+      });
+    }
+  }, [highlightedNode, sigma]);
+
+  return null;
+}
+
 export default function GraphPage() {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<D3Node[]>([]);
+  const [searchResults, setSearchResults] = useState<GraphNode[]>([]);
   const [showLegend, setShowLegend] = useState(true);
 
   // Fetch graph data
@@ -79,128 +183,10 @@ export default function GraphPage() {
     fetchData();
   }, []);
 
-  // Initialize D3 graph
-  useEffect(() => {
-    if (!svgRef.current || !containerRef.current || !graphData) return;
-
-    const container = containerRef.current;
-    const width = container.clientWidth;
-    const height = container.clientHeight || 600;
-
-    // Clear previous SVG content
-    d3.select(svgRef.current).selectAll('*').remove();
-
-    const svg = d3.select(svgRef.current).attr('width', width).attr('height', height);
-
-    // Add zoom behavior
-    const g = svg.append('g');
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 4])
-      .on('zoom', (event) => g.attr('transform', event.transform));
-    svg.call(zoom);
-
-    // Prepare nodes and links
-    const nodes: D3Node[] = graphData.nodes.map((n) => ({ ...n }));
-    const links: D3Link[] = graphData.links.map((l) => ({ ...l }));
-
-    // Create simulation
-    const simulation = d3.forceSimulation<D3Node>(nodes)
-      .force('link', d3.forceLink<D3Node, D3Link>(links).id((d) => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-300))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(30));
-
-    // Create links
-    const link = g.append('g').attr('class', 'links')
-      .selectAll('line')
-      .data(links)
-      .enter()
-      .append('line')
-      .attr('stroke', '#999')
-      .attr('stroke-width', 2)
-      .attr('stroke-opacity', 0.6);
-
-    // Create nodes
-    const node = g.append('g').attr('class', 'nodes')
-      .selectAll('g')
-      .data(nodes)
-      .enter()
-      .append('g')
-      .style('cursor', 'pointer')
-      .call(
-        d3.drag<SVGGElement, D3Node>()
-          .on('start', (event, d) => {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x ?? null;
-            d.fy = d.y ?? null;
-          })
-          .on('drag', (event, d) => {
-            d.fx = event.x;
-            d.fy = event.y;
-          })
-          .on('end', (event, d) => {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-          })
-      );
-
-    // Add circles to nodes
-    node.append('circle')
-      .attr('r', 8)
-      .attr('fill', (d) => getNodeColor(d.type))
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
-
-    // Add labels to nodes
-    node.append('text')
-      .text((d) => d.name)
-      .attr('x', 15)
-      .attr('y', 4)
-      .attr('font-size', '12px')
-      .attr('fill', '#374151')
-      .style('pointer-events', 'none');
-
-    // Node interactions
-    node.on('click', (event, d) => {
-      event.stopPropagation();
-      setSelectedNode(d);
-      const connectedIds = new Set<string>([d.id]);
-      links.forEach((l) => {
-        const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
-        const targetId = typeof l.target === 'string' ? l.target : l.target.id;
-        if (sourceId === d.id) connectedIds.add(targetId);
-        if (targetId === d.id) connectedIds.add(sourceId);
-      });
-      node.style('opacity', (n) => (connectedIds.has(n.id) ? 1 : 0.2));
-      link.style('opacity', (l) => {
-        const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
-        const targetId = typeof l.target === 'string' ? l.target : l.target.id;
-        return sourceId === d.id || targetId === d.id ? 1 : 0.1;
-      });
-    });
-
-    // Click background to reset
-    svg.on('click', () => {
-      setSelectedNode(null);
-      node.style('opacity', 1);
-      link.style('opacity', 0.6);
-    });
-
-    // Update positions on tick
-    simulation.on('tick', () => {
-      link
-        .attr('x1', (d) => (typeof d.source !== 'string' ? d.source.x || 0 : 0))
-        .attr('y1', (d) => (typeof d.source !== 'string' ? d.source.y || 0 : 0))
-        .attr('x2', (d) => (typeof d.target !== 'string' ? d.target.x || 0 : 0))
-        .attr('y2', (d) => (typeof d.target !== 'string' ? d.target.y || 0 : 0));
-      node.attr('transform', (d) => `translate(${d.x || 0},${d.y || 0})`);
-    });
-
-    return () => {
-      simulation.stop();
-    };
-  }, [graphData]);
+  // Handle node click
+  const handleNodeClick = useCallback((node: GraphNode | null) => {
+    setSelectedNode(node);
+  }, []);
 
   // Handle search
   const handleSearch = (query: string) => {
@@ -209,9 +195,9 @@ export default function GraphPage() {
       setSearchResults([]);
       return;
     }
-    const filtered = graphData.nodes
-      .filter((n) => n.name.toLowerCase().includes(query.toLowerCase()))
-      .map((n) => n as unknown as D3Node);
+    const filtered = graphData.nodes.filter((n) =>
+      n.name.toLowerCase().includes(query.toLowerCase())
+    );
     setSearchResults(filtered);
   };
 
@@ -259,7 +245,7 @@ export default function GraphPage() {
             节点: {graphData?.nodes.length || 0} | 关系: {graphData?.links.length || 0}
           </p>
         </div>
-        
+
         {/* Search Box */}
         <div style={{ position: 'relative', width: '300px' }}>
           <input
@@ -272,24 +258,26 @@ export default function GraphPage() {
               padding: '8px 12px',
               borderRadius: '6px',
               border: '1px solid #d1d5db',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
           />
           {searchResults.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              background: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '6px',
-              marginTop: '4px',
-              maxHeight: '200px',
-              overflowY: 'auto',
-              zIndex: 50,
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+                marginTop: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                zIndex: 50,
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              }}
+            >
               {searchResults.map((node) => (
                 <div
                   key={node.id}
@@ -301,7 +289,7 @@ export default function GraphPage() {
                   style={{
                     padding: '8px 12px',
                     cursor: 'pointer',
-                    borderBottom: '1px solid #f3f4f6'
+                    borderBottom: '1px solid #f3f4f6',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = '#f9fafb';
@@ -311,11 +299,13 @@ export default function GraphPage() {
                   }}
                 >
                   <span style={{ fontWeight: 500 }}>{node.name}</span>
-                  <span style={{ 
-                    fontSize: '12px', 
-                    color: '#6b7280',
-                    marginLeft: '8px'
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      marginLeft: '8px',
+                    }}
+                  >
                     ({node.type})
                   </span>
                 </div>
@@ -339,7 +329,7 @@ export default function GraphPage() {
               border: '1px solid #d1d5db',
               background: 'white',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
           >
             <option value="">📥 导出图谱</option>
@@ -352,27 +342,50 @@ export default function GraphPage() {
       </div>
 
       {/* Graph Container */}
-      <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#f9fafb' }}>
-        <svg ref={svgRef} style={{ width: '100%', height: '100%' }}></svg>
+      <div style={{ flex: 1, position: 'relative', background: '#f9fafb' }}>
+        {graphData && (
+          <SigmaContainer
+            style={{ width: '100%', height: '100%' }}
+            settings={{
+              nodeProgramClasses: {},
+              edgeProgramClasses: {},
+              labelFont: 'Arial',
+              labelSize: 12,
+              labelColor: { color: '#374151' },
+              renderLabels: true,
+              renderEdgeLabels: false,
+            }}
+          >
+            <GraphController
+              graphData={graphData}
+              onNodeClick={handleNodeClick}
+              highlightedNode={selectedNode?.id || null}
+            />
+          </SigmaContainer>
+        )}
 
         {/* Legend */}
         {showLegend && (
-          <div style={{
-            position: 'absolute',
-            right: '16px',
-            top: '16px',
-            background: 'white',
-            padding: '16px',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: '12px'
-            }}>
+          <div
+            style={{
+              position: 'absolute',
+              right: '16px',
+              top: '16px',
+              background: 'white',
+              padding: '16px',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+              }}
+            >
               <span style={{ fontWeight: 600, fontSize: '14px' }}>图例</span>
               <button
                 onClick={() => setShowLegend(false)}
@@ -382,7 +395,7 @@ export default function GraphPage() {
                   cursor: 'pointer',
                   color: '#9ca3af',
                   fontSize: '18px',
-                  lineHeight: 1
+                  lineHeight: 1,
                 }}
               >
                 ×
@@ -391,12 +404,14 @@ export default function GraphPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {Object.entries(colorMap).map(([type, color]) => (
                 <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    backgroundColor: color
-                  }}></span>
+                  <span
+                    style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: color,
+                    }}
+                  ></span>
                   <span style={{ fontSize: '13px', color: '#4b5563', textTransform: 'capitalize' }}>
                     {type === 'default' ? '其他' : type}
                   </span>
@@ -420,7 +435,7 @@ export default function GraphPage() {
               borderRadius: '6px',
               cursor: 'pointer',
               fontSize: '14px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             }}
           >
             显示图例
@@ -429,28 +444,34 @@ export default function GraphPage() {
 
         {/* Selected Node Panel */}
         {selectedNode && (
-          <div style={{
-            position: 'absolute',
-            right: '16px',
-            bottom: '16px',
-            width: '280px',
-            background: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            border: '1px solid #e5e7eb',
-            padding: '16px'
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: '12px'
-            }}>
-              <h3 style={{ 
-                fontSize: '16px', 
-                fontWeight: 600,
-                color: '#111827'
-              }}>
+          <div
+            style={{
+              position: 'absolute',
+              right: '16px',
+              bottom: '16px',
+              width: '280px',
+              background: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: '#111827',
+                }}
+              >
                 {selectedNode.name}
               </h3>
               <button
@@ -461,7 +482,7 @@ export default function GraphPage() {
                   cursor: 'pointer',
                   color: '#9ca3af',
                   fontSize: '20px',
-                  lineHeight: 1
+                  lineHeight: 1,
                 }}
               >
                 ×
