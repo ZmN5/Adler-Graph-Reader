@@ -48,3 +48,6 @@ uv.lock
 
 output/
 data/
+
+# mac
+.DS_Store

@@ -17,6 +17,23 @@ from .parser import create_parser
 from .search import HybridSearchEngine
 
 
+def _is_database_initialized() -> bool:
+    """Check if database file exists and has required tables."""
+    if not database.DB_PATH.exists():
+        return False
+    try:
+        conn = database.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = {row[0] for row in cursor.fetchall()}
+        conn.close()
+        # Check for core tables
+        required = {"document_tree", "fts_chunks", "vec_chunks", "themes", "concepts"}
+        return required.issubset(tables)
+    except Exception:
+        return False
+
+
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -101,6 +118,31 @@ def parse_args() -> argparse.Namespace:
         "--all",
         action="store_true",
         help="Build graph for all documents in database",
+    )
+
+    # process command (one-command pipeline with auto-init-db)
+    process_cmd = subparsers.add_parser(
+        "process",
+        help="One-command pipeline: auto-init-db + ingest + build-graph",
+    )
+    process_cmd.add_argument(
+        "file",
+        type=Path,
+        nargs="?",
+        help="Document file (PDF, EPUB, MOBI, AZW3, or TXT)",
+    )
+    process_cmd.add_argument("--title", help="Override document title")
+    process_cmd.add_argument(
+        "--batch",
+        type=Path,
+        metavar="DIR",
+        help="Batch process all supported files from directory",
+    )
+    process_cmd.add_argument(
+        "--all",
+        action="store_true",
+        dest="process_all",
+        help="Process all documents in database without existing concepts",
     )
 
     # graph command
@@ -492,6 +534,71 @@ def cmd_build_graph(
     return document_id
 
 
+def cmd_process(
+    file: Path | None = None,
+    batch: Path | None = None,
+    process_all: bool = False,
+    title: str | None = None,
+) -> None:
+    """
+    One-command pipeline: init-db (if needed) + ingest + build-graph.
+    """
+    # Step 1: Check and initialize database if needed
+    if not _is_database_initialized():
+        print("Database not initialized. Initializing...")
+        database.init_database()
+        print("Database initialized.")
+    else:
+        print("Database already initialized.")
+
+    # Step 2: Process documents
+    if process_all:
+        # Process all documents without concepts
+        conn = database.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT document_id FROM document_tree
+            WHERE document_id NOT IN (SELECT DISTINCT document_id FROM concepts)
+            ORDER BY document_id
+            """
+        )
+        doc_ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        if not doc_ids:
+            print("No documents found without existing concepts.")
+            return
+        print(f"Found {len(doc_ids)} documents to process")
+        for doc_id in doc_ids:
+            print(f"\n=== Processing: {doc_id} ===")
+            cmd_build_graph(None, doc_id)
+        print(f"\nBatch processing complete: {len(doc_ids)} documents processed.")
+    elif batch:
+        # Batch process directory
+        if not batch.is_dir():
+            print(f"Error: {batch} is not a directory")
+            return
+        supported_exts = (".pdf", ".epub", ".mobi", ".azw3", ".txt")
+        files = sorted(
+            [f for f in batch.iterdir() if f.suffix.lower() in supported_exts]
+        )
+        if not files:
+            print(f"No supported files found in {batch}")
+            return
+        print(f"Found {len(files)} files to process")
+        for f in files:
+            print(f"\n{'=' * 50}")
+            print(f"Processing: {f.name}")
+            print("=" * 50)
+            cmd_build_graph(f, title)
+        print(f"\nBatch processing complete: {len(files)} files processed.")
+    elif file:
+        # Single file
+        cmd_build_graph(file, title)
+    else:
+        print("Error: Please provide a file, --batch, or --all")
+
+
 def cmd_graph(document_id: str, format: str = "text") -> None:
     """View knowledge graph for a document."""
     conn = database.get_admin_connection()
@@ -744,6 +851,10 @@ def main() -> int:
             print(f"\nBatch build-graph complete: {len(doc_ids)} documents processed.")
         else:
             cmd_build_graph(args.file, args.document)
+        return 0
+
+    if args.command == "process":
+        cmd_process(args.file, args.batch, args.process_all, args.title)
         return 0
 
     if args.command == "graph":

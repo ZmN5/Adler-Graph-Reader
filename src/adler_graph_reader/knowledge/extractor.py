@@ -154,11 +154,11 @@ class ConceptExtractor:
     """Extract concepts with definitions and examples from document."""
 
     # Configuration for full extraction (方案B: 全量抽取)
-    CHUNKS_PER_BATCH = 50  # Process 50 chunks per batch (reduced from 500 to avoid context length issues)
-    MAX_CHUNKS_TO_PROCESS = 3000  # Process up to 3000 chunks
-    CONCEPTS_PER_CHUNK_RATIO = 0.5  # 1 concept per 2 chunks
-    MIN_CONCEPTS = 200
-    MAX_CONCEPTS_HARD_LIMIT = 3000
+    CHUNKS_PER_BATCH = 200  # Increased from 50 to process more chunks per LLM call
+    MAX_CHUNKS_TO_PROCESS = 10000  # Increased from 3000 to process all chunks in large documents
+    CONCEPTS_PER_CHUNK_RATIO = 0.8  # Increased from 0.5 to extract more concepts per chunk
+    MIN_CONCEPTS = 300  # Increased minimum concepts
+    MAX_CONCEPTS_HARD_LIMIT = 5000  # Increased hard limit
 
     def __init__(self, client: Optional[OllamaClient] = None):
         self.client = client or get_default_client()
