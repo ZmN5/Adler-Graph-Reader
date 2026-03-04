@@ -73,7 +73,17 @@ uv add --dev pytest ruff
 # 所有命令必须通过 uv run 执行
 uv run adler --help
 uv run adler init-db
+
+# 一键处理（推荐）- 自动完成 init-db + ingest + build-graph
+uv run adler process <file.pdf>
+uv run adler process --batch <directory>    # 批量处理
+uv run adler process --all                   # 处理所有未建图的文档
+
+# 分步处理（旧方式）
 uv run adler ingest <file.pdf>
+uv run adler build-graph -d "document_id"
+
+# 分析文档（生成 Markdown）
 uv run adler analyze <file.pdf> -o output/
 
 # 代码质量检查（必须用 uv run）
@@ -115,27 +125,57 @@ uv run pytest tests/ -v
 ```
 src/adler_graph_reader/
 ├── __init__.py           # Package entry
-├── cli.py                # CLI interface (commands: init-db, ingest, analyze, search)
-├── database.py            # SQLite + FTS5 + sqlite-vec initialization & queries
+├── cli.py                # CLI interface (commands: init-db, ingest, process, build-graph, analyze, search)
+├── database.py           # SQLite + FTS5 + sqlite-vec initialization & queries
+├── config.py             # Configuration management (LLM, language settings)
 ├── parser/               # Document parsing (Single Responsibility)
 │   ├── __init__.py       # Abstract DocumentParser + Factory
 │   ├── pdf.py            # PyMuPDF implementation
-│   └── epub.py           # ebooklib implementation
+│   ├── epub.py           # ebooklib implementation
+│   ├── mobi.py           # MOBI/AZW3 implementation
+│   └── txt.py            # Plain text implementation
+├── chunking/             # Semantic chunking (Chonkie)
+│   ├── __init__.py
+│   ├── chonkie_splitter.py   # Chonkie semantic splitter
+│   └── simple_splitter.py    # Fallback simple splitter
+├── embeddings/           # Embedding provider (Open/Closed principle)
+│   ├── __init__.py
+│   └── provider.py       # EmbeddingProvider (lmstudio/local/auto modes)
 ├── llm/                  # LLM integration (Open/Closed for new models)
 │   ├── __init__.py
 │   ├── client.py         # OllamaClient (JSON mode via instructor)
 │   └── models.py         # Pydantic response schemas
 ├── knowledge/            # Domain models (Interface Segregation)
 │   ├── __init__.py
-│   └── models.py         # BookAnalysis, ConceptNode, Argument
+│   ├── models.py         # BookAnalysis, ConceptNode, Argument
+│   ├── extractor.py      # Theme/Concept/Relation extractors
+│   ├── graph.py          # KnowledgeGraph operations
+│   ├── graph_models.py   # Graph data models
+│   └── progress.py       # Extraction progress tracking
 ├── search/               # Hybrid search engine
 │   ├── __init__.py
-│   ├── engine.py         # HybridSearchEngine (BM25 + Vector + RRF + Rerank)
+│   ├── engine.py         # HybridSearchEngine (BM25 + Vector + RRF)
 │   └── fusion.py         # Reciprocal Rank Fusion
+├── export/               # Graph export formats
+│   ├── __init__.py
+│   └── graphml.py        # GraphML/GEXF/DOT export
+├── api/                  # FastAPI REST API
+│   ├── __init__.py
+│   ├── main.py           # FastAPI app entry
+│   ├── models.py         # API Pydantic models
+│   └── routes/           # API endpoints
+│       ├── __init__.py
+│       ├── documents.py
+│       ├── concepts.py
+│       ├── relations.py
+│       ├── search.py
+│       ├── qa.py
+│       └── graph.py
 └── output/               # Markdown generation
     ├── __init__.py
-    ├── markdown.py       # MarkdownGenerator (pure file I/O)
-    └── writer.py         # ObsidianWriter (YAML frontmatter + wikilinks)
+│   ├── markdown.py       # MarkdownGenerator (pure file I/O)
+│   ├── writer.py         # ObsidianWriter (YAML frontmatter + wikilinks)
+    └── visualization.py  # Graph visualization utilities
 ```
 
 ### Module Design
@@ -150,7 +190,7 @@ src/adler_graph_reader/
 
 - **document_tree**: Hierarchical (parent_id for chapter/chunk tracking)
 - **fts_chunks**: FTS5 virtual table for BM25 search
-- **vec_chunks**: sqlite-vec (1536-dim) for semantic search
+- **vec_chunks**: sqlite-vec (1024-dim) for semantic search
 
 ### Pipeline Stages
 

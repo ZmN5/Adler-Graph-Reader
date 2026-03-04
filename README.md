@@ -9,11 +9,12 @@
 ## ✨ 特性
 
 - 📖 **多格式支持** - PDF / EPUB / MOBI / AZW3 / TXT 文档解析
+- 🚀 **一键处理** - `process` 命令自动完成初始化、导入、建图全流程
 - 🧠 **AI 知识提取** - 使用本地 Qwen3 模型提取主题、概念、关系
 - 🔍 **混合搜索** - SQLite FTS5 全文搜索 + sqlite-vec 向量语义搜索
 - 🕸️ **知识图谱** - 自动生成概念间的 bidirectional 关系网络（12种关系类型）
 - 💬 **智能问答** - 基于提取的知识图谱回答问题
-- 🖥️ **Web UI** - Streamlit 可视化界面，支持图谱浏览和搜索
+- 🖥️ **Web UI** - FastAPI + React 可视化界面，支持图谱浏览和搜索
 - 📝 **Obsidian 输出** - 生成带双向链接的 Markdown 笔记
 - 📤 **批量处理** - 支持批量导入和批量构建知识图谱
 - 📊 **进度跟踪** - SQLite 持久化存储，支持断点续传
@@ -81,11 +82,18 @@ export ADLER_LLM_MODEL="claude-3-haiku-20240307"  # 可选，默认 claude-3-hai
 ### 批量导入书籍
 
 ```bash
-# 批量导入整个目录的书籍
-uv run adler ingest --batch books/
+# 一键处理单本书（推荐）- 自动完成初始化、导入、建图
+uv run adler process books/my-book.pdf
 
-# 对所有已导入的书籍构建知识图谱
-uv run adler build-graph --all
+# 批量处理整个目录
+uv run adler process --batch books/
+
+# 处理所有未建图的文档
+uv run adler process --all
+
+# 旧方式：分步处理
+# uv run adler ingest --batch books/
+# uv run adler build-graph --all
 ```
 
 ---
@@ -106,7 +114,23 @@ uv run adler ingest books/my-book.pdf
 uv run adler ingest books/learning-python.epub --title "Learning Python"
 ```
 
-### 3️⃣ 构建知识图谱
+### 🚀 一键处理（推荐）
+
+```bash
+# 完整流程：初始化数据库 + 导入 + 构建知识图谱
+uv run adler process books/how-to-read-a-book.pdf
+
+# 批量处理目录
+uv run adler process --batch books/
+
+# 处理所有未建图的文档
+uv run adler process --all
+
+# 指定标题
+uv run adler process book.pdf --title "Custom Title"
+```
+
+### 3️⃣ 构建知识图谱（分步方式）
 
 ```bash
 # 完整流程：导入 + 提取主题 + 概念 + 关系
@@ -195,25 +219,39 @@ uv run adler ui --no-browser
 
 ```
 src/adler_graph_reader/
-├── cli.py                # CLI 入口（ingest/analyze/build-graph/qa/search/ui）
+├── cli.py                # CLI 入口（ingest/process/build-graph/qa/search/api/ui）
 ├── database.py           # SQLite + FTS5 + sqlite-vec 初始化与查询
+├── config.py             # 配置管理
 ├── parser/               # 文档解析
 │   ├── pdf.py            # PyMuPDF 实现
 │   ├── epub.py           # ebooklib 实现
 │   ├── mobi.py           # MOBI/AZW3 实现
 │   └── txt.py            # 纯文本实现
+├── chunking/             # 语义分块
+│   └── chonkie_splitter.py   # Chonkie 语义切分
+├── embeddings/           # Embedding provider
+│   └── provider.py       # LM Studio/local/auto 三种模式
 ├── llm/                  # LLM 集成
 │   ├── client.py         # OllamaClient（OpenAI SDK + instructor）
 │   └── models.py         # Pydantic 响应模型
 ├── knowledge/            # 知识提取
 │   ├── extractor.py      # 主题/概念/关系提取器
-│   └── models.py         # 领域模型（Theme/Concept/Relation）
+│   ├── graph.py          # KnowledgeGraph 操作
+│   ├── models.py         # 领域模型（Theme/Concept/Relation）
+│   └── progress.py       # 进度跟踪
 ├── search/               # 搜索引擎
 │   ├── engine.py         # 混合搜索（BM25 + Vector + RRF）
 │   └── fusion.py         # 倒数排名融合
+├── export/               # 图谱导出
+│   └── graphml.py        # GraphML/GEXF/DOT 导出
+├── api/                  # FastAPI REST API
+│   ├── main.py           # FastAPI 应用入口
+│   ├── models.py         # API 数据模型
+│   └── routes/           # API 路由
 └── output/               # 输出生成
     ├── markdown.py       # Markdown 生成器
-    └── writer.py         # Obsidian 写入器（YAML + 双向链接）
+    ├── writer.py         # Obsidian 写入器（YAML + 双向链接）
+    └── visualization.py  # 可视化工具
 ```
 
 ### 数据流程
@@ -242,7 +280,7 @@ src/adler_graph_reader/
 |------|------|
 | `document_tree` |  hierarchical 文档结构（book → chapter → chunk） |
 | `fts_chunks` | FTS5 虚拟表（BM25 全文搜索） |
-| `vec_chunks` | sqlite-vec 虚拟表（1536 维向量） |
+| `vec_chunks` | sqlite-vec 虚拟表（1024 维向量） |
 | `themes` | 提取的主题 |
 | `concepts` | 提取的概念（带定义和示例） |
 | `concept_relations` | 概念间关系（relates_to/similar_to/broader_than 等） |
@@ -303,13 +341,14 @@ books/
 
 ### 待办事项
 
-- [x] 添加更多单元测试 (37个测试全部通过)
+- [x] 添加更多单元测试 (82个测试全部通过)
 - [x] 支持更多 LLM 后端（LM Studio 集成）
-- [x] 改进 Web UI 的图谱可视化（D3.js / Cytoscape）
+- [x] 改进 Web UI 的图谱可视化（React + D3.js）
 - [x] 支持批量导入书籍
 - [x] 添加知识图谱导出（GraphML / GEXF）
 - [x] 支持更多文档格式（MOBI, AZW3, TXT）
 - [x] 添加 API 服务（FastAPI）
+- [x] 添加 process 一键处理命令
 
 ---
 
@@ -325,7 +364,8 @@ MIT License
 - [Ollama](https://ollama.ai) - 本地 LLM 运行
 - [Qwen3](https://github.com/QwenLM/Qwen) - 阿里通义千问模型
 - [sqlite-vec](https://github.com/asg017/sqlite-vec) - SQLite 向量搜索
-- [Streamlit](https://streamlit.io) - Web UI 框架
+- [FastAPI](https://fastapi.tiangolo.com/) - Web API 框架
+- [Chonkie](https://github.com/chonkie-ai/chonkie) - 语义分块库
 
 ---
 
