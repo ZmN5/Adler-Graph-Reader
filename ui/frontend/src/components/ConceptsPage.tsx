@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 
 interface Concept {
@@ -37,7 +37,7 @@ export const ConceptsPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [categoryFilter, setCategoryFilter] = useState('');
 
-  const fetchConcepts = async () => {
+  const fetchConcepts = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.getConcepts({
@@ -52,7 +52,7 @@ export const ConceptsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchTerm]);
 
   const fetchConceptDetail = async (conceptId: number) => {
     setLoading(true);
@@ -68,7 +68,7 @@ export const ConceptsPage: React.FC = () => {
 
   useEffect(() => {
     fetchConcepts();
-  }, [currentPage, searchTerm]);
+  }, [fetchConcepts]);
 
   const categories = [...new Set(concepts.map(c => c.category))];
 

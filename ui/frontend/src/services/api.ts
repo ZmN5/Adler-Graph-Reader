@@ -37,7 +37,7 @@ export interface Document {
   source_type: string;
   created_at: string;
   updated_at: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Concept {
