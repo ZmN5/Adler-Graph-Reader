@@ -1,29 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { memo, useEffect, useState, useCallback } from 'react';
 import { SigmaContainer, useSigma, useLoadGraph, useRegisterEvents } from '@react-sigma/core';
 import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2';
 import Graph from 'graphology';
 import { graphApi, api } from '../services/api';
+import { GraphNode, GraphData } from '../types';
 import '@react-sigma/core/lib/react-sigma.min.css';
-
-interface GraphNode {
-  id: string;
-  name: string;
-  type: string;
-  description?: string;
-  confidence?: number;
-}
-
-interface GraphLink {
-  source: string;
-  target: string;
-  type: string;
-  confidence?: number;
-}
-
-interface GraphData {
-  nodes: GraphNode[];
-  links: GraphLink[];
-}
 
 const colorMap: Record<string, string> = {
   person: '#4f46e5',
@@ -157,7 +138,10 @@ function GraphController({
   return null;
 }
 
-export default function GraphPage() {
+// Memoize the GraphController to prevent unnecessary re-renders
+const MemoizedGraphController = memo(GraphController);
+
+function GraphPage() {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -356,7 +340,7 @@ export default function GraphPage() {
               renderEdgeLabels: false,
             }}
           >
-            <GraphController
+            <MemoizedGraphController
               graphData={graphData}
               onNodeClick={handleNodeClick}
               highlightedNode={selectedNode?.id || null}
@@ -508,3 +492,6 @@ export default function GraphPage() {
     </div>
   );
 }
+
+// Export memoized version for performance optimization
+export default memo(GraphPage);

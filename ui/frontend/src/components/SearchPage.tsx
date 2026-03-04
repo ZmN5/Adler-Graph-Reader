@@ -1,18 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-
-interface SearchResult {
-  tree_id: number;
-  content: string;
-  score: number;
-  context: string[];
-  page_number?: number;
-}
+import { useDebounce } from '../hooks';
+import { SearchResultItem } from '../types';
 
 export const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [documentId, setDocumentId] = useState('adler_grammar');
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -21,17 +15,23 @@ export const SearchPage: React.FC = () => {
     use_reranker: true,
   });
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  // Debounce the search query to avoid too many API calls
+  const debouncedQuery = useDebounce(query, 300);
 
+  // Auto-search when debounced query changes (if user has already searched once)
+  useEffect(() => {
+    if (hasSearched && debouncedQuery.trim()) {
+      performSearch(debouncedQuery);
+    }
+  }, [debouncedQuery, documentId, searchOptions.top_k, searchOptions.use_reranker]);
+
+  const performSearch = async (searchQuery: string) => {
     setLoading(true);
     setError(null);
-    setHasSearched(true);
 
     try {
       const response = await api.search({
-        query: query.trim(),
+        query: searchQuery.trim(),
         document_id: documentId,
         top_k: searchOptions.top_k,
         use_reranker: searchOptions.use_reranker,
@@ -42,6 +42,14 @@ export const SearchPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    setHasSearched(true);
+    await performSearch(query);
   };
 
   const highlightText = (text: string, query: string) => {

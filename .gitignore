@@ -51,3 +51,6 @@ data/
 
 # mac
 .DS_Store
+
+# JS
+**/node_modules/*

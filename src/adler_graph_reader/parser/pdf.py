@@ -1,5 +1,5 @@
 """
-PDF parser implementation using PyMuPDF (fitz) with Chonkie semantic chunking.
+PDF parser implementation using PyMuPDF (fitz) with Chonkie recursive chunking.
 """
 
 import re
@@ -9,7 +9,7 @@ from typing import Optional
 import fitz  # PyMuPDF
 
 from . import Chunk, DocumentParser, ParsedDocument
-from ..chunking import create_simple_chunker
+from ..chunking import create_chonkie_splitter
 
 
 # Heuristic patterns for detecting chapter/section headings
@@ -116,15 +116,15 @@ class PDFParser(DocumentParser):
         # Combine all text for chunking
         full_text = "\n\n".join([text for _, text in full_text_parts])
 
-        # Use simple paragraph chunking (fast, no embeddings needed)
-        splitter = create_simple_chunker(chunk_size=1000, overlap=100)
-        simple_chunks = splitter.chunk(full_text)
+        # Use Chonkie RecursiveChunker for semantic chunking (consistent with EPUB)
+        splitter = create_chonkie_splitter(chunk_size=1000, chunk_overlap=100)
+        semantic_chunks = splitter.chunk(full_text)
 
         # Map chunks back to pages and chapters
         chunks: list[Chunk] = []
         current_chapter: Optional[str] = None
 
-        for chunk in simple_chunks:
+        for chunk in semantic_chunks:
             content = chunk.text
 
             # Find which page this chunk belongs to (approximate)

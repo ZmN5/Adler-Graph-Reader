@@ -118,8 +118,8 @@ class TestConceptExtractionCoverage:
         extractor = ConceptExtractor(client=mock_client)
 
         # Verify batch configuration
-        assert extractor.CHUNKS_PER_BATCH == 50
-        assert extractor.MAX_CHUNKS_TO_PROCESS == 3000
+        assert extractor.CHUNKS_PER_BATCH == 200
+        assert extractor.MAX_CHUNKS_TO_PROCESS == 10000
 
         # Get total chunks
         total = extractor._get_total_chunks(conn, document_id)

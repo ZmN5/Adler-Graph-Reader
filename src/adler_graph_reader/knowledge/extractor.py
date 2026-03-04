@@ -395,83 +395,153 @@ Ensure the extracted concepts cover ML system design, model training, deployment
             if progress_manager:
                 progress_manager.save_progress(progress)
 
-        # Process concepts
+        # Process concepts in batches
         names_to_process = all_concept_names[:target_concepts]
         processed_count = 0
+        BATCH_SIZE = 8  # Process 8 concepts per LLM call
 
-        for idx, name in enumerate(names_to_process):
+        # Pre-fetch contexts for all concepts to process
+        print(f"[ConceptExtractor] Preparing contexts for {len(names_to_process)} concepts...")
+        concept_contexts: dict[str, tuple[list[int], str]] = {}
+        for name in names_to_process:
             # Skip already processed concepts when resuming
             if progress and name in progress.processed_concepts:
                 continue
 
-            try:
-                # Find source chunks for this concept
-                cursor.execute(
-                    """
-                    SELECT d.id, d.content FROM document_tree d
-                    WHERE d.document_id = ? AND d.content LIKE ?
-                    ORDER BY d.id
-                    LIMIT 3
-                    """,
-                    (document_id, f"%{name}%"),
-                )
-                chunk_rows = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT d.id, d.content FROM document_tree d
+                WHERE d.document_id = ? AND d.content LIKE ?
+                ORDER BY d.id
+                LIMIT 3
+                """,
+                (document_id, f"%{name}%"),
+            )
+            chunk_rows = cursor.fetchall()
 
-                if not chunk_rows:
-                    # Mark as processed even if no chunks found
-                    if progress and progress_manager:
-                        progress.mark_concept_processed(name)
-                        progress_manager.save_progress(progress)
-                    continue
-
+            if chunk_rows:
                 chunk_ids = [row[0] for row in chunk_rows]
                 context = "\n\n".join(
                     [f"[Chunk {row[0]}]: {row[1][:600]}" for row in chunk_rows]
                 )
-
-                # Extract concept details
-                concept_data = self._extract_single_concept(name, context)
-
-                if concept_data:
-                    embedding = self.client.embed(
-                        f"{concept_data.name}: {concept_data.definition}"
-                    )
-
-                    concept = ConceptModel(
-                        document_id=document_id,
-                        theme_id=theme_ids[0] if theme_ids else None,
-                        name=concept_data.name,
-                        definition=concept_data.definition,
-                        explanation=getattr(concept_data, "explanation", None),
-                        examples=concept_data.examples,
-                        importance_score=concept_data.importance_score,
-                        category=getattr(concept_data, "category", "concept"),
-                        source_chunk_ids=chunk_ids,
-                        embedding=embedding,
-                    )
-                    concepts.append(concept)
-                    processed_count += 1
-
-                    # Update progress every 5 concepts
-                    if progress and progress_manager and processed_count % 5 == 0:
-                        progress.mark_concept_processed(name)
-                        progress.extracted_concepts = len(concepts)
-                        progress_manager.save_progress(progress)
-                        print(
-                            f"[ConceptExtractor] Progress: {len(concepts)}/{target_concepts} concepts extracted"
-                        )
-
-                # Mark as processed
+                concept_contexts[name] = (chunk_ids, context)
+            else:
+                # Mark as processed if no chunks found
                 if progress and progress_manager:
                     progress.mark_concept_processed(name)
+
+        # Get names that need processing (have contexts)
+        names_with_context = [name for name in names_to_process if name in concept_contexts]
+        print(f"[ConceptExtractor] Processing {len(names_with_context)} concepts in batches of {BATCH_SIZE}")
+
+        # Process in batches
+        for batch_start in range(0, len(names_with_context), BATCH_SIZE):
+            batch_end = min(batch_start + BATCH_SIZE, len(names_with_context))
+            batch_names = names_with_context[batch_start:batch_end]
+
+            print(f"[ConceptExtractor] Batch {batch_start//BATCH_SIZE + 1}: processing {len(batch_names)} concepts")
+
+            # Prepare contexts for this batch
+            batch_contexts = {name: concept_contexts[name][1] for name in batch_names}
+
+            try:
+                # Extract batch
+                batch_results = self._extract_concepts_batch(batch_names, batch_contexts)
+
+                if batch_results:
+                    print(f"[ConceptExtractor] Batch extracted {len(batch_results)} concepts")
+
+                    for concept_data in batch_results:
+                        # Find matching concept name (case-insensitive)
+                        matching_name = None
+                        for name in batch_names:
+                            if name.lower() == concept_data.name.lower():
+                                matching_name = name
+                                break
+
+                        if not matching_name:
+                            # Try exact match
+                            for name in batch_names:
+                                if name in concept_data.name or concept_data.name in name:
+                                    matching_name = name
+                                    break
+
+                        if matching_name:
+                            chunk_ids, _ = concept_contexts[matching_name]
+
+                            try:
+                                embedding = self.client.embed(
+                                    f"{concept_data.name}: {concept_data.definition}"
+                                )
+
+                                concept = ConceptModel(
+                                    document_id=document_id,
+                                    theme_id=theme_ids[0] if theme_ids else None,
+                                    name=concept_data.name,
+                                    definition=concept_data.definition,
+                                    explanation=getattr(concept_data, "explanation", None),
+                                    examples=concept_data.examples,
+                                    importance_score=concept_data.importance_score,
+                                    category=getattr(concept_data, "category", "concept"),
+                                    source_chunk_ids=chunk_ids,
+                                    embedding=embedding,
+                                )
+                                concepts.append(concept)
+                                processed_count += 1
+                            except Exception as e:
+                                print(f"Warning: Failed to create concept {concept_data.name}: {e}")
+
+                        # Mark as processed
+                        if progress and progress_manager:
+                            progress.mark_concept_processed(matching_name or concept_data.name)
+
+                else:
+                    # Batch failed, fall back to individual extraction
+                    print("[ConceptExtractor] Batch failed, falling back to individual extraction")
+                    for name in batch_names:
+                        chunk_ids, context = concept_contexts[name]
+                        concept_data = self._extract_single_concept(name, context)
+
+                        if concept_data:
+                            try:
+                                embedding = self.client.embed(
+                                    f"{concept_data.name}: {concept_data.definition}"
+                                )
+
+                                concept = ConceptModel(
+                                    document_id=document_id,
+                                    theme_id=theme_ids[0] if theme_ids else None,
+                                    name=concept_data.name,
+                                    definition=concept_data.definition,
+                                    explanation=getattr(concept_data, "explanation", None),
+                                    examples=concept_data.examples,
+                                    importance_score=concept_data.importance_score,
+                                    category=getattr(concept_data, "category", "concept"),
+                                    source_chunk_ids=chunk_ids,
+                                    embedding=embedding,
+                                )
+                                concepts.append(concept)
+                                processed_count += 1
+                            except Exception as e:
+                                print(f"Warning: Failed to create concept {name}: {e}")
+
+                        if progress and progress_manager:
+                            progress.mark_concept_processed(name)
+
+                # Update progress
+                if progress and progress_manager:
+                    progress.extracted_concepts = len(concepts)
                     progress_manager.save_progress(progress)
+                    print(
+                        f"[ConceptExtractor] Progress: {len(concepts)}/{target_concepts} concepts extracted"
+                    )
 
             except Exception as e:
-                print(f"Warning: Failed to process concept {name}: {e}")
-                if progress and progress_manager:
-                    progress.add_error(str(e), f"Processing concept: {name}")
-                    progress_manager.save_progress(progress)
-                continue
+                print(f"Warning: Batch processing failed: {e}")
+                # Continue to next batch
+                for name in batch_names:
+                    if progress and progress_manager:
+                        progress.mark_concept_processed(name)
 
         # Final progress update
         if progress and progress_manager:
@@ -481,6 +551,122 @@ Ensure the extracted concepts cover ML system design, model training, deployment
 
         print(f"[ConceptExtractor] Completed: extracted {len(concepts)} concepts")
         return concepts
+
+    def _extract_concepts_batch(
+        self,
+        concept_names: list[str],
+        contexts: dict[str, str],
+    ) -> list[EnhancedConcept]:
+        """
+        Extract detailed information for multiple concepts in a single LLM call.
+
+        Args:
+            concept_names: List of concept names to extract
+            contexts: Dict mapping concept name to context text
+
+        Returns:
+            List of EnhancedConcept objects
+        """
+        config = get_config()
+        lang_suffix = config.get_prompt_suffix()
+
+        # Build concept list for prompt
+        concept_list = "\n".join([f"- {name}" for name in concept_names])
+
+        # Combine contexts with separators
+        context_parts = []
+        for name in concept_names:
+            ctx = contexts.get(name, "")
+            if ctx:
+                context_parts.append(f"## Context for '{name}':\n{ctx[:800]}")
+        combined_context = "\n\n---\n\n".join(context_parts)
+
+        if config.language == "zh":
+            prompt = f"""从以下上下文中提取这些概念的详细信息：
+
+## 概念列表
+{concept_list}
+
+## 上下文内容
+{combined_context}
+
+## 提取要求
+
+对于每个概念，请提取以下信息：
+1. **name**: 概念名称（从列表中选择）
+2. **definition**: 精确定义（80-200字，基于上下文中的定义句）
+3. **explanation**: 详细解释（背景、用途、重要性）
+4. **examples**: 具体例子列表（2-3个，必须来自上下文）
+5. **importance_score**: 重要性评分（0.0-1.0）
+   - 0.85-1.0: 核心概念，书中反复出现
+   - 0.70-0.84: 重要概念，多个章节讨论
+   - 0.50-0.69: 常用概念，部分章节出现
+   - 0.30-0.49: 辅助概念，偶尔提及
+6. **category**: 类别（method/concept/principle/tool/person/event）
+
+## 输出格式
+返回JSON对象，包含一个concepts数组，每个元素包含上述字段。
+确保所有{len(concept_names)}个概念都在输出中。{lang_suffix}"""
+            system_msg = """你是一个专业的学术知识提取专家。请严格遵循以下规则：
+1. 基于给定上下文提取信息，不编造
+2. 定义必须精确、可操作
+3. 例子必须真实可查
+4. 评分必须客观公正
+5. 返回有效的JSON格式"""
+        else:
+            prompt = f"""Extract detailed information for these concepts from the context:
+
+## Concept List
+{concept_list}
+
+## Context Content
+{combined_context}
+
+## Extraction Requirements
+
+For each concept, extract:
+1. **name**: Concept name (from the list)
+2. **definition**: Precise definition (80-200 chars, based on context)
+3. **explanation**: Detailed explanation (background, usage, importance)
+4. **examples**: List of concrete examples (2-3 items, must be from context)
+5. **importance_score**: Importance score (0.0-1.0)
+   - 0.85-1.0: Core concept, appears repeatedly
+   - 0.70-0.84: Important concept, discussed in multiple chapters
+   - 0.50-0.69: Common concept, appears in some chapters
+   - 0.30-0.49: Supporting concept, mentioned occasionally
+6. **category**: Category (method/concept/principle/tool/person/event)
+
+## Output Format
+Return JSON object with a "concepts" array, each element containing the above fields.
+Ensure all {len(concept_names)} concepts are included in the output. {lang_suffix}"""
+            system_msg = """You are a professional academic knowledge extraction expert. Follow these rules:
+1. Extract strictly from given context, do not fabricate
+2. Definitions must be precise and actionable
+3. Examples must be verifiable
+4. Scores must be objective and fair
+5. Return valid JSON format"""
+
+        try:
+            result = self.client.generate_structured(
+                prompt,
+                response_model=EnhancedConceptExtraction,
+                system=system_msg,
+                temperature=0.2,
+            )
+            if result.concepts:
+                # Validate and fix each concept
+                for concept in result.concepts:
+                    concept.importance_score = max(0.1, min(1.0, concept.importance_score))
+                    if concept.examples is None:
+                        concept.examples = []
+                    concept.examples = [
+                        ex.strip() for ex in concept.examples if ex and ex.strip()
+                    ]
+                return result.concepts
+        except Exception as e:
+            print(f"Warning: Batch extraction failed: {e}")
+
+        return []
 
     def _extract_single_concept(
         self,
@@ -674,6 +860,7 @@ class RelationExtractor:
         """
         Extract relationships between concepts using multi-strategy approach.
 
+        Processes all concepts in batches of 60, sorted by importance.
         Enhanced relation types:
         - broader_than: A is a broader category/superconcept of B
         - narrower_than: A is a narrower category/subconcept of B
@@ -683,21 +870,89 @@ class RelationExtractor:
             print("[RelationExtractor] Not enough concepts to extract relations")
             return []
 
-        # Use more concepts for relation extraction (up to 60)
-        concepts_to_use = concepts[:60] if len(concepts) > 60 else concepts
+        # Sort concepts by importance score (descending) to prioritize important concepts
+        sorted_concepts = sorted(
+            concepts,
+            key=lambda c: c.importance_score or 0.5,
+            reverse=True
+        )
+
+        BATCH_SIZE = 60
+        all_relations: list[RelationModel] = []
+        seen_pairs: set = set()
+
+        # Map concept names to IDs for all concepts
+        concept_map = {c.name: c.id for c in concepts}
 
         print(
-            f"[RelationExtractor] Extracting relations for {len(concepts_to_use)} concepts"
+            f"[RelationExtractor] Processing {len(sorted_concepts)} concepts in batches of {BATCH_SIZE}"
         )
 
+        # Process concepts in batches
+        for batch_start in range(0, len(sorted_concepts), BATCH_SIZE):
+            batch_end = min(batch_start + BATCH_SIZE, len(sorted_concepts))
+            batch_concepts = sorted_concepts[batch_start:batch_end]
+
+            print(
+                f"[RelationExtractor] Batch {batch_start//BATCH_SIZE + 1}: "
+                f"processing concepts {batch_start+1}-{batch_end}"
+            )
+
+            batch_relations = self._extract_relations_for_batch(
+                conn=conn,
+                document_id=document_id,
+                concepts=batch_concepts,
+                concept_map=concept_map,
+                seen_pairs=seen_pairs,
+                max_relations=min(max_relations, len(batch_concepts) * 3),
+            )
+
+            all_relations.extend(batch_relations)
+            print(
+                f"[RelationExtractor] Batch extracted {len(batch_relations)} relations "
+                f"(total: {len(all_relations)})"
+            )
+
+            # Early stop if we have enough relations
+            if len(all_relations) >= max_relations:
+                print(f"[RelationExtractor] Reached max_relations limit ({max_relations})")
+                break
+
+        print(f"[RelationExtractor] Total unique relations: {len(all_relations[:max_relations])}")
+        return all_relations[:max_relations]
+
+    def _extract_relations_for_batch(
+        self,
+        conn: sqlite3.Connection,
+        document_id: str,
+        concepts: list[ConceptModel],
+        concept_map: dict[str, int],
+        seen_pairs: set,
+        max_relations: int,
+    ) -> list[RelationModel]:
+        """
+        Extract relations for a single batch of concepts.
+
+        Args:
+            conn: Database connection
+            document_id: Document ID
+            concepts: Batch of concepts to process
+            concept_map: Mapping from concept name to ID
+            seen_pairs: Set of already seen (source, target, type) tuples
+            max_relations: Maximum relations to extract for this batch
+
+        Returns:
+            List of RelationModel objects
+        """
         # Build concept list for prompt
         concept_list = "\n".join(
-            [f"- {c.name} ({c.category or 'concept'})" for c in concepts_to_use]
+            [f"- {c.name} ({c.category or 'concept'}, importance: {c.importance_score or 0.5:.2f})"
+             for c in concepts]
         )
 
-        # Get chunk IDs from all concepts
+        # Get chunk IDs from all concepts in this batch
         all_chunk_ids = set()
-        for c in concepts_to_use:
+        for c in concepts:
             all_chunk_ids.update(c.source_chunk_ids or [])
 
         # Get context from chunks
@@ -722,7 +977,7 @@ class RelationExtractor:
         if config.language == "zh":
             prompt = f"""作为知识图谱构建专家，请深入分析以下概念列表，识别它们之间所有可能的语义关系。
 
-## 概念列表（共{len(concepts_to_use)}个）：
+## 概念列表（共{len(concepts)}个）：
 {concept_list}
 
 ## 上下文参考：
@@ -762,7 +1017,7 @@ class RelationExtractor:
 6. **依赖关系**：识别概念之间的依赖和使用关系
 
 ### 输出要求：
-- 最少提取 {min(max_relations, len(concepts_to_use) * 2)} 个关系
+- 最少提取 {min(max_relations, len(concepts) * 2)} 个关系
 - 最多提取 {max_relations} 个关系
 - 每个关系必须包含：源概念、目标概念、关系类型、强度(0.3-1.0)、文本证据、解释
 - 优先选择有明确文本证据支持的关系
@@ -778,7 +1033,7 @@ class RelationExtractor:
         else:  # English
             prompt = f"""As a knowledge graph construction expert, please deeply analyze the following concept list and identify all possible semantic relationships between them.
 
-## Concept List ({len(concepts_to_use)} concepts):
+## Concept List ({len(concepts)} concepts):
 {concept_list}
 
 ## Context Reference:
@@ -818,7 +1073,7 @@ class RelationExtractor:
 6. **Dependencies**: Identify dependencies and usage relationships
 
 ### Output Requirements:
-- Minimum {min(max_relations, len(concepts_to_use) * 2)} relations
+- Minimum {min(max_relations, len(concepts) * 2)} relations
 - Maximum {max_relations} relations
 - Each relation must include: source, target, type, strength(0.3-1.0), evidence, explanation
 - Prioritize relations with clear text evidence
@@ -837,14 +1092,10 @@ Your tasks:
                 prompt,
                 response_model=EnhancedRelationExtraction,
                 system=system_msg,
-                temperature=0.3,  # Lower temperature for more consistent output
+                temperature=0.3,
             )
 
-            # Map concept names to IDs
-            concept_map = {c.name: c.id for c in concepts}
-
             relations = []
-            seen_pairs = set()  # Track seen pairs to avoid duplicates
 
             for rel in result.relations:
                 source_id = concept_map.get(rel.source_concept)
@@ -870,19 +1121,15 @@ Your tasks:
                         source_concept_id=source_id,
                         target_concept_id=target_id,
                         relation_type=rel.relation_type,
-                        strength=max(0.3, min(1.0, rel.strength)),  # Clamp strength
+                        strength=max(0.3, min(1.0, rel.strength)),
                         evidence=rel.evidence,
                         explanation=rel.explanation,
                     )
                 )
 
-            print(f"[RelationExtractor] Extracted {len(relations)} unique relations")
-            return relations[:max_relations]
+            return relations
         except Exception as e:
-            print(f"Warning: Failed to extract relations: {e}")
-            import traceback
-
-            traceback.print_exc()
+            print(f"Warning: Failed to extract relations for batch: {e}")
             return []
 
 

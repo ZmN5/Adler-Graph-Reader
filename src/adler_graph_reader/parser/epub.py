@@ -118,8 +118,8 @@ class EPUBParser(DocumentParser):
         # Combine all text for semantic chunking
         full_text = "\n\n".join([text for _, text in full_text_parts])
 
-        # Use Chonkie for semantic chunking
-        splitter = create_chonkie_splitter()
+        # Use Chonkie RecursiveChunker for semantic chunking
+        splitter = create_chonkie_splitter(chunk_size=1000, chunk_overlap=100)
         semantic_chunks = splitter.chunk(full_text)
 
         # Map chunks back to chapters
