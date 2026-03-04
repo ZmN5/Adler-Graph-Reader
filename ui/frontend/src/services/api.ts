@@ -65,7 +65,8 @@ apiClient.interceptors.response.use(
 export const documentsApi = {
   getAll: async (): Promise<Document[]> => {
     const response = await apiClient.get('/documents');
-    return response.data;
+    // Handle both { documents: [...], total: 2 } and [...] response formats
+    return response.data.documents || response.data;
   },
 
   getById: async (id: string): Promise<Document> => {
@@ -97,7 +98,8 @@ export const documentsApi = {
 export const conceptsApi = {
   getAll: async (): Promise<Concept[]> => {
     const response = await apiClient.get('/concepts');
-    return response.data;
+    // Handle both { concepts: [...], total: N } and [...] response formats
+    return response.data.concepts || response.data;
   },
 
   getByDocument: async (documentId: string): Promise<Concept[]> => {
@@ -114,7 +116,8 @@ export const conceptsApi = {
 export const relationsApi = {
   getAll: async (): Promise<Relation[]> => {
     const response = await apiClient.get('/relations');
-    return response.data;
+    // Handle both { relations: [...], total: N } and [...] response formats
+    return response.data.relations || response.data;
   },
 
   getByDocument: async (documentId: string): Promise<Relation[]> => {
@@ -127,7 +130,37 @@ export const graphApi = {
   getGraph: async (documentId?: string): Promise<GraphData> => {
     const url = documentId ? `/graph?document_id=${documentId}` : '/graph';
     const response = await apiClient.get(url);
-    return response.data;
+    const data = response.data;
+
+    // Convert backend format (themes/concepts/relations) to frontend format (nodes/links)
+    const nodes: GraphNode[] = [
+      // Convert themes to nodes
+      ...(data.themes || []).map((t: any) => ({
+        id: `theme_${t.id}`,
+        name: t.name,
+        type: 'theme',
+        description: t.description,
+        confidence: t.importance_score,
+      })),
+      // Convert concepts to nodes
+      ...(data.concepts || []).map((c: any) => ({
+        id: `concept_${c.id}`,
+        name: c.name,
+        type: c.category || 'concept',
+        description: c.definition,
+        confidence: c.importance_score,
+      })),
+    ];
+
+    // Convert relations to links
+    const links: GraphLink[] = (data.relations || []).map((r: any) => ({
+      source: `concept_${r.source_concept_id}`,
+      target: `concept_${r.target_concept_id}`,
+      type: r.relation_type,
+      confidence: r.strength,
+    }));
+
+    return { nodes, links };
   },
 
   getStats: async (): Promise<GraphStats> => {

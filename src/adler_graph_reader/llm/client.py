@@ -32,13 +32,13 @@ class LLMBackend(Enum):
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 # Ollama configuration
 OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_OLLAMA_MODEL = "qwen2.5:3b"
+DEFAULT_OLLAMA_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5:2b")
 # Model configuration - can be overridden via environment variable ADLER_LLM_MODEL
 # Default: qwen3.5-2b (must match the model loaded in LM Studio)
 # Fallback models are tried in order if the primary fails
 DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-2b")
 # Fallback models to try if primary fails
-FALLBACK_MODELS = ["qwen3.5-9b", "qwen3.5-35b-a3b"]
+FALLBACK_MODELS = os.getenv("ADLER_LLM_FALLBACK_MODELS", "qwen3.5:7b,qwen3.5:14b").split(",")
 DEFAULT_EMBED_MODEL = "qwen3-embedding-0.6b"  # Qwen3 embedding model
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
 DEFAULT_TIMEOUT = 180.0  # Reduced timeout for faster feedback with small models

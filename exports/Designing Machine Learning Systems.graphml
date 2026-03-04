@@ -1,0 +1,3720 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d0" for="node" attr.name="label" attr.type="string" />
+  <key id="d1" for="node" attr.name="type" attr.type="string" />
+  <key id="d2" for="node" attr.name="category" attr.type="string" />
+  <key id="d3" for="node" attr.name="description" attr.type="string" />
+  <key id="d4" for="node" attr.name="importance" attr.type="float" />
+  <key id="d5" for="node" attr.name="r" attr.type="int" />
+  <key id="d6" for="node" attr.name="g" attr.type="int" />
+  <key id="d7" for="node" attr.name="b" attr.type="int" />
+  <key id="d8" for="edge" attr.name="label" attr.type="string" />
+  <key id="d9" for="edge" attr.name="relation_type" attr.type="string" />
+  <key id="d10" for="edge" attr.name="strength" attr.type="float" />
+  <key id="d11" for="edge" attr.name="evidence" attr.type="string" />
+  <key id="d12" for="edge" attr.name="color" attr.type="string" />
+  <graph id="Knowledge_Graph" edgedefault="directed">
+    <node id="theme_65">
+      <data key="d0">Practical Implementation</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A hands-on, principled guide for practitioners and data leaders to build real-world applications at reasonable scale.</data>
+      <data key="d4">0.98</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_1">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and adaptive machine learning systems that integrate data processing, model training, deployment, and monitoring.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_6">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and adaptive machine learning systems that integrate data processing, model training, monitoring, and deployment.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_8">
+      <data key="d0">MLOps and Operational Excellence</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Practical guidance on automating model development, deploying systems at scale, and establishing robust monitoring mechanisms for production environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_11">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive across changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_16">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach covering the entire lifecycle from data engineering and metric selection to model deployment, evaluation, and production monitoring.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_21">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The book offers a holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive across various business requirements.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_26">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive across changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_31">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A comprehensive guide to designing reliable, scalable, and maintainable machine learning systems that adapt to changing business requirements.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_35">
+      <data key="d0">Principled ML Engineering</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic, principled approach to ML engineering that balances technical implementation with business objectives and practical constraints.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_36">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive across changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_38">
+      <data key="d0">Model Monitoring and Production</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing systems to continuously evaluate models, detect issues in production, and ensure rapid deployment and updates.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_41">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_46">
+      <data key="d0">Designing Scalable and Reliable ML Systems</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The book offers a holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive to changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_51">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The book offers a holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_56">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing business requirements.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_60">
+      <data key="d0">Principled End-to-End ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A principled, practical guide for practitioners to navigate the chaotic tooling landscape while achieving maximum business impact.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_61">
+      <data key="d0">End-to-ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_66">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive across changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_71">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_76">
+      <data key="d0">End-to-End ML Systems</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A comprehensive guide to designing, building, and deploying machine learning systems from data engineering through production deployment.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_81">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and adaptive machine learning systems that align with business objectives.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_86">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The book provides a holistic approach to designing machine learning systems that are reliable, scalable, maintainable, and adaptive across various business requirements.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_91">
+      <data key="d0">End-to-End Machine Learning Systems</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The book offers a comprehensive guide for designing, building, and deploying complex ML systems that integrate data engineering, model training, evaluation, deployment, and monitoring.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_96">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach covering the entire lifecycle of designing, training, deploying, and monitoring machine learning systems.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_101">
+      <data key="d0">End-to-ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing business requirements.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_106">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing business requirements.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_111">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_115">
+      <data key="d0">Business-Driven ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning machine learning system design with business requirements, ensuring decisions support overall organizational objectives.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_116">
+      <data key="d0">End-to-End ML System Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to designing reliable, scalable, and maintainable machine learning systems that adapt to changing environments.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_47">
+      <data key="d0">End-to-End Model Lifecycle Management</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Practitioners are guided through the entire process of engineering data, automating model development, deploying systems, and continuously monitoring them.</data>
+      <data key="d4">0.92</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_63">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing monitoring systems to detect issues in production, automate model updates, and ensure continuous evaluation.</data>
+      <data key="d4">0.92</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_5">
+      <data key="d0">Business-Driven ML Practice</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning machine learning system decisions with business requirements and objectives, ensuring practical application in real-world scenarios.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_7">
+      <data key="d0">Business-Driven ML Strategy</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning technical decisions with business objectives, ensuring models are built to solve specific problems rather than just following technical trends.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_17">
+      <data key="d0">Scalable and Adaptive ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Focuses on building systems that are reliable, scalable, maintainable, and capable of adapting to changing business environments.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_23">
+      <data key="d0">Model Lifecycle Management</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The text covers the iterative process of automating model development, evaluation, deployment, and continuous updates to production systems.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_37">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_42">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_45">
+      <data key="d0">Business Alignment</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning technical design decisions with business requirements and objectives to ensure practical impact.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_49">
+      <data key="d0">Production Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Key focus areas include building robust monitoring systems to detect issues in production and handling the iterative process of model updates.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_55">
+      <data key="d0">Business Alignment</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A central focus is ensuring that every design decision supports business objectives and aligns with the specific needs of the organization.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_58">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing systems to continuously evaluate models, detect issues in production, and address problems through iterative updates.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_62">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_68">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing systems to continuously evaluate models, detect issues in production, and address problems through iterative updates.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_72">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_75">
+      <data key="d0">Principled ML Engineering</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A principled, practical view on end-to-end machine learning that balances technical rigor with business requirements.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_77">
+      <data key="d0">Scalability and Reliability</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for creating ML systems that are scalable, maintainable, and capable of adapting to changing business requirements.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_85">
+      <data key="d0">Principled End-to-End ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A principled, manual-driven framework for building and scaling machine learning models at reasonable scale.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_90">
+      <data key="d0">Business Alignment in ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Emphasizes the importance of aligning every design decision with business objectives, ensuring ML systems are practical and impactful rather than just technically complex.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_92">
+      <data key="d0">Business-Driven ML Design</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A core theme emphasizing that every design decision should be evaluated based on its ability to support business objectives and real-world scenarios.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_97">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating model development.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_102">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_107">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_110">
+      <data key="d0">Business Alignment</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning technical design decisions with specific business objectives and ensuring ML systems are practical for real-world scenarios.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_112">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the continuous development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_117">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data, selecting appropriate metrics to solve business problems, and automating the continuous development lifecycle.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_120">
+      <data key="d0">Business-Driven ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning technical design decisions with business requirements and objectives to ensure practical impact.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_24">
+      <data key="d0">Production Monitoring</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Key strategies for building robust monitoring systems to quickly detect and address issues in deployed ML models are discussed.</data>
+      <data key="d4">0.88</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_48">
+      <data key="d0">Business-Driven AI Strategy</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The text emphasizes aligning technical ML decisions with specific business objectives and requirements rather than just technical feasibility.</data>
+      <data key="d4">0.88</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_2">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the continuous development lifecycle of models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_3">
+      <data key="d0">Production Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Building robust monitoring systems to detect issues in production environments, ensuring rapid response and system stability.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_9">
+      <data key="d0">Iterative Model Lifecycle Management</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A framework for continuously developing, evaluating, and updating machine learning models through repeated cycles of engineering, deployment, and retraining.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_10">
+      <data key="d0">Platform Architecture for ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable infrastructure and platforms that serve diverse use cases while supporting the ephemeral nature of modern tooling ecosystems.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_12">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_13">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing monitoring systems to detect issues in production, ensuring continuous evaluation and deployment of models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_18">
+      <data key="d0">Data and Model Management</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Addresses the critical steps of automating data creation, feature selection, retraining strategies, and continuous model monitoring.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_20">
+      <data key="d0">MLOps and Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Covers the architectural design of ML platforms to serve diverse use cases and ensure robust system performance.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_22">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Practitioners are guided on how to engineer data effectively and select the right metrics to solve specific business problems.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_27">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_28">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing monitoring systems to detect issues in production, address them quickly, and continuously evaluate model performance.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_30">
+      <data key="d0">Business Alignment</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning technical design decisions with business requirements to ensure the ML systems achieve specific organizational objectives.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_32">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the continuous development lifecycle.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_33">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing robust monitoring systems to detect issues in production environments, ensuring models remain accurate and performant over time.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_34">
+      <data key="d0">ML Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve multiple use cases and are designed for deployment across different environments.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_39">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve multiple use cases and operate effectively across different organizational scales.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_43">
+      <data key="d0">Model Monitoring and Operations</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Building monitoring systems to detect issues in production, ensuring continuous evaluation and deployment of models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_44">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve across various use cases and support iterative model updates.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_50">
+      <data key="d0">Platform Architecture for ML</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The content covers architecting dedicated platforms that serve multiple use cases and are designed to scale across different parts of an organization.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_52">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Practitioners learn how to engineer data effectively, select appropriate metrics for business problems, and automate the development lifecycle.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_53">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Key topics include creating monitoring systems to detect issues in production, retraining models at optimal intervals, and managing model updates.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_57">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_59">
+      <data key="d0">ML Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting robust ML platforms that serve diverse use cases across different engineering teams and environments.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_64">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve multiple use cases and integrate seamlessly with existing tooling.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_67">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_70">
+      <data key="d0">Business Alignment in AI</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning technical design decisions with business objectives and ensuring ML systems meet specific organizational goals.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_73">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Building systems to continuously develop, evaluate, deploy models, and quickly detect issues in production environments.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_74">
+      <data key="d0">ML Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve across various use cases and support a 'reasonable scale' ecosystem.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_78">
+      <data key="d0">Model Lifecycle Management</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">A holistic approach to the entire machine learning lifecycle, including data selection, retraining, monitoring, and automated deployment.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_79">
+      <data key="d0">Business Alignment</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Focusing on ML systems that align with specific business objectives and use cases rather than just technical implementation.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_80">
+      <data key="d0">MLOps and Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting robust ML platforms that serve across various use cases and facilitate continuous development, evaluation, and monitoring.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_82">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Strategies for engineering data effectively, selecting appropriate metrics to solve business problems, and automating the development lifecycle.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_83">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing monitoring systems to detect issues in production, ensuring continuous evaluation and deployment of models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_87">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Focuses on engineering data effectively, selecting appropriate metrics to solve business problems, and automating the continuous development lifecycle of models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_88">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Covers the architecture of monitoring systems to quickly detect issues in production and strategies for continually evaluating and updating models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_89">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Details on architecting ML platforms that serve multiple use cases and operate effectively within a chaotic but growing ecosystem of tooling.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_93">
+      <data key="d0">MLOps and Operationalization</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Focuses on practical strategies for automating model lifecycle management, including continuous development, deployment, and production monitoring.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_94">
+      <data key="d0">Scalability and Reliability</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Addresses the critical need for ML systems to be scalable, maintainable, and capable of adapting to changing environments and business requirements.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_98">
+      <data key="d0">Production Monitoring</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing systems to detect and address issues in production environments, ensuring model reliability.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_99">
+      <data key="d0">Business Alignment</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Aligning ML system design decisions with business requirements and objectives to ensure scalability and adaptability.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_103">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing monitoring systems to detect issues in production, ensuring continuous evaluation and deployment of models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_108">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing monitoring systems to detect issues in production environments, ensuring continuous evaluation and deployment of models.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_113">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing systems to detect issues in production, address them quickly, and ensure ongoing model performance.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_118">
+      <data key="d0">Model Monitoring and Maintenance</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Implementing systems to detect, address, and monitor issues in production environments.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_25">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The book provides guidance on architecting ML platforms that serve multiple use cases and scale efficiently.</data>
+      <data key="d4">0.82</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_4">
+      <data key="d0">ML Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve multiple use cases across different business scenarios and environments.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_14">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting ML platforms that serve multiple use cases and integrate seamlessly with existing tooling ecosystems.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_19">
+      <data key="d0">Business Alignment</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Emphasizes aligning technical ML decisions with specific business objectives and practical constraints.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_29">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting robust ML platforms that serve multiple use cases and support the continuous deployment of models.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_40">
+      <data key="d0">Principled Decision Making</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Making design decisions by considering their impact on the entire system's objectives rather than in isolation.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_54">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">The text covers architecting ML platforms that serve multiple use cases and provide a scalable infrastructure for deploying models.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_69">
+      <data key="d0">ML Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting robust ML platforms that serve multiple use cases while managing tooling and infrastructure at scale.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_84">
+      <data key="d0">ML Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve multiple use cases across different organizational contexts.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_95">
+      <data key="d0">Data Engineering and Metrics</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Highlights the importance of proper data handling, feature selection, metric definition, and monitoring to ensure effective model performance.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_100">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve multiple use cases across different environments.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_104">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting robust ML platforms that serve multiple use cases across different parts of an organization.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_109">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting robust ML platforms that serve multiple use cases across different parts of an organization.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_114">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting ML platforms that serve multiple use cases across different applications and environments.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_119">
+      <data key="d0">Platform Architecture</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Architecting scalable ML platforms that serve multiple use cases across an organization.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_15">
+      <data key="d0">Principled Decision Making</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Making design decisions by considering their impact on the entire system's objectives rather than in isolation.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="theme_105">
+      <data key="d0">Principled Decision Making</data>
+      <data key="d1">theme</data>
+      <data key="d2" />
+      <data key="d3">Making design decisions by considering their impact on the entire system's objectives rather than in isolation.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">255</data>
+      <data key="d6">230</data>
+      <data key="d7">230</data>
+    </node>
+    <node id="concept_1">
+      <data key="d0">machine learning systems</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">ML systems designed for production deployment with end-to-end management of model lifecycle.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_50">
+      <data key="d0">machine learning</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The field of developing algorithms that enable computers to learn from data and improve their performance on specific tasks over time.</data>
+      <data key="d4">0.95</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_9">
+      <data key="d0">machine learning platform</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A system designed to store, manage, and serve machine learning artifacts for production deployment.</data>
+      <data key="d4">0.92</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_3">
+      <data key="d0">production-ready applications</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Applications built to handle real-world operational demands with robustness and scalability.</data>
+      <data key="d4">0.9</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_14">
+      <data key="d0">data distribution shifts</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Changes in the statistical properties of data that occur over time, affecting model performance.</data>
+      <data key="d4">0.89</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_11">
+      <data key="d0">data engineering</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The process of designing systems for production-ready applications through end-to-end ML workflows.</data>
+      <data key="d4">0.88</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_15">
+      <data key="d0">feature consistency</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The requirement that features used during training must be consistent with those used in production.</data>
+      <data key="d4">0.87</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_13">
+      <data key="d0">deployment process</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The phase where trained models are deployed and monitored to ensure they meet changing business requirements.</data>
+      <data key="d4">0.86</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_2">
+      <data key="d0">iterative process</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A structured, repeated cycle of development where design decisions are evaluated against business requirements.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_7">
+      <data key="d0">training data</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The raw or processed information used to train machine learning models before deployment.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_10">
+      <data key="d0">use cases</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Specific scenarios where machine learning systems are designed to solve business problems effectively.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_17">
+      <data key="d0">stream processing</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A mode of dataflow where data passes through databases, services, and real-time transport for immediate processing.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_18">
+      <data key="d0">infrastructure for storage</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The physical and logical systems designed to store data efficiently, supporting various formats like CSV, NumPy, and RPC.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_20">
+      <data key="d0">recommender system</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A machine learning application that suggests items to users based on their past behavior and preferences.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_22">
+      <data key="d0">return on investment</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The financial benefit derived from an investment, often evaluated through metrics like ROI and adoption maturity.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_24">
+      <data key="d0">ML engineers</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Engineers responsible for deploying and maintaining machine learning models in production environments.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_25">
+      <data key="d0">engineering managers</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Leadership roles overseeing machine learning systems at scale within medium to large enterprises.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_26">
+      <data key="d0">deep learning</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A subset of machine learning involving neural networks, often used in multilingual translation systems.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_27">
+      <data key="d0">classical algorithms</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Traditional algorithmic approaches used in machine learning that are often paired with deep learning.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_28">
+      <data key="d0">medium to large enterprises</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Organizations with sufficient scale and complexity to benefit from comprehensive ML approaches.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_29">
+      <data key="d0">fast-growing startups</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Emerging companies that are rapidly expanding and adopting new technologies like machine learning.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_33">
+      <data key="d0">feedback loop length</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The time interval between when a prediction is served and when feedback on it is provided.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_34">
+      <data key="d0">weak supervision</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Using implicit feedback or low-quality labels to train machine learning models when high-quality ground truth is unavailable.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_35">
+      <data key="d0">semi-supervision</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A technique for training models using a combination of labeled and unlabeled data to address label scarcity.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_36">
+      <data key="d0">transfer learning</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Applying a pre-trained model to a new task by continuing training on evaluation data.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_37">
+      <data key="d0">active learning</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A strategy where models select the most useful data samples for labeling to maximize learning efficiency.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_38">
+      <data key="d0">labeling function</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A programmatic function that encodes heuristics to automatically label data based on specific criteria.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_39">
+      <data key="d0">heuristic</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A rule or principle used to make decisions without explicit data, often encoded as a function.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_41">
+      <data key="d0">ground truth</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Labels used to evaluate model predictions and determine correctness in machine learning systems.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_42">
+      <data key="d0">product recommendation</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">System that suggests products to users based on their preferences and historical data.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_43">
+      <data key="d0">ad click-through rate</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Metric measuring the percentage of users who view an advertisement after seeing it.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_49">
+      <data key="d0">language modeling</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A machine learning task where a model learns to predict text based on input sequences, often used in NLP applications.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_52">
+      <data key="d0">online prediction</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A predictive approach that updates models continuously as new data arrives, rather than relying solely on historical batch processing.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_54">
+      <data key="d0">feature stores</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Centralized data platforms that store and serve features for machine learning models, ensuring consistency and reusability across teams.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_55">
+      <data key="d0">inference latency</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The time it takes for a model to generate predictions after receiving input data, often measured in milliseconds.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_56">
+      <data key="d0">model compression</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Techniques used to reduce the size and computational requirements of machine learning models for deployment.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_57">
+      <data key="d0">inference optimization</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Techniques to reduce inference latency in ML models, including model compression and hardware acceleration.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_65">
+      <data key="d0">model deployment</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The process of moving a trained model from development to production environments.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_69">
+      <data key="d0">Tensor Cores</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Specialized processing units in hardware designed to support mixed-precision training.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_70">
+      <data key="d0">Bfloat16</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A 16-bit Brain Floating Point Format used for low-precision training and model compression.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_72">
+      <data key="d0">Quantization</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A technique for compressing models by reducing the precision of their weights and activations.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_73">
+      <data key="d0">Intermediate Representation (IR)</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A series of high- and low-level representations generated by compilers to bridge original model code with hardware-specific machine code.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_74">
+      <data key="d0">Computation Graphs</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A graph structure describing the order in which computations are executed, serving as a core component of compiler optimization.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_76">
+      <data key="d0">Hardware Backends</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Specific hardware architectures or platforms where machine code is generated and executed for model inference.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_78">
+      <data key="d0">ML on the Edge</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Running machine learning models directly on local devices to enable real-time inference with minimal latency.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_79">
+      <data key="d0">Compiler</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Software tool that translates high-level model code into optimized machine code for specific hardware backends.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_80">
+      <data key="d0">Lowering</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The process of translating high-level model code into intermediate representations (IR) and then to hardware-specific machine code.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_82">
+      <data key="d0">AI Engineering</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Team developing AI algorithms and models optimized for hardware, including quantization tools.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_84">
+      <data key="d0">Robustness AI Retraining</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Tools and methods for optimizing models through robustness retraining.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_89">
+      <data key="d0">A/B testing</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A statistical method for comparing two versions of a product or service by randomly assigning users to different variants.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_90">
+      <data key="d0">Canary release</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A deployment technique that gradually shifts traffic to a new version before fully replacing the old one.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_92">
+      <data key="d0">Bandit algorithms</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Optimization techniques for selecting the best action or model based on observed data and uncertainty.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_93">
+      <data key="d0">Thompson sampling</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">An exploration algorithm that selects the best model based on a probability distribution of its current performance.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_94">
+      <data key="d0">Upper confidence bound</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A statistical method that selects the item with the highest upper confidence bound, prioritizing items with high uncertainty.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_95">
+      <data key="d0">Contextual bandits</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A variant of bandit algorithms that selects actions based on user context, such as preferences or demographics.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_96">
+      <data key="d0">Exploration strategy</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A systematic approach to balance exploration of new options with exploitation of known good ones.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_97">
+      <data key="d0">Exploitation</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Selecting the slot machine that has paid the most in the past to maximize payout.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_101">
+      <data key="d0">Reinforcement learning</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Treating components of a model or the entire model as hyperparameters for optimization.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_102">
+      <data key="d0">Multi-armed bandit</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">An algorithm balancing between exploiting the best option and exploring others to maximize payout.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_105">
+      <data key="d0">model performance metrics</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Metrics tracked during ML experiments to evaluate model quality beyond simple loss and speed.</data>
+      <data key="d4">0.85</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_12">
+      <data key="d0">model evaluation</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The process of assessing the performance and reliability of deployed machine learning models.</data>
+      <data key="d4">0.82</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_4">
+      <data key="d0">design decision</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Critical choices made during system design that influence reliability, maintainability, and adaptability.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_8">
+      <data key="d0">model retraining</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The process of updating machine learning models with new data to maintain accuracy and relevance.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_62">
+      <data key="d0">Apache Flink</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A stream processing framework that processes data as soon as it is generated, offering low latency and handling various data sources.</data>
+      <data key="d4">0.8</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_5">
+      <data key="d0">changing environments</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Dynamic operational conditions that require ML systems to adapt without significant retraining.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_16">
+      <data key="d0">batch processing</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A mode of dataflow where data is processed in batches rather than continuously.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_19">
+      <data key="d0">compute</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The processing power used to execute machine learning algorithms and perform data analysis.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_21">
+      <data key="d0">model architecture</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The structural design of a machine learning model, including hidden units and feature schemas.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_23">
+      <data key="d0">data scientists</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Professionals who analyze data to derive insights and drive business decisions through collaborative teams.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_30">
+      <data key="d0">data lineage</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The tracking and management of data from its creation to usage, ensuring consistency across multiple sources.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_31">
+      <data key="d0">natural labels</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Labels derived from user behaviors such as clicks and ratings, used to train machine learning models.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_32">
+      <data key="d0">behavioral labels</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Labels inferred from user activities like clicks and ratings, often used for recommendation tasks.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_40">
+      <data key="d0">denoising</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A technique for removing noise from data, often used in rendering or signal processing to improve quality.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_44">
+      <data key="d0">fraud detection</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Process of identifying fraudulent activities using machine learning models.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_45">
+      <data key="d0">continuous training</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Ongoing model updates using new data to maintain performance over time.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_46">
+      <data key="d0">priority consideration</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Prioritizing data labeling tasks based on the severity or impact of associated cases.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_48">
+      <data key="d0">fine-tuning</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Training a pre-trained model on specific task data with fewer ground truths than from scratch.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_51">
+      <data key="d0">streaming features</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Dynamic data points extracted from real-time streams of information, used to make immediate predictions or decisions.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_53">
+      <data key="d0">batch prediction</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Predictive modeling using historical data processed in large batches before deployment, often used for initial model training.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_58">
+      <data key="d0">stream computation engine</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Infrastructure for processing streaming data asynchronously with low latency, combining batch and stream features.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_66">
+      <data key="d0">prediction service</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A system that exposes endpoints to receive prediction requests from external applications.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_71">
+      <data key="d0">Fixed-point inference</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A technique for performing model inference using fixed-precision arithmetic instead of floating-point.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_75">
+      <data key="d0">Data Locality</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The optimization principle where data is accessed sequentially or spatially close to minimize cache misses and improve performance.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_77">
+      <data key="d0">ML on the Cloud</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Deploying machine learning models to centralized cloud infrastructure for scalable inference and training.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_91">
+      <data key="d0">Interleaving experiments</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A strategy where multiple experiments run simultaneously on different data subsets to optimize resource usage.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_98">
+      <data key="d0">Feedback loops</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">The time it takes from when a prediction is served until feedback on it is provided.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_106">
+      <data key="d0">deep Bayesian bandits</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A hybrid approach combining contextual bandit algorithms with deep learning architectures.</data>
+      <data key="d4">0.75</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_6">
+      <data key="d0">business requirements</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Specific organizational goals and constraints that guide the design and implementation of ML systems.</data>
+      <data key="d4">0.7</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_67">
+      <data key="d0">endpoint</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A network interface that exposes a function or service to be called by external applications.</data>
+      <data key="d4">0.7</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_83">
+      <data key="d0">Neural Networks</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Deep learning systems used for machine learning, including neural machine translation.</data>
+      <data key="d4">0.7</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_86">
+      <data key="d0">Parallelization</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Method of training ML models on multiple machines, specifically data parallelism.</data>
+      <data key="d4">0.7</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_88">
+      <data key="d0">Computation Graph</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Graph describing the order in which computation is executed by compilers.</data>
+      <data key="d4">0.7</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_99">
+      <data key="d0">Online predictions</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Generating predictions as needed at the exact same cost and speed, rather than generating them in advance.</data>
+      <data key="d4">0.7</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_103">
+      <data key="d0">Bandit feedback</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Feedback provided by users on items based on whether they have been shown or clicked.</data>
+      <data key="d4">0.7</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_47">
+      <data key="d0">class imbalance</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Challenge where one class of data is significantly more prevalent than others in training sets.</data>
+      <data key="d4">0.65</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_59">
+      <data key="d0">data pipeline</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">System architecture for extracting and transforming data features from raw sources to predictions online.</data>
+      <data key="d4">0.65</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_68">
+      <data key="d0">dataframe</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A data structure used for storing and manipulating tabular datasets, particularly in pandas.</data>
+      <data key="d4">0.65</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_100">
+      <data key="d0">Test in production</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Monitoring and observing model performance while it is running in a live environment.</data>
+      <data key="d4">0.65</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_104">
+      <data key="d0">Infrastructure optimization</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Moving workloads from cloud data centers to private data centers due to high costs.</data>
+      <data key="d4">0.65</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_64">
+      <data key="d0">deep neural networks</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Neural network architectures with over 10 layers that perform better on imbalanced data compared to shallower networks.</data>
+      <data key="d4">0.6</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_87">
+      <data key="d0">Operator Fusion</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Technique for changing data accessing order in loops to leverage hardware memory layout.</data>
+      <data key="d4">0.6</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_60">
+      <data key="d0">sliding window</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A technique for computing features by maintaining a rolling time window of data, updating continuously during inference.</data>
+      <data key="d4">0.55</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_63">
+      <data key="d0">edge devices</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Hardware locations for ML inference, enabling deployment of models beyond the cloud.</data>
+      <data key="d4">0.5</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_81">
+      <data key="d0">Public Cloud</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Infrastructure and tooling for machine learning operations, including storage and compute resources.</data>
+      <data key="d4">0.5</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_85">
+      <data key="d0">Vectorization</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">Technique for optimizing online prediction by leveraging vectorization or other optimization techniques.</data>
+      <data key="d4">0.5</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <node id="concept_61">
+      <data key="d0">MapReduce</data>
+      <data key="d1">concept</data>
+      <data key="d2">concept</data>
+      <data key="d3">A distributed computing framework for processing historical data in batch jobs, often periodic.</data>
+      <data key="d4">0.45</data>
+      <data key="d5">230</data>
+      <data key="d6">243</data>
+      <data key="d7">255</data>
+    </node>
+    <edge id="e0" source="concept_1" target="concept_2">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e1" source="concept_1" target="concept_3">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e2" source="concept_1" target="concept_4">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e3" source="concept_1" target="concept_5">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e4" source="concept_1" target="concept_6">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e5" source="concept_1" target="concept_7">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e6" source="concept_1" target="concept_8">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e7" source="concept_1" target="concept_9">
+      <data key="d8">related_to</data>
+      <data key="d9">related_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e8" source="concept_1" target="concept_10">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e9" source="concept_1" target="concept_11">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e10" source="concept_1" target="concept_12">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e11" source="concept_1" target="concept_13">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e12" source="concept_1" target="concept_14">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e13" source="concept_1" target="concept_15">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e14" source="concept_1" target="concept_16">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e15" source="concept_1" target="concept_17">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e16" source="concept_1" target="concept_18">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e17" source="concept_1" target="concept_19">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e18" source="concept_1" target="concept_20">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e19" source="concept_2" target="concept_3">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e20" source="concept_2" target="concept_4">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e21" source="concept_2" target="concept_5">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e22" source="concept_2" target="concept_6">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e23" source="concept_2" target="concept_7">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e24" source="concept_2" target="concept_8">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e25" source="concept_2" target="concept_9">
+      <data key="d8">related_to</data>
+      <data key="d9">related_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e26" source="concept_2" target="concept_10">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e27" source="concept_2" target="concept_11">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e28" source="concept_2" target="concept_12">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e29" source="concept_2" target="concept_13">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e30" source="concept_2" target="concept_14">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e31" source="concept_2" target="concept_15">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e32" source="concept_2" target="concept_16">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e33" source="concept_2" target="concept_17">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e34" source="concept_2" target="concept_18">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e35" source="concept_2" target="concept_19">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e36" source="concept_2" target="concept_20">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e37" source="concept_3" target="concept_4">
+      <data key="d8">related_to</data>
+      <data key="d9">related_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e38" source="concept_3" target="concept_5">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e39" source="concept_3" target="concept_6">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e40" source="concept_3" target="concept_7">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e41" source="concept_3" target="concept_8">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e42" source="concept_3" target="concept_9">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e43" source="concept_3" target="concept_10">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e44" source="concept_3" target="concept_11">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e45" source="concept_3" target="concept_12">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e46" source="concept_3" target="concept_13">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e47" source="concept_3" target="concept_14">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e48" source="concept_3" target="concept_15">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e49" source="concept_3" target="concept_16">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e50" source="concept_3" target="concept_17">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e51" source="concept_3" target="concept_18">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e52" source="concept_3" target="concept_19">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e53" source="concept_3" target="concept_20">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e54" source="concept_4" target="concept_5">
+      <data key="d8">related_to</data>
+      <data key="d9">related_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e55" source="concept_4" target="concept_6">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e56" source="concept_4" target="concept_7">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e57" source="concept_4" target="concept_8">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e58" source="concept_4" target="concept_9">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e59" source="concept_4" target="concept_10">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e60" source="concept_4" target="concept_11">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e61" source="concept_4" target="concept_12">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e62" source="concept_4" target="concept_13">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e63" source="concept_4" target="concept_14">
+      <data key="d8">related_to</data>
+      <data key="d9">related_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e64" source="concept_4" target="concept_15">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e65" source="concept_4" target="concept_16">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e66" source="concept_4" target="concept_17">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e67" source="concept_4" target="concept_18">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e68" source="concept_4" target="concept_19">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e69" source="concept_4" target="concept_20">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e70" source="concept_5" target="concept_6">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e71" source="concept_5" target="concept_7">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e72" source="concept_5" target="concept_8">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e73" source="concept_5" target="concept_9">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e74" source="concept_5" target="concept_10">
+      <data key="d8">uses</data>
+      <data key="d9">uses</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#1ABC9C</data>
+    </edge>
+    <edge id="e75" source="concept_5" target="concept_11">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e76" source="concept_5" target="concept_12">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e77" source="concept_5" target="concept_13">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e78" source="concept_5" target="concept_14">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e79" source="concept_5" target="concept_15">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e80" source="concept_5" target="concept_16">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e81" source="concept_5" target="concept_17">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e82" source="concept_5" target="concept_18">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e83" source="concept_5" target="concept_19">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e84" source="concept_5" target="concept_20">
+      <data key="d8">used_by</data>
+      <data key="d9">used_by</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#95A5A6</data>
+    </edge>
+    <edge id="e85" source="concept_6" target="concept_7">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e86" source="concept_6" target="concept_8">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e87" source="concept_6" target="concept_9">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e88" source="concept_6" target="concept_10">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e89" source="concept_6" target="concept_11">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e90" source="concept_6" target="concept_12">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e91" source="concept_6" target="concept_13">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e92" source="concept_6" target="concept_14">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e93" source="concept_6" target="concept_15">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e94" source="concept_6" target="concept_16">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e95" source="concept_6" target="concept_17">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e96" source="concept_6" target="concept_18">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e97" source="concept_6" target="concept_19">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e98" source="concept_6" target="concept_20">
+      <data key="d8">prerequisite_for</data>
+      <data key="d9">prerequisite_for</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#9B59B6</data>
+    </edge>
+    <edge id="e99" source="concept_7" target="concept_8">
+      <data key="d8">similar_to</data>
+      <data key="d9">similar_to</data>
+      <data key="d10">0.5</data>
+      <data key="d11">Rule-based: inferred from concept names and categories</data>
+      <data key="d12">#3498DB</data>
+    </edge>
+    <edge id="e100" source="theme_1" target="concept_1">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e101" source="theme_1" target="concept_50">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e102" source="theme_1" target="concept_9">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e103" source="theme_1" target="concept_3">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e104" source="theme_1" target="concept_14">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e105" source="theme_1" target="concept_11">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e106" source="theme_1" target="concept_15">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e107" source="theme_1" target="concept_13">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e108" source="theme_1" target="concept_2">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e109" source="theme_1" target="concept_7">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e110" source="theme_1" target="concept_10">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e111" source="theme_1" target="concept_17">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e112" source="theme_1" target="concept_18">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e113" source="theme_1" target="concept_20">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e114" source="theme_1" target="concept_22">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e115" source="theme_1" target="concept_24">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e116" source="theme_1" target="concept_25">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e117" source="theme_1" target="concept_26">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e118" source="theme_1" target="concept_27">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e119" source="theme_1" target="concept_28">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e120" source="theme_1" target="concept_29">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e121" source="theme_1" target="concept_33">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e122" source="theme_1" target="concept_34">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e123" source="theme_1" target="concept_35">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e124" source="theme_1" target="concept_36">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e125" source="theme_1" target="concept_37">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e126" source="theme_1" target="concept_38">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e127" source="theme_1" target="concept_39">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e128" source="theme_1" target="concept_41">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e129" source="theme_1" target="concept_42">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e130" source="theme_1" target="concept_43">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e131" source="theme_1" target="concept_49">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e132" source="theme_1" target="concept_52">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e133" source="theme_1" target="concept_54">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e134" source="theme_1" target="concept_55">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e135" source="theme_1" target="concept_56">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e136" source="theme_1" target="concept_57">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e137" source="theme_1" target="concept_65">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e138" source="theme_1" target="concept_69">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e139" source="theme_1" target="concept_70">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e140" source="theme_1" target="concept_72">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e141" source="theme_1" target="concept_73">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e142" source="theme_1" target="concept_74">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e143" source="theme_1" target="concept_76">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e144" source="theme_1" target="concept_78">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e145" source="theme_1" target="concept_79">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e146" source="theme_1" target="concept_80">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e147" source="theme_1" target="concept_82">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e148" source="theme_1" target="concept_84">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e149" source="theme_1" target="concept_89">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e150" source="theme_1" target="concept_90">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e151" source="theme_1" target="concept_92">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e152" source="theme_1" target="concept_93">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e153" source="theme_1" target="concept_94">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e154" source="theme_1" target="concept_95">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e155" source="theme_1" target="concept_96">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e156" source="theme_1" target="concept_97">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e157" source="theme_1" target="concept_101">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e158" source="theme_1" target="concept_102">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e159" source="theme_1" target="concept_105">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e160" source="theme_1" target="concept_12">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e161" source="theme_1" target="concept_4">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e162" source="theme_1" target="concept_8">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e163" source="theme_1" target="concept_62">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e164" source="theme_1" target="concept_5">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e165" source="theme_1" target="concept_16">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e166" source="theme_1" target="concept_19">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e167" source="theme_1" target="concept_21">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e168" source="theme_1" target="concept_23">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e169" source="theme_1" target="concept_30">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e170" source="theme_1" target="concept_31">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e171" source="theme_1" target="concept_32">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e172" source="theme_1" target="concept_40">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e173" source="theme_1" target="concept_44">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e174" source="theme_1" target="concept_45">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e175" source="theme_1" target="concept_46">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e176" source="theme_1" target="concept_48">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e177" source="theme_1" target="concept_51">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e178" source="theme_1" target="concept_53">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e179" source="theme_1" target="concept_58">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e180" source="theme_1" target="concept_66">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e181" source="theme_1" target="concept_71">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e182" source="theme_1" target="concept_75">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e183" source="theme_1" target="concept_77">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e184" source="theme_1" target="concept_91">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e185" source="theme_1" target="concept_98">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e186" source="theme_1" target="concept_106">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e187" source="theme_1" target="concept_6">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e188" source="theme_1" target="concept_67">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e189" source="theme_1" target="concept_83">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e190" source="theme_1" target="concept_86">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e191" source="theme_1" target="concept_88">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e192" source="theme_1" target="concept_99">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e193" source="theme_1" target="concept_103">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e194" source="theme_1" target="concept_47">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e195" source="theme_1" target="concept_59">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e196" source="theme_1" target="concept_68">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e197" source="theme_1" target="concept_100">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e198" source="theme_1" target="concept_104">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e199" source="theme_1" target="concept_64">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e200" source="theme_1" target="concept_87">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e201" source="theme_1" target="concept_60">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e202" source="theme_1" target="concept_63">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e203" source="theme_1" target="concept_81">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e204" source="theme_1" target="concept_85">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+    <edge id="e205" source="theme_1" target="concept_61">
+      <data key="d8">has_concept</data>
+      <data key="d9">has_concept</data>
+      <data key="d10">1.0</data>
+      <data key="d11" />
+      <data key="d12">#BDC3C7</data>
+    </edge>
+  </graph>
+</graphml>

@@ -154,11 +154,11 @@ class ConceptExtractor:
     """Extract concepts with definitions and examples from document."""
 
     # Configuration for full extraction (方案B: 全量抽取)
-    CHUNKS_PER_BATCH = 200  # Increased from 50 to process more chunks per LLM call
-    MAX_CHUNKS_TO_PROCESS = 10000  # Increased from 3000 to process all chunks in large documents
-    CONCEPTS_PER_CHUNK_RATIO = 0.8  # Increased from 0.5 to extract more concepts per chunk
-    MIN_CONCEPTS = 300  # Increased minimum concepts
-    MAX_CONCEPTS_HARD_LIMIT = 5000  # Increased hard limit
+    CHUNKS_PER_BATCH = 50  # Increased for better throughput
+    MAX_CHUNKS_TO_PROCESS = 10000  # Process all chunks in large documents
+    CONCEPTS_PER_CHUNK_RATIO = 0.055  # ~292 concepts for 5311 chunks
+    MIN_CONCEPTS = 250  # Ensure minimum concept count
+    MAX_CONCEPTS_HARD_LIMIT = 500  # Allow more concepts
 
     def __init__(self, client: Optional[OllamaClient] = None):
         self.client = client or get_default_client()
@@ -855,7 +855,7 @@ class RelationExtractor:
         conn: sqlite3.Connection,
         document_id: str,
         concepts: list[ConceptModel],
-        max_relations: int = 120,
+        max_relations: int = 400,
     ) -> list[RelationModel]:
         """
         Extract relationships between concepts using multi-strategy approach.
@@ -1129,8 +1129,126 @@ Your tasks:
 
             return relations
         except Exception as e:
-            print(f"Warning: Failed to extract relations for batch: {e}")
-            return []
+            print(f"Warning: LLM failed to extract relations: {e}")
+            print("[RelationExtractor] Falling back to rule-based relation extraction...")
+            # Fallback to rule-based extraction
+            return self._extract_relations_rule_based(
+                conn=conn,
+                document_id=document_id,
+                concepts=concepts,
+                concept_map=concept_map,
+                seen_pairs=seen_pairs,
+                max_relations=max_relations,
+            )
+
+    def _extract_relations_rule_based(
+        self,
+        conn: sqlite3.Connection,
+        document_id: str,
+        concepts: list[ConceptModel],
+        concept_map: dict[str, int],
+        seen_pairs: set,
+        max_relations: int,
+    ) -> list[RelationModel]:
+        """
+        Extract relations using rule-based approach as fallback when LLM fails.
+        
+        Uses concept names and categories to infer relationships:
+        - Same category → related_to
+        - Keywords in names → specific relation types
+        - Importance score differences → broader/narrower
+        """
+        import re
+        
+        # Keywords that indicate specific relation types
+        KEYWORD_PATTERNS = {
+            "prerequisite_for": ["basis", "foundation", "prerequisite", "requirement", "基础", "前提", "要求"],
+            "causes": ["cause", "lead to", "result in", "导致", "引起", "结果"],
+            "produces": ["produce", "generate", "create", "create", "产生", "生成", "创建"],
+            "uses": ["use", "apply", "employ", "utilize", "使用", "应用", "利用"],
+            "part_of": ["part of", "component", "module", "part of", "的一部分"],
+            "evaluates": ["evaluate", "measure", "assess", "metric", "评估", "测量"],
+            "improves": ["improve", "enhance", "optimize", "better", "改进", "优化", "提升"],
+            "similar_to": ["similar", "analogous", "like", "similar to", "类似"],
+        }
+        
+        relations = []
+        
+        # Get all concept names and categories
+        concept_names = [c.name.lower() for c in concepts]
+        
+        for i, c1 in enumerate(concepts):
+            for j, c2 in enumerate(concepts):
+                if i >= j:
+                    continue
+                
+                # Check if we've already seen this pair
+                pair_key = (min(c1.id, c2.id), max(c1.id, c2.id), "temp")
+                if pair_key[:2] in [(min(s[0], s[1]), max(s[0], s[1])) for s in seen_pairs]:
+                    continue
+                
+                relation_type = "related_to"
+                strength = 0.5
+                evidence = "Rule-based: inferred from concept names and categories"
+                explanation = ""
+                
+                # Check keyword patterns
+                name1_lower = c1.name.lower()
+                name2_lower = c2.name.lower()
+                
+                for rel_type, keywords in KEYWORD_PATTERNS.items():
+                    for kw in keywords:
+                        if kw in name1_lower or kw in name2_lower:
+                            relation_type = rel_type
+                            explanation = f"Found keyword '{kw}' indicating {rel_type}"
+                            break
+                    if relation_type != "related_to":
+                        break
+                
+                # If still related_to, use category-based inference
+                if relation_type == "related_to":
+                    if c1.category and c2.category:
+                        if c1.category == c2.category:
+                            relation_type = "similar_to"
+                            explanation = f"Same category: {c1.category}"
+                        elif c1.category in ["method", "tool"] and c2.category in ["concept", "principle"]:
+                            relation_type = "uses"
+                            explanation = f"{c1.category} uses {c2.category}"
+                        elif c1.category in ["concept", "principle"] and c2.category in ["method", "tool"]:
+                            relation_type = "used_by"
+                            explanation = f"{c2.name} uses {c1.name}"
+                
+                # Check importance scores for broader/narrower
+                if relation_type == "related_to" and c1.importance_score and c2.importance_score:
+                    diff = abs(c1.importance_score - c2.importance_score)
+                    if diff > 0.2:
+                        if c1.importance_score > c2.importance_score:
+                            relation_type = "broader_than"
+                            explanation = f"Higher importance score ({c1.importance_score:.2f} > {c2.importance_score:.2f})"
+                        else:
+                            relation_type = "narrower_than"
+                            explanation = f"Lower importance score ({c1.importance_score:.2f} < {c2.importance_score:.2f})"
+                
+                # Create unique pair identifier
+                pair_key = (c1.id, c2.id, relation_type)
+                if pair_key in seen_pairs:
+                    continue
+                seen_pairs.add(pair_key)
+                
+                relations.append(
+                    RelationModel(
+                        document_id=document_id,
+                        source_concept_id=c1.id,
+                        target_concept_id=c2.id,
+                        relation_type=relation_type,
+                        strength=strength,
+                        evidence=evidence,
+                        explanation=explanation or f"{c1.name} {relation_type} {c2.name}",
+                    )
+                )
+        
+        print(f"[RelationExtractor] Rule-based extracted {len(relations)} relations")
+        return relations[:max_relations]
 
 
 class QAExtractor:

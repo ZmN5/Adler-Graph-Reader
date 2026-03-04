@@ -743,10 +743,8 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
 
 def cmd_ui(port: int = 8501, open_browser: bool = True):
     """Launch web UI with FastAPI backend and React frontend."""
-    import subprocess
     import threading
     import webbrowser
-    import signal
     import time
 
     # Check frontend build exists
@@ -801,7 +799,7 @@ def cmd_ui(port: int = 8501, open_browser: bool = True):
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(config)
 
-    print(f"Starting Adler Graph Reader UI...")
+    print("Starting Adler Graph Reader UI...")
     print(f"Backend API: http://localhost:{port}/api")
     print(f"Frontend UI: http://localhost:{port}")
     print("\nPress Ctrl+C to stop")
