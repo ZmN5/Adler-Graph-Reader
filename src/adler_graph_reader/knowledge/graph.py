@@ -167,8 +167,8 @@ class KnowledgeGraph:
 
         return stored_relations
 
-    def get_graph(self, document_id: str) -> GraphData:
-        """Get complete graph data for a document."""
+    def get_graph(self, document_id: str | None = None) -> GraphData:
+        """Get complete graph data for a document or all documents."""
         graph_data = database.get_document_graph(self.conn, document_id)
 
         themes = [
@@ -216,7 +216,7 @@ class KnowledgeGraph:
             relations=relations,
         )
 
-    def to_visualization(self, document_id: str) -> GraphVisualization:
+    def to_visualization(self, document_id: str | None = None) -> GraphVisualization:
         """Convert graph to visualization format."""
         graph = self.get_graph(document_id)
 

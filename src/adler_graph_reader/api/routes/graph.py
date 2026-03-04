@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from ...database import get_admin_connection
+from ...database import get_admin_connection, get_themes, get_concepts, get_relations
 from ...knowledge.graph import KnowledgeGraph
 from ..models import (
     GraphDataResponse,
@@ -21,12 +21,12 @@ router = APIRouter(prefix="/graph", tags=["graph"])
 
 
 @router.get(
-    "/{document_id}",
+    "",
     response_model=GraphDataResponse,
-    summary="Get graph data for visualization",
-    description="Retrieve complete graph data (nodes and edges) for visualizing the knowledge graph.",
+    summary="Get graph data for all documents or specific document",
+    description="Retrieve complete graph data (nodes and edges) for visualizing the knowledge graph. If document_id is provided, returns data for that document only.",
 )
-async def get_graph_data(document_id: str):
+async def get_graph_data(document_id: str | None = Query(None, description="Optional document ID to filter by")):
     """Get graph data for a document.
 
     Args:
@@ -38,50 +38,49 @@ async def get_graph_data(document_id: str):
     conn = None
     try:
         conn = get_admin_connection()
-        kg = KnowledgeGraph(conn)
 
-        # Get themes
-        themes = kg.get_themes(document_id)
+        # Get themes directly from database
+        themes = get_themes(conn, document_id)
         themes_data = [
             {
-                "id": t.id,
-                "name": t.name,
-                "description": t.description,
-                "importance_score": t.importance_score,
+                "id": t["id"],
+                "name": t["name"],
+                "description": t.get("description"),
+                "importance_score": t.get("importance_score", 0.5),
             }
             for t in themes
         ]
 
-        # Get concepts
-        concepts = kg.get_concepts(document_id)
+        # Get concepts directly from database
+        concepts = get_concepts(conn, document_id)
         concepts_data = [
             {
-                "id": c.id,
-                "name": c.name,
-                "definition": c.definition,
-                "category": c.category,
-                "importance_score": c.importance_score,
-                "theme_id": c.theme_id,
+                "id": c["id"],
+                "name": c["name"],
+                "definition": c["definition"],
+                "category": c.get("category", "concept"),
+                "importance_score": c.get("importance_score", 0.5),
+                "theme_id": c.get("theme_id"),
             }
             for c in concepts
         ]
 
-        # Get relations
-        relations = kg.get_relations(document_id)
+        # Get relations directly from database
+        relations = get_relations(conn, document_id)
         relations_data = [
             {
-                "id": r.id,
-                "source_concept_id": r.source_concept_id,
-                "target_concept_id": r.target_concept_id,
-                "relation_type": r.relation_type,
-                "strength": r.strength,
-                "evidence": r.evidence,
+                "id": r["id"],
+                "source_concept_id": r["source_concept_id"],
+                "target_concept_id": r["target_concept_id"],
+                "relation_type": r["relation_type"],
+                "strength": r.get("strength", 0.5),
+                "evidence": r.get("evidence"),
             }
             for r in relations
         ]
 
         return GraphDataResponse(
-            document_id=document_id,
+            document_id=document_id if document_id else "all",
             themes=themes_data,
             concepts=concepts_data,
             relations=relations_data,
@@ -103,13 +102,13 @@ async def get_graph_data(document_id: str):
 
 
 @router.get(
-    "/{document_id}/visualization",
+    "/visualization",
     response_model=GraphVisualizationResponse,
     summary="Get graph in visualization format",
     description="Get graph formatted for D3.js or other visualization libraries.",
 )
 async def get_graph_visualization(
-    document_id: str,
+    document_id: str | None = Query(None, description="Optional document ID to filter by"),
     include_themes: bool = Query(True, description="Include theme nodes"),
     min_importance: float = Query(
         0.0, ge=0.0, le=1.0, description="Minimum importance score"
@@ -183,12 +182,12 @@ async def get_graph_visualization(
 
 
 @router.get(
-    "/{document_id}/stats",
+    "/stats",
     response_model=GraphStatsResponse,
     summary="Get graph statistics",
     description="Get statistical information about the knowledge graph.",
 )
-async def get_graph_stats(document_id: str):
+async def get_graph_stats(document_id: str | None = Query(None, description="Optional document ID to filter by")):
     """Get statistics about the knowledge graph.
 
     Args:
@@ -200,12 +199,11 @@ async def get_graph_stats(document_id: str):
     conn = None
     try:
         conn = get_admin_connection()
-        kg = KnowledgeGraph(conn)
 
-        # Get all data
-        themes = kg.get_themes(document_id)
-        concepts = kg.get_concepts(document_id)
-        relations = kg.get_relations(document_id)
+        # Get all data directly from database
+        themes = get_themes(conn, document_id)
+        concepts = get_concepts(conn, document_id)
+        relations = get_relations(conn, document_id)
 
         # Calculate statistics
         total_nodes = len(themes) + len(concepts)
@@ -217,7 +215,7 @@ async def get_graph_stats(document_id: str):
         # Edge type distribution
         edge_types = {}
         for rel in relations:
-            rel_type = rel.relation_type
+            rel_type = rel["relation_type"]
             edge_types[rel_type] = edge_types.get(rel_type, 0) + 1
 
         # Calculate average degree

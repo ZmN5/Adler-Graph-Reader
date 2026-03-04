@@ -32,7 +32,7 @@ class ChonkieSplitter:
     def __init__(
         self,
         chunk_size: int = 1000,  # Tokens per chunk (safe for 8192 limit)
-        chunk_overlap: int = 100,  # Overlap between chunks
+        chunk_overlap: int = 100,  # Overlap between chunks (not used by RecursiveChunker)
         min_chunk_size: int = 100,  # Minimum chunk size in characters
     ):
         """
@@ -40,7 +40,7 @@ class ChonkieSplitter:
 
         Args:
             chunk_size: Target chunk size in tokens (default 1000)
-            chunk_overlap: Overlap between chunks in tokens
+            chunk_overlap: Overlap between chunks in tokens (not used by RecursiveChunker)
             min_chunk_size: Minimum chunk size in characters
         """
         self.chunk_size = chunk_size
@@ -58,7 +58,6 @@ class ChonkieSplitter:
 
                 self._chunker = RecursiveChunker(
                     chunk_size=self.chunk_size,
-                    chunk_overlap=self.chunk_overlap,
                 )
             except ImportError as e:
                 raise ImportError(

@@ -762,15 +762,24 @@ def cmd_ui(port: int = 8501, open_browser: bool = True):
     from fastapi import FastAPI
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse
+    from fastapi.middleware.cors import CORSMiddleware
 
-    from .api.main import create_app as create_api_app
+    from .api.routes import router as api_router
 
     # Create combined app
     app = FastAPI(title="Adler Graph Reader UI")
 
-    # Mount API routes
-    api_app = create_api_app()
-    app.mount("/api", api_app)
+    # Add CORS middleware to allow frontend access
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins for local development
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Include API routes directly with /api prefix
+    app.include_router(api_router, prefix="/api")
 
     # Mount static files
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")

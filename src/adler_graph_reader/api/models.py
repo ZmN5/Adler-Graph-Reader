@@ -170,7 +170,7 @@ class SearchRequest(BaseModel):
     """Hybrid search request."""
 
     query: str = Field(..., min_length=1, max_length=1000)
-    document_id: str
+    document_id: str | None = None
     top_k: int = Field(default=10, ge=1, le=50)
     use_reranker: bool = True
     search_type: Literal["fts", "vector", "hybrid"] = "hybrid"
@@ -204,7 +204,7 @@ class SearchResponse(BaseModel):
     """Search results response."""
 
     query: str
-    document_id: str
+    document_id: str | None = None
     results: list[SearchResultItem]
     total: int
     search_type: str = "hybrid"

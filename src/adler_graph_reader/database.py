@@ -544,18 +544,26 @@ def insert_theme(
     return cursor.lastrowid
 
 
-def get_themes(conn: sqlite3.Connection, document_id: str) -> list[dict[str, Any]]:
-    """Get all themes for a document."""
+def get_themes(conn: sqlite3.Connection, document_id: str | None = None) -> list[dict[str, Any]]:
+    """Get all themes for a document or all themes if no document_id provided."""
     import json
 
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, document_id, name, description, importance_score, source_chunks, created_at
-        FROM themes WHERE document_id = ? ORDER BY importance_score DESC
-        """,
-        (document_id,),
-    )
+    if document_id:
+        cursor.execute(
+            """
+            SELECT id, document_id, name, description, importance_score, source_chunks, created_at
+            FROM themes WHERE document_id = ? ORDER BY importance_score DESC
+            """,
+            (document_id,),
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id, document_id, name, description, importance_score, source_chunks, created_at
+            FROM themes ORDER BY importance_score DESC
+            """
+        )
     return [
         {
             "id": row[0],
@@ -621,18 +629,26 @@ def insert_concept(
     return cursor.lastrowid
 
 
-def get_concepts(conn: sqlite3.Connection, document_id: str) -> list[dict[str, Any]]:
-    """Get all concepts for a document."""
+def get_concepts(conn: sqlite3.Connection, document_id: str | None = None) -> list[dict[str, Any]]:
+    """Get all concepts for a document or all concepts if no document_id provided."""
     import json
 
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, document_id, theme_id, name, definition, explanation, examples, importance_score, category, source_chunk_ids, created_at
-        FROM concepts WHERE document_id = ? ORDER BY importance_score DESC
-        """,
-        (document_id,),
-    )
+    if document_id:
+        cursor.execute(
+            """
+            SELECT id, document_id, theme_id, name, definition, explanation, examples, importance_score, category, source_chunk_ids, created_at
+            FROM concepts WHERE document_id = ? ORDER BY importance_score DESC
+            """,
+            (document_id,),
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id, document_id, theme_id, name, definition, explanation, examples, importance_score, category, source_chunk_ids, created_at
+            FROM concepts ORDER BY importance_score DESC
+            """
+        )
     return [
         {
             "id": row[0],
@@ -757,16 +773,24 @@ def insert_relation(
     return cursor.lastrowid
 
 
-def get_relations(conn: sqlite3.Connection, document_id: str) -> list[dict[str, Any]]:
-    """Get all concept relations for a document."""
+def get_relations(conn: sqlite3.Connection, document_id: str | None = None) -> list[dict[str, Any]]:
+    """Get all concept relations for a document or all relations if no document_id provided."""
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation, created_at
-        FROM concept_relations WHERE document_id = ?
-        """,
-        (document_id,),
-    )
+    if document_id:
+        cursor.execute(
+            """
+            SELECT id, document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation, created_at
+            FROM concept_relations WHERE document_id = ?
+            """,
+            (document_id,),
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id, document_id, source_concept_id, target_concept_id, relation_type, strength, evidence, explanation, created_at
+            FROM concept_relations
+            """
+        )
     return [
         {
             "id": row[0],
@@ -873,8 +897,8 @@ def get_qa_history(conn: sqlite3.Connection, session_id: str) -> list[dict[str, 
     ]
 
 
-def get_document_graph(conn: sqlite3.Connection, document_id: str) -> dict[str, Any]:
-    """Get complete graph data for a document."""
+def get_document_graph(conn: sqlite3.Connection, document_id: str | None = None) -> dict[str, Any]:
+    """Get complete graph data for a document or all documents if no document_id provided."""
     return {
         "themes": get_themes(conn, document_id),
         "concepts": get_concepts(conn, document_id),

@@ -164,7 +164,7 @@ def _vector_search_only(
 @router.get("")
 async def search_get(
     q: str = Query(..., min_length=1, description="Search query"),
-    document_id: str = Query(..., description="Document ID"),
+    document_id: str | None = Query(None, description="Optional document ID to filter by"),
     top_k: int = Query(default=10, ge=1, le=50),
     search_type: str = Query(
         default="hybrid", description="Search type: fts, vector, hybrid"
@@ -191,7 +191,7 @@ async def search_get(
 @router.get("/semantic")
 async def semantic_search_get(
     q: str = Query(..., min_length=1, description="Search query"),
-    document_id: str = Query(..., description="Document ID"),
+    document_id: str | None = Query(None, description="Optional document ID to filter by"),
     limit: int = Query(default=10, ge=1, le=50),
 ):
     """
@@ -210,7 +210,7 @@ async def semantic_search_get(
 @router.get("/suggest", response_model=list[str])
 async def search_suggestions(
     q: str = Query(..., min_length=1, max_length=100, description="Query prefix"),
-    document_id: str = Query(..., description="Document ID"),
+    document_id: str | None = Query(None, description="Optional document ID to filter by"),
     limit: int = Query(default=5, ge=1, le=10),
 ):
     """
@@ -224,15 +224,26 @@ async def search_suggestions(
     try:
         # Search for matching concepts
         search_pattern = f"%{q}%"
-        cursor.execute(
-            """
-            SELECT DISTINCT name FROM concepts
-            WHERE document_id = ? AND name LIKE ?
-            ORDER BY importance_score DESC
-            LIMIT ?
-            """,
-            (document_id, search_pattern, limit),
-        )
+        if document_id:
+            cursor.execute(
+                """
+                SELECT DISTINCT name FROM concepts
+                WHERE document_id = ? AND name LIKE ?
+                ORDER BY importance_score DESC
+                LIMIT ?
+                """,
+                (document_id, search_pattern, limit),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT DISTINCT name FROM concepts
+                WHERE name LIKE ?
+                ORDER BY importance_score DESC
+                LIMIT ?
+                """,
+                (search_pattern, limit),
+            )
 
         suggestions = [row[0] for row in cursor.fetchall()]
         return suggestions

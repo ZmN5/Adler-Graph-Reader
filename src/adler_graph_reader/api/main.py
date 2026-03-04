@@ -24,10 +24,14 @@ def get_allowed_origins() -> list[str]:
         # Parse comma-separated origins
         return [origin.strip() for origin in allowed_origins_env.split(",")]
 
-    # Default: only allow local development servers
+    # Default: allow all common local development servers
     return [
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # React dev server
+        "http://localhost:3000",  # Vite dev server (this project)
+        "http://localhost:5173",  # Vite default port
+        "http://localhost:8000",  # FastAPI server itself
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8000",
     ]
 
 
@@ -55,8 +59,18 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "Accept"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers",
+        ],
+        expose_headers=["Content-Length", "Content-Type"],
+        max_age=600,  # Cache preflight requests for 10 minutes
     )
 
     # Health check endpoint (before router to avoid prefix)
