@@ -742,10 +742,73 @@ def cmd_qa(question: str, document_id: str, session_id: str | None = None) -> No
 
 
 def cmd_ui(port: int = 8501, open_browser: bool = True):
-    """Launch web UI (temporarily disabled - new UI in development)."""
-    print("UI command is temporarily disabled.")
-    print("The new UI (FastAPI backend + React frontend) is under development.")
-    print("Please use the CLI commands or API directly for now.")
+    """Launch web UI with FastAPI backend and React frontend."""
+    import subprocess
+    import threading
+    import webbrowser
+    import signal
+    import time
+
+    # Check frontend build exists
+    frontend_dist = Path(__file__).parent.parent.parent / "ui" / "frontend" / "dist"
+    if not frontend_dist.exists():
+        print("Error: Frontend build not found.")
+        print(f"Expected directory: {frontend_dist}")
+        print("\nTo build the frontend:")
+        print("  cd ui/frontend && npm install && npm run build")
+        return
+
+    # Create a new app with static files
+    from fastapi import FastAPI
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    from .api.main import create_app as create_api_app
+
+    # Create combined app
+    app = FastAPI(title="Adler Graph Reader UI")
+
+    # Mount API routes
+    api_app = create_api_app()
+    app.mount("/api", api_app)
+
+    # Mount static files
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(str(frontend_dist / "index.html"))
+
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        # Serve index.html for all routes (SPA behavior)
+        index_file = frontend_dist / path
+        if index_file.exists() and index_file.is_file():
+            return FileResponse(str(index_file))
+        return FileResponse(str(frontend_dist / "index.html"))
+
+    # Start server in a thread
+    import uvicorn
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+
+    print(f"Starting Adler Graph Reader UI...")
+    print(f"Backend API: http://localhost:{port}/api")
+    print(f"Frontend UI: http://localhost:{port}")
+    print("\nPress Ctrl+C to stop")
+
+    if open_browser:
+        # Open browser after a short delay
+        def open_browser_delayed():
+            time.sleep(1.5)
+            webbrowser.open(f"http://localhost:{port}")
+        threading.Thread(target=open_browser_delayed, daemon=True).start()
+
+    # Run server
+    try:
+        server.run()
+    except KeyboardInterrupt:
+        print("\nShutting down...")
 
 
 def cmd_api(host: str = "0.0.0.0", port: int = 8000, reload: bool = False) -> None:
