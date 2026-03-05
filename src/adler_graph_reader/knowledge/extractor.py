@@ -877,7 +877,7 @@ class RelationExtractor:
             reverse=True
         )
 
-        BATCH_SIZE = 60
+        BATCH_SIZE = 40  # Reduced from 60 to avoid timeouts and improve reliability
         all_relations: list[RelationModel] = []
         seen_pairs: set = set()
 

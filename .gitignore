@@ -54,3 +54,7 @@ data/
 
 # JS
 **/node_modules/*
+
+
+*.log
+*.txt

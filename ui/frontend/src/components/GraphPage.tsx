@@ -65,7 +65,6 @@ function GraphController({
         label: node.name,
         size: 8,
         color: getNodeColor(node.type),
-        type: node.type,
         description: node.description,
         confidence: node.confidence,
         x: Math.random() * 100,
@@ -81,7 +80,8 @@ function GraphController({
           label: link.type,
           size: 1,
           color: '#999',
-          type: link.type,
+          type: 'line', // Use 'line' as the render type, not the semantic type
+          relationType: link.type, // Store semantic type separately
           confidence: link.confidence,
         });
       }
@@ -331,8 +331,6 @@ function GraphPage() {
           <SigmaContainer
             style={{ width: '100%', height: '100%' }}
             settings={{
-              nodeProgramClasses: {},
-              edgeProgramClasses: {},
               labelFont: 'Arial',
               labelSize: 12,
               labelColor: { color: '#374151' },

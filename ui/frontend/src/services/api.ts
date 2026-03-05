@@ -138,7 +138,7 @@ export const graphApi = {
       ...(data.themes || []).map((t: any) => ({
         id: `theme_${t.id}`,
         name: t.name,
-        type: 'theme',
+        type: 'concept',  // Use 'concept' as default type for Sigma.js
         description: t.description,
         confidence: t.importance_score,
       })),

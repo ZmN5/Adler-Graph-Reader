@@ -187,8 +187,8 @@ class EnhancedRelationExtraction(BaseModel):
     relations: list[EnhancedConceptRelation] = Field(
         default_factory=list,
         min_length=1,
-        max_length=50,
-        description="List of concept relationships (20-50 relations)",
+        max_length=100,
+        description="List of concept relationships (up to 100 relations per batch)",
     )
 
 

@@ -37,8 +37,12 @@ DEFAULT_OLLAMA_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5:2b")
 # Default: qwen3.5-2b (must match the model loaded in LM Studio)
 # Fallback models are tried in order if the primary fails
 DEFAULT_MODEL = os.getenv("ADLER_LLM_MODEL", "qwen3.5-2b")
-# Fallback models to try if primary fails
-FALLBACK_MODELS = os.getenv("ADLER_LLM_FALLBACK_MODELS", "qwen3.5:7b,qwen3.5:14b").split(",")
+# Fallback models to try if primary fails (LM Studio format uses hyphens, Ollama uses colons)
+# Format depends on backend: LM Studio uses "qwen3.5-7b", Ollama uses "qwen3.5:7b"
+FALLBACK_MODELS = os.getenv(
+    "ADLER_LLM_FALLBACK_MODELS",
+    "qwen3.5-7b,qwen3.5-14b,qwen3.5-32b"  # LM Studio format
+).split(",")
 DEFAULT_EMBED_MODEL = "qwen3-embedding-0.6b"  # Qwen3 embedding model
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
 DEFAULT_TIMEOUT = 180.0  # Reduced timeout for faster feedback with small models
