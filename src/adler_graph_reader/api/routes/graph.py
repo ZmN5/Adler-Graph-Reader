@@ -226,7 +226,7 @@ async def get_graph_stats(document_id: str | None = Query(None, description="Opt
         density = total_edges / max_edges if max_edges > 0 else 0
 
         return GraphStatsResponse(
-            document_id=document_id,
+            document_id=document_id or "all",
             total_nodes=total_nodes,
             total_edges=total_edges,
             node_types=node_types,

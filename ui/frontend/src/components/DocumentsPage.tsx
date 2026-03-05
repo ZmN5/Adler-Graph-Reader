@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { documentsApi, Document } from '../services/api';
+import { documentsApi } from '../services/api';
+
+interface DocumentInfo {
+  document_id: string;
+  chunk_count: number;
+  theme_count: number;
+  concept_count: number;
+  relation_count: number;
+}
 
 const DocumentsPage: React.FC = () => {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -10,8 +18,15 @@ const DocumentsPage: React.FC = () => {
   const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await documentsApi.getAll();
-      setDocuments(data);
+      const response = await documentsApi.getAll();
+      // Handle both array and { documents, total } response formats
+      let docs: DocumentInfo[];
+      if (Array.isArray(response)) {
+        docs = response as unknown as DocumentInfo[];
+      } else {
+        docs = ((response as any).documents || []) as DocumentInfo[];
+      }
+      setDocuments(docs);
       setError(null);
     } catch (err) {
       setError('加载文档失败');
@@ -53,10 +68,6 @@ const DocumentsPage: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-CN');
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -95,16 +106,18 @@ const DocumentsPage: React.FC = () => {
       ) : (
         <div className="grid gap-4">
           {documents.map((doc) => (
-            <div key={doc.id} className="card flex justify-between items-start">
+            <div key={doc.document_id} className="card flex justify-between items-start">
               <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-1">{doc.title}</h3>
+                <h3 className="font-semibold text-lg mb-1">{doc.document_id}</h3>
                 <div className="text-sm text-gray-500 space-x-4">
-                  <span>类型: {doc.source_type}</span>
-                  <span>创建: {formatDate(doc.created_at)}</span>
+                  <span>分块: {doc.chunk_count}</span>
+                  <span>主题: {doc.theme_count}</span>
+                  <span>概念: {doc.concept_count}</span>
+                  <span>关系: {doc.relation_count}</span>
                 </div>
               </div>
               <button
-                onClick={() => handleDelete(doc.id)}
+                onClick={() => handleDelete(doc.document_id)}
                 className="btn btn-danger text-sm ml-4"
               >
                 删除

@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { api, documentsApi } from '../services/api';
 import { useDebounce } from '../hooks';
 import { SearchResultItem } from '../types';
 
+interface DocumentInfo {
+  document_id: string;
+  chunk_count: number;
+  theme_count: number;
+  concept_count: number;
+  relation_count: number;
+}
+
 export const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
-  const [documentId, setDocumentId] = useState('adler_grammar');
+  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
+  const [documentId, setDocumentId] = useState('');
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,6 +23,29 @@ export const SearchPage: React.FC = () => {
     top_k: 10,
     use_reranker: true,
   });
+
+  // Load available documents on mount
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        const response = await documentsApi.getAll();
+        let docs: DocumentInfo[];
+        if (Array.isArray(response)) {
+          docs = response as unknown as DocumentInfo[];
+        } else {
+          docs = ((response as any).documents || []) as DocumentInfo[];
+        }
+        setDocuments(docs);
+        // Set default document if available
+        if (docs.length > 0 && !documentId) {
+          setDocumentId(docs[0].document_id);
+        }
+      } catch (err) {
+        console.error('Failed to load documents:', err);
+      }
+    };
+    loadDocuments();
+  }, []);
 
   // Debounce the search query to avoid too many API calls
   const debouncedQuery = useDebounce(query, 300);
@@ -36,7 +68,7 @@ export const SearchPage: React.FC = () => {
         top_k: searchOptions.top_k,
         use_reranker: searchOptions.use_reranker,
       });
-      setResults(response.results);
+      setResults(response.results || []);
     } catch (err) {
       setError('搜索失败，请稍后重试');
     } finally {
@@ -110,9 +142,17 @@ export const SearchPage: React.FC = () => {
                 className="form-select"
                 value={documentId}
                 onChange={(e) => setDocumentId(e.target.value)}
+                disabled={documents.length === 0}
               >
-                <option value="adler_grammar">语法书</option>
-                <option value="sample_doc">示例文档</option>
+                {documents.length === 0 ? (
+                  <option value="">加载中...</option>
+                ) : (
+                  documents.map((doc) => (
+                    <option key={doc.document_id} value={doc.document_id}>
+                      {doc.document_id}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

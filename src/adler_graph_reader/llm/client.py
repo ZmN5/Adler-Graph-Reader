@@ -45,7 +45,7 @@ FALLBACK_MODELS = os.getenv(
 ).split(",")
 DEFAULT_EMBED_MODEL = "qwen3-embedding-0.6b"  # Qwen3 embedding model
 DEFAULT_RERANK_MODEL = "qwen3-reranker-0.6b"  # Reranker model for result reranking
-DEFAULT_TIMEOUT = 180.0  # Reduced timeout for faster feedback with small models
+DEFAULT_TIMEOUT = 300.0  # Increased timeout for local LLM processing
 DEFAULT_ENABLE_THINKING = False  # Disable thinking for faster responses
 
 # Environment variable names for API keys

@@ -11,6 +11,7 @@ Adler-Graph-Reader is a Python CLI tool that reads PDF/EPUB documents, extracts 
 - Pure Python functional programming
 - OpenAI-compatible API (LM Studio, Ollama, etc.)
 - Hybrid search: SQLite (FTS5 + sqlite-vec) instead of vector DBs
+- **严禁使用云端/外部大模型** - 必须使用本地 LLM (LM Studio/Ollama)
 
 ## Environment
 

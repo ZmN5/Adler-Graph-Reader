@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { api } from '../services/api';
+import { api, documentsApi } from '../services/api';
 
 interface Message {
   id: string;
@@ -10,14 +10,46 @@ interface Message {
   citedConcepts?: number[];
 }
 
+interface DocumentInfo {
+  document_id: string;
+  chunk_count: number;
+  theme_count: number;
+  concept_count: number;
+  relation_count: number;
+}
+
 export const QAPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [documentId, setDocumentId] = useState('adler_grammar');
+  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
+  const [documentId, setDocumentId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load available documents on mount
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        const response = await documentsApi.getAll();
+        let docs: DocumentInfo[];
+        if (Array.isArray(response)) {
+          docs = response as unknown as DocumentInfo[];
+        } else {
+          docs = ((response as any).documents || []) as DocumentInfo[];
+        }
+        setDocuments(docs);
+        // Set default document if available
+        if (docs.length > 0 && !documentId) {
+          setDocumentId(docs[0].document_id);
+        }
+      } catch (err) {
+        console.error('Failed to load documents:', err);
+      }
+    };
+    loadDocuments();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -180,9 +212,17 @@ export const QAPage: React.FC = () => {
                   value={documentId}
                   onChange={(e) => setDocumentId(e.target.value)}
                   style={{ width: 'auto', minWidth: '200px' }}
+                  disabled={documents.length === 0}
                 >
-                  <option value="adler_grammar">语法书</option>
-                  <option value="sample_doc">示例文档</option>
+                  {documents.length === 0 ? (
+                    <option value="">加载中...</option>
+                  ) : (
+                    documents.map((doc) => (
+                      <option key={doc.document_id} value={doc.document_id}>
+                        {doc.document_id}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>

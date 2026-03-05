@@ -2,19 +2,59 @@
 Knowledge extractors for themes, concepts, and relations.
 """
 
+import json
 import sqlite3
 from typing import Any, Optional
+
+from json_repair import repair_json
 
 from ..config import get_config
 from ..llm import OllamaClient, get_default_client
 from ..llm.models import (
     EnhancedConcept,
-    EnhancedConceptExtraction,
-    EnhancedRelationExtraction,
     ThemeExtraction,
 )
 from .graph_models import ConceptModel, RelationModel, ThemeModel
 from .progress import ExtractionProgress, ExtractionStage, ProgressManager
+
+
+# =============================================================================
+# Field Length Constants
+# =============================================================================
+# These limits prevent database overflow and ensure consistent data quality
+MAX_EXPLANATION_LENGTH = 300  # Maximum length for explanation fields
+MAX_DEFINITION_LENGTH = 500   # Maximum length for definition fields
+MAX_EVIDENCE_LENGTH = 300     # Maximum length for evidence fields
+MAX_EXAMPLES_COUNT = 5        # Maximum number of examples per concept
+
+
+def extract_json_from_response(response: str) -> dict:
+    """
+    Extract and repair JSON from LLM response.
+
+    Local LLMs (like qwen3.5) may wrap JSON in markdown code blocks or produce
+    slightly malformed JSON. This function handles both cases.
+
+    Args:
+        response: Raw LLM response string
+
+    Returns:
+        Parsed JSON dictionary
+
+    Raises:
+        json.JSONDecodeError: If JSON cannot be repaired/parsed
+    """
+    json_str = response.strip()
+
+    # Remove markdown code blocks if present
+    if "```json" in json_str:
+        json_str = json_str.split("```json")[1].split("```")[0]
+    elif "```" in json_str:
+        json_str = json_str.split("```")[1].split("```")[0]
+
+    # Repair and parse JSON
+    repaired_json = repair_json(json_str)
+    return json.loads(repaired_json)
 
 
 class ThemeExtractor:
@@ -43,32 +83,18 @@ class ThemeExtractor:
         cursor = conn.cursor()
         print(f"[ThemeExtractor] Querying database for document: {document_id}")
 
-        # Get actual content from chunks, not just chapter titles
+        # Get actual content from document_tree (both chunks and chapters with substantial content)
         cursor.execute(
             """
             SELECT content FROM document_tree
-            WHERE document_id = ? AND type = 'chunk'
-            AND length(content) > 100
+            WHERE document_id = ? AND length(content) > 100
             ORDER BY id
             LIMIT 10
             """,
             (document_id,),
         )
         contents = [row[0] for row in cursor.fetchall()]
-        print(f"[ThemeExtractor] Found {len(contents)} chunks with content")
-
-        if not contents:
-            cursor.execute(
-                """
-                SELECT content FROM document_tree
-                WHERE document_id = ? AND type = 'chunk'
-                ORDER BY id
-                LIMIT 10
-                """,
-                (document_id,),
-            )
-            contents = [row[0] for row in cursor.fetchall()]
-            print(f"[ThemeExtractor] Fallback: found {len(contents)} chunks")
+        print(f"[ThemeExtractor] Found {len(contents)} records with content")
 
         # Limit content size to avoid overwhelming the LLM
         combined_content = "\n\n---\n\n".join([c[:1500] for c in contents[:3]])
@@ -164,12 +190,12 @@ class ConceptExtractor:
         self.client = client or get_default_client()
 
     def _get_total_chunks(self, conn: sqlite3.Connection, document_id: str) -> int:
-        """Get total number of chunks for a document."""
+        """Get total number of records for a document (both chunks and chapters)."""
         cursor = conn.cursor()
         cursor.execute(
             """
             SELECT COUNT(*) FROM document_tree
-            WHERE document_id = ? AND type = 'chunk'
+            WHERE document_id = ? AND length(content) > 50
             """,
             (document_id,),
         )
@@ -188,12 +214,12 @@ class ConceptExtractor:
         offset: int,
         limit: int,
     ) -> list[tuple[int, str]]:
-        """Get a batch of chunks for processing."""
+        """Get a batch of records for processing (both chunks and chapters)."""
         cursor = conn.cursor()
         cursor.execute(
             """
             SELECT id, content FROM document_tree
-            WHERE document_id = ? AND type = 'chunk'
+            WHERE document_id = ? AND length(content) > 50
             ORDER BY id
             LIMIT ? OFFSET ?
             """,
@@ -398,7 +424,7 @@ Ensure the extracted concepts cover ML system design, model training, deployment
         # Process concepts in batches
         names_to_process = all_concept_names[:target_concepts]
         processed_count = 0
-        BATCH_SIZE = 8  # Process 8 concepts per LLM call
+        BATCH_SIZE = 4  # Reduced batch size for local LLM (was 8)
 
         # Pre-fetch contexts for all concepts to process
         print(f"[ConceptExtractor] Preparing contexts for {len(names_to_process)} concepts...")
@@ -646,23 +672,39 @@ Ensure all {len(concept_names)} concepts are included in the output. {lang_suffi
 4. Scores must be objective and fair
 5. Return valid JSON format"""
 
+        # Use regular generate + json_repair instead of generate_structured
+        # to handle imperfect JSON from local LLM
         try:
-            result = self.client.generate_structured(
-                prompt,
-                response_model=EnhancedConceptExtraction,
+            print(f"[Batch] Using generate + json_repair for {len(concept_names)} concepts...")
+            response = self.client.generate(
+                prompt + "\n\n重要：必须只返回有效的JSON格式，不要添加markdown代码块标记或其他文本。",
                 system=system_msg,
                 temperature=0.2,
             )
-            if result.concepts:
-                # Validate and fix each concept
-                for concept in result.concepts:
-                    concept.importance_score = max(0.1, min(1.0, concept.importance_score))
-                    if concept.examples is None:
-                        concept.examples = []
-                    concept.examples = [
-                        ex.strip() for ex in concept.examples if ex and ex.strip()
-                    ]
-                return result.concepts
+            
+            # Extract and repair JSON from response
+            data = extract_json_from_response(response)
+
+            # Parse into EnhancedConcept list with strict validation
+            concepts = []
+            if "concepts" in data:
+                for concept_data in data["concepts"]:
+                    # Apply field length limits
+                    explanation = concept_data.get("explanation", "")[:MAX_EXPLANATION_LENGTH - 10]  # Leave margin
+                    definition = concept_data.get("definition", "")[:MAX_DEFINITION_LENGTH - 10]  # Leave margin
+                    examples = concept_data.get("examples", [])[:MAX_EXAMPLES_COUNT]
+
+                    concept = EnhancedConcept(
+                        name=concept_data.get("name", "Unknown"),
+                        definition=definition,
+                        explanation=explanation,
+                        examples=[ex.strip() for ex in examples if ex and ex.strip()],
+                        importance_score=max(0.1, min(1.0, concept_data.get("importance_score", 0.5))),
+                        category=concept_data.get("category", "concept"),
+                    )
+                    concepts.append(concept)
+                print(f"[Batch] Successfully extracted {len(concepts)} concepts using json_repair")
+                return concepts
         except Exception as e:
             print(f"Warning: Batch extraction failed: {e}")
 
@@ -802,38 +844,41 @@ Please start extraction: {lang_suffix}"""
 4. Scores must be objective and fair
 5. Always maintain correct JSON output format"""
 
+        # Use regular generate + json_repair instead of generate_structured
         try:
-            result = self.client.generate_structured(
-                prompt,
-                response_model=EnhancedConceptExtraction,
+            print(f"[Single] Using generate + json_repair for '{name}'...")
+            response = self.client.generate(
+                prompt + "\n\n重要：必须只返回有效的JSON格式，不要添加markdown代码块标记或其他文本。",
                 system=system_msg,
-                temperature=0.2,  # Even lower temperature for more consistent quality
+                temperature=0.2,
             )
-            if result.concepts:
-                concept = result.concepts[0]
-                # Post-process to ensure quality
-                concept.name = name  # Ensure name consistency
+            
+            # Extract and repair JSON from response
+            data = extract_json_from_response(response)
 
-                # Validate and normalize importance score
-                concept.importance_score = max(0.1, min(1.0, concept.importance_score))
+            # Parse into EnhancedConcept with strict validation
+            if "concepts" in data and len(data["concepts"]) > 0:
+                concept_data = data["concepts"][0]
 
-                # Ensure examples is a list
-                if concept.examples is None:
-                    concept.examples = []
+                # Apply field length limits
+                explanation = concept_data.get("explanation", "")[:MAX_EXPLANATION_LENGTH - 10]
+                definition = concept_data.get("definition", "")[:MAX_DEFINITION_LENGTH - 10]
+                examples = concept_data.get("examples", [])[:MAX_EXAMPLES_COUNT]
 
-                # Clean up examples - remove empty strings
-                concept.examples = [
-                    ex.strip() for ex in concept.examples if ex and ex.strip()
-                ]
-
+                concept = EnhancedConcept(
+                    name=name,
+                    definition=definition or f"{name}是一个核心概念",
+                    explanation=explanation,
+                    examples=[ex.strip() for ex in examples if ex and ex.strip()],
+                    importance_score=max(0.1, min(1.0, concept_data.get("importance_score", 0.5))),
+                    category=concept_data.get("category", "concept"),
+                )
+                print(f"[Single] Successfully extracted '{name}' using json_repair")
                 return concept
         except Exception as e:
-            print(f"Warning: Structured extraction failed for '{name}': {e}")
-            import traceback
+            print(f"Warning: Extraction failed for '{name}': {e}")
 
-            traceback.print_exc()
-
-        # Fallback: create minimal concept
+        # Final fallback: create minimal concept
         return EnhancedConcept(
             name=name,
             definition=f"{name} 是文本中的一个核心概念，与机器学习系统设计相关。",
@@ -877,7 +922,7 @@ class RelationExtractor:
             reverse=True
         )
 
-        BATCH_SIZE = 40  # Reduced from 60 to avoid timeouts and improve reliability
+        BATCH_SIZE = 5  # Further reduced for local LLM (was 20)
         all_relations: list[RelationModel] = []
         seen_pairs: set = set()
 
@@ -1087,47 +1132,56 @@ Your tasks:
 4. Prefer specific relation types over generic related_to
 5. Ensure relations have text evidence, don't fabricate relationships"""
 
+        # Use regular generate + json_repair instead of generate_structured
         try:
-            result = self.client.generate_structured(
-                prompt,
-                response_model=EnhancedRelationExtraction,
+            print("[RelationExtractor] Using generate + json_repair for relations...")
+            response = self.client.generate(
+                prompt + "\n\n重要：必须只返回有效的JSON格式，不要添加markdown代码块标记或其他文本。",
                 system=system_msg,
                 temperature=0.3,
             )
+            
+            # Extract and repair JSON from response
+            data = extract_json_from_response(response)
 
+            # Parse into relations
             relations = []
+            if "relations" in data:
+                for rel_data in data["relations"]:
+                    source_id = concept_map.get(rel_data.get("source_concept"))
+                    target_id = concept_map.get(rel_data.get("target_concept"))
 
-            for rel in result.relations:
-                source_id = concept_map.get(rel.source_concept)
-                target_id = concept_map.get(rel.target_concept)
+                    # Skip invalid relations
+                    if not source_id or not target_id or source_id == target_id:
+                        continue
 
-                # Skip invalid relations
-                if not source_id or not target_id or source_id == target_id:
-                    continue
-
-                # Create unique pair identifier (sorted to handle bidirectional)
-                pair_key = (
-                    min(source_id, target_id),
-                    max(source_id, target_id),
-                    rel.relation_type,
-                )
-                if pair_key in seen_pairs:
-                    continue
-                seen_pairs.add(pair_key)
-
-                relations.append(
-                    RelationModel(
-                        document_id=document_id,
-                        source_concept_id=source_id,
-                        target_concept_id=target_id,
-                        relation_type=rel.relation_type,
-                        strength=max(0.3, min(1.0, rel.strength)),
-                        evidence=rel.evidence,
-                        explanation=rel.explanation,
+                    # Create unique pair identifier
+                    pair_key = (
+                        min(source_id, target_id),
+                        max(source_id, target_id),
+                        rel_data.get("relation_type", "related_to"),
                     )
-                )
+                    if pair_key in seen_pairs:
+                        continue
+                    seen_pairs.add(pair_key)
 
-            return relations
+                    # Apply field length limits
+                    evidence = (rel_data.get("evidence") or "")[:MAX_EVIDENCE_LENGTH - 10]
+                    explanation = (rel_data.get("explanation") or "")[:MAX_EXPLANATION_LENGTH - 10]
+
+                    relations.append(
+                        RelationModel(
+                            document_id=document_id,
+                            source_concept_id=source_id,
+                            target_concept_id=target_id,
+                            relation_type=rel_data.get("relation_type", "related_to"),
+                            strength=max(0.3, min(1.0, rel_data.get("strength", 0.5))),
+                            evidence=evidence,
+                            explanation=explanation,
+                        )
+                    )
+                print(f"[RelationExtractor] Successfully extracted {len(relations)} relations using json_repair")
+                return relations
         except Exception as e:
             print(f"Warning: LLM failed to extract relations: {e}")
             print("[RelationExtractor] Falling back to rule-based relation extraction...")
@@ -1158,7 +1212,6 @@ Your tasks:
         - Keywords in names → specific relation types
         - Importance score differences → broader/narrower
         """
-        import re
         
         # Keywords that indicate specific relation types
         KEYWORD_PATTERNS = {
@@ -1173,10 +1226,7 @@ Your tasks:
         }
         
         relations = []
-        
-        # Get all concept names and categories
-        concept_names = [c.name.lower() for c in concepts]
-        
+
         for i, c1 in enumerate(concepts):
             for j, c2 in enumerate(concepts):
                 if i >= j:

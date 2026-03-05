@@ -489,6 +489,9 @@ def init_graph_tables(conn: Optional[sqlite3.Connection] = None) -> sqlite3.Conn
         "CREATE INDEX IF NOT EXISTS idx_concepts_document ON concepts(document_id)"
     )
     cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_concepts_name ON concepts(name)"
+    )
+    cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_concepts_theme ON concepts(theme_id)"
     )
     cursor.execute(

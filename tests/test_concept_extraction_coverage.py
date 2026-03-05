@@ -102,7 +102,7 @@ class TestConceptExtractionCoverage:
         """Test that chunks are processed in batches."""
         conn, _ = temp_db
 
-        # Insert many chunks
+        # Insert many chunks (content must be > 50 chars for the extractor query)
         document_id = "test_doc"
         num_chunks = 1500
         for i in range(num_chunks):
@@ -111,14 +111,14 @@ class TestConceptExtractionCoverage:
                 INSERT INTO document_tree (document_id, type, content)
                 VALUES (?, 'chunk', ?)
                 """,
-                (document_id, f"Content of chunk {i} with some ML terminology"),
+                (document_id, f"Content of chunk {i} with some ML terminology and additional text to exceed 50 chars"),
             )
         conn.commit()
 
         extractor = ConceptExtractor(client=mock_client)
 
         # Verify batch configuration
-        assert extractor.CHUNKS_PER_BATCH == 200
+        assert extractor.CHUNKS_PER_BATCH == 50
         assert extractor.MAX_CHUNKS_TO_PROCESS == 10000
 
         # Get total chunks
@@ -267,7 +267,8 @@ Data Science
         num_batches = (
             max_to_process + extractor.CHUNKS_PER_BATCH - 1
         ) // extractor.CHUNKS_PER_BATCH
-        assert num_batches <= 60  # 3000 / 50 = 60 batches max
+        # 5000 / 50 = 100 batches max (MAX_CHUNKS_TO_PROCESS=10000, CHUNKS_PER_BATCH=50)
+        assert num_batches <= (extractor.MAX_CHUNKS_TO_PROCESS + extractor.CHUNKS_PER_BATCH - 1) // extractor.CHUNKS_PER_BATCH
 
 
 class TestEndToEndExtractionPipeline:
