@@ -346,3 +346,19 @@
   - Node details need to be fetched separately via getNode endpoint
   - Edges need to be filtered from book graph by source/target node id
   - Source chunk IDs are shown truncated with copy/focus functionality
+
+## 2026-03-28 - US-021
+- What was implemented
+  - Created GlobalGraphView component using react-force-graph-2d
+  - Fetch from GET /api/graph/global
+  - Show source count badge on nodes with multiple sources
+  - Node color intensity based on source count (HSL saturation)
+  - Click node to select via onNodeClick callback
+
+- Files changed
+  - frontend/src/components/GlobalGraphView.tsx - new file with global graph view
+
+- **Learnings for future iterations:**
+  - Global graph shows all nodes from all books
+  - Source count badge helps identify merged/important concepts
+  - Node size and color can represent different metadata
