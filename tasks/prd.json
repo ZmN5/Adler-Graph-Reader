@@ -15,7 +15,7 @@
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "start.sh works, health check passes, evaluation infrastructure in place"
     },
     {
       "id": "US-002",
@@ -32,7 +32,7 @@
       ],
       "priority": 2,
       "passes": true,
-      "notes": ""
+      "notes": "Browser automation tested via project-evaluator. PDF reading works, EPUB partially works (blocked by epubjs architecture)"
     },
     {
       "id": "US-003",
@@ -48,7 +48,7 @@
       ],
       "priority": 3,
       "passes": true,
-      "notes": ""
+      "notes": "Issues classified in evaluation report: BLOCKING (EPUB loading), HIGH (test data), HIGH (LM Studio external)"
     },
     {
       "id": "US-004",
@@ -62,7 +62,7 @@
       ],
       "priority": 4,
       "passes": true,
-      "notes": ""
+      "notes": "Issues tracked in evaluation report. EPUB fix committed as 7baadfa"
     },
     {
       "id": "US-005",
@@ -78,7 +78,7 @@
       ],
       "priority": 5,
       "passes": true,
-      "notes": ""
+      "notes": "Post-fix evaluation done in evaluation-report-2026-03-28-v2.md"
     },
     {
       "id": "US-006",
@@ -91,8 +91,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Automated report generation in run-evaluation.sh with before/after comparison section. Reports saved to tasks/evaluation-report-YYYY-MM-DD.md"
     },
     {
       "id": "US-007",
@@ -106,8 +106,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Iteration loop implemented in run-evaluation-loop.sh. Tracks iterations in evaluation-iterations.log. Stops when no BLOCKING issues remain."
     }
   ]
 }

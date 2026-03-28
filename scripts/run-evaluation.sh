@@ -263,6 +263,127 @@ EOF
 EOF
     fi
 
+    # Add before/after comparison with previous report
+    echo "" >> "$REPORT_FILE"
+    echo "---" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    echo "## 四、修复前后对比" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+
+    # Find the most recent previous report (excluding current)
+    local prev_report=$(ls -t "$PROJECT_ROOT/tasks"/evaluation-report-$TODAY-*.md 2>/dev/null | grep -v "$(basename "$REPORT_FILE")" | head -1 || echo "")
+
+    # If no same-day previous report, find any previous report
+    if [ -z "$prev_report" ]; then
+        prev_report=$(ls -t "$PROJECT_ROOT/tasks"/evaluation-report-*.md 2>/dev/null | grep -v "$(basename "$REPORT_FILE")" | head -1 || echo "")
+    fi
+
+    if [ -n "$prev_report" ] && [ -f "$prev_report" ]; then
+        echo "**对比基准**: $(basename "$prev_report")" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+
+        # Extract previous blocking issues
+        local prev_blocking=$(grep -A 50 "### 3.1 \[BLOCKING\]" "$prev_report" 2>/dev/null | grep -E "^\- \*\*" | sed 's/- \*\*//g;s/\*\*//g' || echo "")
+        local prev_high=$(grep -A 50 "### 3.2 \[HIGH\]" "$prev_report" 2>/dev/null | grep -E "^\- \*\*" | sed 's/- \*\*//g;s/\*\*//g' || echo "")
+        local prev_medium=$(grep -A 50 "### 3.3 \[MEDIUM\]" "$prev_report" 2>/dev/null | grep -E "^\- \*\*" | sed 's/- \*\*//g;s/\*\*//g' || echo "")
+        local prev_suggestion=$(grep -A 50 "### 3.4 \[SUGGESTION\]" "$prev_report" 2>/dev/null | grep -E "^\- \*\*" | sed 's/- \*\*//g;s/\*\*//g' || echo "")
+
+        # Extract current issues (same format)
+        local curr_blocking=""
+        local curr_high=""
+        local curr_medium=""
+        local curr_suggestion=""
+
+        for issue in "${BLOCKING_ISSUES[@]}"; do
+            curr_blocking="$curr_blocking${issue//\*\*}\n"
+        done
+        for issue in "${HIGH_ISSUES[@]}"; do
+            curr_high="$curr_high${issue//\*\*}\n"
+        done
+        for issue in "${MEDIUM_ISSUES[@]}"; do
+            curr_medium="$curr_medium${issue//\*\*}\n"
+        done
+        for issue in "${SUGGESTION_ISSUES[@]}"; do
+            curr_suggestion="$curr_suggestion${issue//\*\*}\n"
+        done
+
+        echo "### 4.1 阻塞性问题 (BLOCKING) 变化" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        if [ -n "$prev_blocking" ]; then
+            echo "| 状态 | 问题 |" >> "$REPORT_FILE"
+            echo "|------|------|" >> "$REPORT_FILE"
+            echo "$prev_blocking" | while IFS= read -r line; do
+                if [ -n "$line" ]; then
+                    # Check if this issue still exists in current
+                    if echo "$curr_blocking" | grep -qF "$line"; then
+                        echo "| 🔴 持续 | $line |" >> "$REPORT_FILE"
+                    else
+                        echo "| 🟢 已修复 | $line |" >> "$REPORT_FILE"
+                    fi
+                fi
+            done
+        fi
+        # Show new blocking issues
+        if [ -n "$curr_blocking" ]; then
+            echo "$curr_blocking" | while IFS= read -r line; do
+                if [ -n "$line" ] && ! echo "$prev_blocking" | grep -qF "$line"; then
+                    echo "| 🟡 新增 | $line |" >> "$REPORT_FILE"
+                fi
+            done
+        fi
+        if [ -z "$prev_blocking" ] && [ -z "$curr_blocking" ]; then
+            echo "无阻塞性问题" >> "$REPORT_FILE"
+        fi
+        echo "" >> "$REPORT_FILE"
+
+        echo "### 4.2 严重问题 (HIGH) 变化" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        if [ -n "$prev_high" ]; then
+            echo "| 状态 | 问题 |" >> "$REPORT_FILE"
+            echo "|------|------|" >> "$REPORT_FILE"
+            echo "$prev_high" | while IFS= read -r line; do
+                if [ -n "$line" ]; then
+                    if echo "$curr_high" | grep -qF "$line"; then
+                        echo "| 🔴 持续 | $line |" >> "$REPORT_FILE"
+                    else
+                        echo "| 🟢 已修复 | $line |" >> "$REPORT_FILE"
+                    fi
+                fi
+            done
+        fi
+        if [ -n "$curr_high" ]; then
+            echo "$curr_high" | while IFS= read -r line; do
+                if [ -n "$line" ] && ! echo "$prev_high" | grep -qF "$line"; then
+                    echo "| 🟡 新增 | $line |" >> "$REPORT_FILE"
+                fi
+            done
+        fi
+        if [ -z "$prev_high" ] && [ -z "$curr_high" ]; then
+            echo "无严重问题" >> "$REPORT_FILE"
+        fi
+        echo "" >> "$REPORT_FILE"
+
+        echo "### 4.3 其他问题 (MEDIUM/SUGGESTION) 变化" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        if [ -z "$prev_medium" ] && [ -z "$curr_medium" ] && [ -z "$prev_suggestion" ] && [ -z "$curr_suggestion" ]; then
+            echo "无一般问题或建议" >> "$REPORT_FILE"
+        else
+            if [ -n "$prev_medium" ] || [ -n "$prev_suggestion" ]; then
+                echo "**之前**: $(( $(echo "$prev_medium" | wc -l) + $(echo "$prev_suggestion" | wc -l) )) 个问题" >> "$REPORT_FILE"
+            fi
+            if [ -n "$curr_medium" ] || [ -n "$curr_suggestion" ]; then
+                echo "**当前**: $(( $(echo "$curr_medium" | wc -l) + $(echo "$curr_suggestion" | wc -l) )) 个问题" >> "$REPORT_FILE"
+            fi
+            echo "(MEDIUM/SUGGESTION 问题可延后处理)" >> "$REPORT_FILE"
+        fi
+        echo "" >> "$REPORT_FILE"
+    else
+        echo "**对比基准**: 无历史报告" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        echo "这是首次评估，无法进行前后对比。" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+    fi
+
     # Add conclusion
     cat >> "$REPORT_FILE" << EOF
 
