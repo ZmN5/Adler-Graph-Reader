@@ -112,3 +112,19 @@ Started: 2026-03-28
   - add_issue helper function simplifies issue tracking with severity levels
   - Report includes: execution summary table, detailed test results, issues grouped by severity, conclusion
 ---
+
+## 2026-03-28 22:50 - US-006
+- What was implemented: Added issue tracking mechanism with status transitions (New -> In Progress -> Resolved), Open Issues section in reports, and resolution rate calculation
+- Files changed:
+  - scripts/run-evaluation.sh (added issue tracking with status, resolve_stale_issues, calculate_resolution_rate functions, Open Issues section in generate_report)
+  - ralph/prd.json (updated passes:true for US-006)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Use tasks/issues.json to persist issue tracking across evaluation runs
+  - Issue key is derived from description (lowercase, no spaces, first 50 chars)
+  - When an issue reappears after being Resolved, it goes back to In Progress
+  - Issues with status != "Resolved" are shown in Open Issues section
+  - calculate_resolution_rate returns percentage of resolved issues
+  - jq is required for JSON manipulation in bash scripts
+  - resolve_stale_issues must be called before generate_report to update issue statuses
+---

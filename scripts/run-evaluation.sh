@@ -34,6 +34,9 @@ MEDIUM_ISSUES=()
 SUGGESTION_ISSUES=()
 OVERALL_RESULT="PASS"
 
+# Issue tracking
+ISSUES_FILE="$PROJECT_ROOT/tasks/issues.json"
+
 echo "=========================================="
 echo "Evaluation System - Service Startup"
 echo "=========================================="
@@ -97,6 +100,102 @@ add_issue() {
             SUGGESTION_ISSUES+=("- **$description**\n  - Location: $location\n  - Suggested Fix: $suggested_fix")
             ;;
     esac
+
+    # Track issue with status for US-006
+    local issue_key=$(echo "$description" | tr '[:upper:]' '[:lower:]' | tr -d ' ' | cut -c1-50)
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Check if issue already exists
+    local existing_status=$(jq -r --arg key "$issue_key" '.issues[] | select(.key == $key) | .status' "$ISSUES_FILE" 2>/dev/null || echo "")
+
+    if [ -z "$existing_status" ] || [ "$existing_status" = "null" ]; then
+        # New issue
+        local new_issue=$(jq -n \
+            --arg key "$issue_key" \
+            --arg description "$description" \
+            --arg location "$location" \
+            --arg severity "$severity" \
+            --arg fix "$suggested_fix" \
+            --arg status "New" \
+            --arg timestamp "$timestamp" \
+            '{key: $key, description: $description, location: $location, severity: $severity, suggested_fix: $fix, status: $status, first_seen: $timestamp, last_seen: $timestamp}')
+        else
+        # Existing issue - update last_seen and keep status (unless it was Resolved, then back to In Progress)
+        local existing_issue=$(jq -r --arg key "$issue_key" '.issues[] | select(.key == $key)' "$ISSUES_FILE" 2>/dev/null || echo "")
+        local current_status=$(echo "$existing_issue" | jq -r '.status')
+        local new_status="$current_status"
+        if [ "$current_status" = "Resolved" ]; then
+            new_status="In Progress"
+        fi
+        local first_seen=$(echo "$existing_issue" | jq -r '.first_seen')
+        local new_issue=$(jq -n \
+            --arg key "$issue_key" \
+            --arg description "$description" \
+            --arg location "$location" \
+            --arg severity "$severity" \
+            --arg fix "$suggested_fix" \
+            --arg status "$new_status" \
+            --arg first_seen "$first_seen" \
+            --arg timestamp "$timestamp" \
+            '{key: $key, description: $description, location: $location, severity: $severity, suggested_fix: $fix, status: $status, first_seen: $first_seen, last_seen: $timestamp}')
+    fi
+
+    # Update or add issue to issues file
+    if [ -f "$ISSUES_FILE" ] && jq -e '.issues' "$ISSUES_FILE" > /dev/null 2>&1; then
+        # Remove existing issue with same key and add new one
+        jq --arg key "$issue_key" \
+           --argjson newissue "$new_issue" \
+           '.issues = (.issues | map(select(.key != $key))) + [$newissue]' \
+           "$ISSUES_FILE" > "${ISSUES_FILE}.tmp" && mv "${ISSUES_FILE}.tmp" "$ISSUES_FILE"
+    else
+        # Create new issues file
+        echo "{\"issues\": [$new_issue]}" > "$ISSUES_FILE"
+    fi
+}
+
+# Function to resolve issues that are no longer present
+resolve_stale_issues() {
+    local current_issue_keys=""
+    for issue in "${BLOCKING_ISSUES[@]}" "${HIGH_ISSUES[@]}" "${MEDIUM_ISSUES[@]}" "${SUGGESTION_ISSUES[@]}"; do
+        # Extract description from the issue string (between ** markers)
+        local desc=$(echo "$issue" | grep -oP '\*\*[^*]+\*\*' | head -1 | sed 's/\*\*//g' | tr '[:upper:]' '[:lower:]' | tr -d ' ' | cut -c1-50)
+        current_issue_keys="$current_issue_keys $desc"
+    done
+
+    if [ -f "$ISSUES_FILE" ] && jq -e '.issues' "$ISSUES_FILE" > /dev/null 2>&1; then
+        # For each existing issue, check if it still exists
+        local all_issues=$(jq -c '.issues[]' "$ISSUES_FILE" 2>/dev/null || echo "")
+        for issue_json in $all_issues; do
+            local issue_key=$(echo "$issue_json" | jq -r '.key')
+            local current_status=$(echo "$issue_json" | jq -r '.status')
+            if [ "$current_status" != "Resolved" ]; then
+                if ! echo "$current_issue_keys" | grep -q "$issue_key"; then
+                    # Issue not in current run - mark as Resolved
+                    jq --arg key "$issue_key" \
+                       '(.issues[] | select(.key == $key) | .status) = "Resolved"' \
+                       "$ISSUES_FILE" > "${ISSUES_FILE}.tmp" && mv "${ISSUES_FILE}.tmp" "$ISSUES_FILE"
+                    echo "  Resolved issue: $issue_key"
+                fi
+            fi
+        done
+    fi
+}
+
+# Function to calculate issue resolution rate
+calculate_resolution_rate() {
+    if [ ! -f "$ISSUES_FILE" ] || ! jq -e '.issues' "$ISSUES_FILE" > /dev/null 2>&1; then
+        echo "0"
+        return
+    fi
+
+    local total=$(jq '.issues | length' "$ISSUES_FILE")
+    local resolved=$(jq '[.issues[] | select(.status == "Resolved")] | length' "$ISSUES_FILE")
+
+    if [ "$total" -eq 0 ]; then
+        echo "0"
+    else
+        echo $((resolved * 100 / total))
+    fi
 }
 
 # Function to generate the evaluation report
@@ -261,6 +360,64 @@ EOF
 未发现任何问题。
 
 EOF
+    fi
+
+    # US-006: Add Open Issues section with status tracking
+    echo "" >> "$REPORT_FILE"
+    echo "---" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    echo "## 三-1、待处理问题 (Open Issues)" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+
+    if [ -f "$ISSUES_FILE" ] && jq -e '.issues' "$ISSUES_FILE" > /dev/null 2>&1; then
+        # Calculate resolution rate
+        local resolution_rate=$(calculate_resolution_rate)
+        local total_issues=$(jq '.issues | length' "$ISSUES_FILE")
+        local resolved_issues=$(jq '[.issues[] | select(.status == "Resolved")] | length' "$ISSUES_FILE")
+        local open_issues=$(jq '[.issues[] | select(.status != "Resolved")] | length' "$ISSUES_FILE")
+
+        echo "**问题统计**: 总计 $total_issues 个 | 已解决 $resolved_issues 个 | 待处理 $open_issues 个 | 解决率 $resolution_rate%" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+
+        # Get open issues grouped by status
+        local open_new=$(jq -c '[.issues[] | select(.status == "New")]' "$ISSUES_FILE" 2>/dev/null || echo "[]")
+        local open_in_progress=$(jq -c '[.issues[] | select(.status == "In Progress")]' "$ISSUES_FILE" 2>/dev/null || echo "[]")
+        local open_resolved=$(jq -c '[.issues[] | select(.status == "Resolved")]' "$ISSUES_FILE" 2>/dev/null || echo "[]")
+
+        # Show New issues
+        if [ "$(echo "$open_new" | jq 'length')" -gt 0 ]; then
+            echo "### New (新发现问题)" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            echo "| 描述 | 位置 | 严重程度 | 首现时间 |" >> "$REPORT_FILE"
+            echo "|------|------|----------|----------|" >> "$REPORT_FILE"
+            echo "$open_new" | jq -r '.[] | "| \(.description) | \(.location) | \(.severity) | \(.first_seen) |"' >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+
+        # Show In Progress issues
+        if [ "$(echo "$open_in_progress" | jq 'length')" -gt 0 ]; then
+            echo "### In Progress (处理中)" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            echo "| 描述 | 位置 | 严重程度 | 首现时间 |" >> "$REPORT_FILE"
+            echo "|------|------|----------|----------|" >> "$REPORT_FILE"
+            echo "$open_in_progress" | jq -r '.[] | "| \(.description) | \(.location) | \(.severity) | \(.first_seen) |"' >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+
+        # Show Resolved issues (briefly)
+        if [ "$(echo "$open_resolved" | jq 'length')" -gt 0 ]; then
+            echo "### Resolved (已解决)" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            echo "| 描述 | 位置 | 严重程度 |" >> "$REPORT_FILE"
+            echo "|------|------|----------|" >> "$REPORT_FILE"
+            echo "$open_resolved" | jq -r '.[] | "| \(.description) | \(.location) | \(.severity) |"' >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+
+        # Add issue resolution rate summary
+        echo "**问题解决率**: $resolution_rate% ($resolved_issues/$total_issues)" >> "$REPORT_FILE"
+    else
+        echo "暂无问题跟踪记录。" >> "$REPORT_FILE"
     fi
 
     # Add before/after comparison with previous report
@@ -959,6 +1116,10 @@ fi
 # Generate evaluation report
 echo ""
 echo "[REPORT] Generating evaluation report..."
+
+# Resolve stale issues (US-006: issue tracking mechanism)
+resolve_stale_issues
+
 generate_report
 
 echo ""
