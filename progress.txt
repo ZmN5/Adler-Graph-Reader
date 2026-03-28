@@ -307,3 +307,25 @@
   - EPUB chapter navigation uses href from the TOC
   - locationChanged event provides start.index for prev/next availability
   - epub.js rendition.display() can accept CFI or href for highlighting
+
+## 2026-03-28 - US-019
+- What was implemented
+  - Integrated react-force-graph-2d for WebGL graph rendering
+  - Render nodes as circles with concept name labels
+  - Render edges as lines with relation type labels
+  - Support mouse wheel zoom and drag to pan
+  - Click node to select via onNodeClick callback
+  - Show node/edge count in corner
+  - WebGL rendering supports 500+ nodes
+
+- Files changed
+  - frontend/src/components/GraphCanvas.tsx - new file with graph canvas
+  - frontend/src/lib/api-client.ts - added GraphNode, GraphEdge, GraphResponse, getBookGraph, getGlobalGraph, NodeDetails, getNode
+  - frontend/package.json - added react-force-graph-2d dependency
+  - frontend/package-lock.json - updated
+
+- **Learnings for future iterations:**
+  - react-force-graph-2d uses canvas rendering, not SVG
+  - Node and link shapes are drawn via canvas callbacks (nodeCanvasObject, linkCanvasObject)
+  - Force graph uses d3-force under the hood for physics simulation
+  - Need to transform GraphEdge (source_node_id, target_node_id) to link format (source, target) for force-graph
