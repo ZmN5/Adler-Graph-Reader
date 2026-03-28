@@ -1,393 +1,48 @@
 {
-  "project": "Intelligent-Reading-Concept-Graph",
   "branchName": "ralph/intelligent-reading-concept-graph",
-  "description": "智能阅读与概念图谱 Web 系统 - 本地化知识管理，通过 LLM 将 EPUB/PDF 转化为结构化概念图谱",
-  "userStories": [
+  "stories": [
     {
       "id": "US-001",
-      "title": "Setup Rust backend project structure",
-      "description": "As a developer, I need to set up the Rust backend project with Axum framework and required dependencies.",
-      "acceptanceCriteria": [
-        "Create new Rust project with Cargo.toml",
-        "Add dependencies: axum, tokio, serde, sqlx, pdf-extract, epub, reqwest, uuid, chrono",
-        "Create basic Axum server with CORS enabled",
-        "Add health endpoint GET /api/health returning {\"status\": \"ok\"}",
-        "Server starts on localhost:8080",
-        "Typecheck passes"
-      ],
-      "priority": 1,
+      "title": "电子书导入与解析",
       "passes": true,
-      "notes": ""
+      "priority": 1
     },
     {
       "id": "US-002",
-      "title": "Create SQLite database schema",
-      "description": "As a developer, I need to create the database schema for books, chunks, nodes, edges, and settings tables.",
-      "acceptanceCriteria": [
-        "Create SQLite database file at ./data/reader.db",
-        "Create books table: id (UUID), title, author, file_path, format (pdf/epub), total_pages, created_at",
-        "Create chunks table: id (UUID), book_id (FK), page_start, page_end, content, created_at",
-        "Create nodes table: id (UUID), book_id (FK nullable for global), name, description, examples (JSON), source_chunk_ids (JSON), language, category, created_at",
-        "Create edges table: id (UUID), source_node_id (FK), target_node_id (FK), relation_type, source_chunk_ids (JSON), created_at",
-        "Create settings table: key (PK), value, updated_at",
-        "Typecheck passes"
-      ],
-      "priority": 2,
+      "title": "全局语言输出控制",
       "passes": true,
-      "notes": ""
+      "priority": 2
     },
     {
       "id": "US-003",
-      "title": "Implement settings API for language preference",
-      "description": "As a developer, I need to implement the settings API to store and retrieve user language preference.",
-      "acceptanceCriteria": [
-        "GET /api/settings/language returns {\"language\": \"zh\"} or {\"language\": \"en\"}",
-        "PUT /api/settings/language accepts {\"language\": \"zh\"} or {\"language\": \"en\"}",
-        "Default language is zh (Chinese)",
-        "Settings stored in SQLite settings table",
-        "Typecheck passes"
-      ],
-      "priority": 3,
+      "title": "单书局部概念图谱生成",
       "passes": true,
-      "notes": ""
+      "priority": 3
     },
     {
       "id": "US-004",
-      "title": "Implement books API endpoints",
-      "description": "As a developer, I need to implement CRUD API endpoints for books management.",
-      "acceptanceCriteria": [
-        "POST /api/books/upload accepts multipart/form-data with file field",
-        "POST /api/books/upload returns book_id and saves file to ./data/books/",
-        "GET /api/books returns list of books with id, title, author, format, total_pages",
-        "GET /api/books/:id returns full book details including file_path",
-        "DELETE /api/books/:id deletes book and associated chunks, nodes, edges",
-        "Typecheck passes"
-      ],
-      "priority": 4,
+      "title": "全局认知图谱与概念融合",
       "passes": true,
-      "notes": ""
+      "priority": 4
     },
     {
       "id": "US-005",
-      "title": "Implement chunks API endpoint",
-      "description": "As a developer, I need to implement the chunks API to retrieve chunk data for a book.",
-      "acceptanceCriteria": [
-        "GET /api/books/:id/chunks returns array of chunks",
-        "Each chunk has: id (UUID), book_id, page_start, page_end, content (first 200 chars for list)",
-        "GET /api/chunks/:id returns full chunk content",
-        "Chunks are created during document parsing",
-        "Typecheck passes"
-      ],
-      "priority": 5,
+      "title": "严格溯源与原文对照",
       "passes": true,
-      "notes": ""
+      "priority": 5
     },
     {
       "id": "US-006",
-      "title": "Implement graph API endpoints",
-      "description": "As a developer, I need to implement graph API to retrieve nodes and edges for visualization.",
-      "acceptanceCriteria": [
-        "GET /api/books/:id/graph returns {nodes: [...], edges: [...]} for single book",
-        "GET /api/graph/global returns {nodes: [...], edges: [...]} for all books merged",
-        "GET /api/nodes/:id returns node details with full description and examples",
-        "Nodes have: id, name, description, examples (array), source_chunk_ids (array)",
-        "Edges have: id, source_node_id, target_node_id, relation_type",
-        "Typecheck passes"
-      ],
-      "priority": 6,
+      "title": "高性能图谱可视化交互",
       "passes": true,
-      "notes": ""
+      "priority": 6
     },
     {
       "id": "US-007",
-      "title": "Implement PDF parsing and chunking",
-      "description": "As a developer, I need to implement PDF parsing to extract text and create chunks.",
-      "acceptanceCriteria": [
-        "Parse PDF file using pdf-extract crate",
-        "Extract text content per page maintaining page numbers",
-        "Create chunks: each chunk is one page or portion (~1000 chars with overlap)",
-        "Each chunk gets a UUID stored in chunks table",
-        "Store page_start and page_end for each chunk",
-        "Ignore images, extract only text",
-        "Typecheck passes"
-      ],
+      "title": "书籍阅读器功能",
+      "passes": false,
       "priority": 7,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-008",
-      "title": "Implement EPUB parsing and chunking",
-      "description": "As a developer, I need to implement EPUB parsing to extract text and create chunks.",
-      "acceptanceCriteria": [
-        "Parse EPUB file using epub crate",
-        "Extract text content maintaining chapter/section structure",
-        "Create chunks based on chapters or ~1000 char segments with overlap",
-        "Each chunk gets a UUID stored in chunks table",
-        "Store page_start (chapter index) and page_end",
-        "Ignore images, extract only text",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-009",
-      "title": "Implement LLM client for concept extraction",
-      "description": "As a developer, I need to implement LLM client to call LM Studio API for concept extraction.",
-      "acceptanceCriteria": [
-        "Create LLM client connecting to http://localhost:1234/v1",
-        "Support chat completions endpoint with OpenAI-compatible interface",
-        "Build system prompt enforcing: output language (zh/en), source_chunk_id in response",
-        "Parse JSON response extracting: concepts, relations, explanations, examples",
-        "Handle connection errors gracefully",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-010",
-      "title": "Implement concept extraction pipeline",
-      "description": "As a developer, I need to implement the concept extraction pipeline that processes chunks through LLM.",
-      "acceptanceCriteria": [
-        "Add POST /api/books/:id/extract endpoint to trigger extraction",
-        "Process chunks concurrently (max 3 parallel requests)",
-        "For each chunk, call LLM with chunk content and UUID",
-        "Parse LLM response, create nodes and edges in database",
-        "Each node/edge must have source_chunk_id referencing origin chunk",
-        "Return extraction status: {status: \"processing\" | \"completed\", nodes_count, edges_count}",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-011",
-      "title": "Implement entity deduplication",
-      "description": "As a developer, I need to implement entity deduplication to merge similar concepts across chunks.",
-      "acceptanceCriteria": [
-        "Before creating new node, check existing nodes for similar name",
-        "Use simple string similarity (case-insensitive substring match)",
-        "If similar node exists (name A contains name B or vice versa), merge: keep existing node, add source_chunk_id",
-        "Merge edges pointing to duplicate nodes",
-        "Update existing node's source_chunk_ids array with new sources",
-        "Typecheck passes"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-012",
-      "title": "Setup React frontend project",
-      "description": "As a developer, I need to setup the React frontend project with Vite, TypeScript, and Tailwind CSS.",
-      "acceptanceCriteria": [
-        "Create Vite + React + TypeScript project",
-        "Configure Tailwind CSS with shadcn/ui",
-        "Setup Zustand for state management",
-        "Create basic layout with header and main content area",
-        "Setup API client (fetch or axios) pointing to localhost:8080",
-        "Typecheck passes"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-013",
-      "title": "Implement file upload component",
-      "description": "As a user, I want to upload EPUB and PDF files via drag-and-drop or file picker.",
-      "acceptanceCriteria": [
-        "Create UploadButton component with drag-and-drop zone",
-        "Accept .epub and .pdf files only",
-        "Show upload progress bar during upload",
-        "Display success message with book title after upload",
-        "Display error message if upload fails",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-014",
-      "title": "Implement language toggle component",
-      "description": "As a user, I want to switch between Chinese and English output with a single click.",
-      "acceptanceCriteria": [
-        "Create LanguageToggle component in header or settings",
-        "Toggle between 中文 (default) and English",
-        "Call PUT /api/settings/language on toggle",
-        "Update UI immediately without page refresh",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-015",
-      "title": "Implement book list view",
-      "description": "As a user, I want to see all uploaded books and their status.",
-      "acceptanceCriteria": [
-        "Create BookList component showing all books",
-        "Display: title, author, format badge, total_pages, extraction status",
-        "Show Extract button to trigger concept extraction",
-        "Show Delete button to remove book",
-        "Click book row to open in reader/graph view",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-016",
-      "title": "Implement split pane layout",
-      "description": "As a user, I want a resizable split-pane layout with graph on left and reader on right.",
-      "acceptanceCriteria": [
-        "Create SplitPane component with adjustable divider",
-        "Support horizontal (left/right) and vertical (top/bottom) modes",
-        "Left/top pane: graph canvas",
-        "Right/bottom pane: book reader or node detail",
-        "Panes are resizable by dragging divider",
-        "Persist layout preference in localStorage",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 16,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-017",
-      "title": "Implement PDF reader component",
-      "description": "As a user, I want to read PDF books with page navigation.",
-      "acceptanceCriteria": [
-        "Integrate pdf.js for PDF rendering",
-        "Display PDF pages in reader pane",
-        "Show current page / total pages indicator",
-        "Support page input for direct jump",
-        "Support prev/next page buttons",
-        "Highlight specific paragraph when receiving chunk_id",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 17,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-018",
-      "title": "Implement EPUB reader component",
-      "description": "As a user, I want to read EPUB books with chapter navigation.",
-      "acceptanceCriteria": [
-        "Integrate epub.js for EPUB rendering",
-        "Display EPUB content with proper formatting",
-        "Support chapter navigation",
-        "Support prev/next page buttons",
-        "Show current chapter name",
-        "Highlight specific content when receiving anchor reference",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 18,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-019",
-      "title": "Implement graph canvas with WebGL",
-      "description": "As a user, I want to visualize and interact with concept graphs smoothly.",
-      "acceptanceCriteria": [
-        "Use AntV G6 or React Force Graph with WebGL rendering",
-        "Render nodes as circles with concept name labels",
-        "Render edges as lines with relation type labels",
-        "Support mouse wheel zoom (60fps target)",
-        "Support drag to pan canvas",
-        "Click node to select and show detail panel",
-        "Support 500+ nodes without lag",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 19,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-020",
-      "title": "Implement node detail panel",
-      "description": "As a user, I want to see detailed information about a concept node.",
-      "acceptanceCriteria": [
-        "Create NodeDetailPanel component",
-        "Show: name, description, examples array, source citations",
-        "Each source citation is clickable",
-        "Click citation jumps to original chunk in reader",
-        "Show list of connected edges with relation types",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 20,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-021",
-      "title": "Implement global graph view with concept merging",
-      "description": "As a user, I want to see a unified graph across all books with merged concepts.",
-      "acceptanceCriteria": [
-        "Create GlobalGraphView page",
-        "Fetch from GET /api/graph/global",
-        "Merge/cluster identical concepts across books",
-        "Show source count badge on merged nodes",
-        "Filter nodes by book or category",
-        "Click node shows merged details from multiple sources",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 21,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-022",
-      "title": "Implement source-grounded citation highlighting",
-      "description": "As a user, I want clicking a citation to highlight the exact source in the original text.",
-      "acceptanceCriteria": [
-        "When clicking citation in node detail, trigger highlight in reader",
-        "Reader receives chunk_id and scrolls to exact position",
-        "Highlighted text has distinct background color",
-        "Highlight fades after 3 seconds or on click elsewhere",
-        "Multiple citations can be highlighted simultaneously",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 22,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-023",
-      "title": "Implement extraction progress tracking",
-      "description": "As a user, I want to see extraction progress when processing a book.",
-      "acceptanceCriteria": [
-        "After clicking Extract, show progress indicator",
-        "Display: chunks processed / total chunks",
-        "Poll GET /api/books/:id every 2 seconds for status",
-        "On completion, show success with node/edge count",
-        "Graph view updates automatically after completion",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 23,
-      "passes": true,
-      "notes": ""
+      "blockingIssue": "EPUB Reader cannot load files due to blob URL issue"
     }
   ]
 }

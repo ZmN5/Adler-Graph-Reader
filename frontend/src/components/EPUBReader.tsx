@@ -31,7 +31,6 @@ export function EPUBReader({
   const [canNext, setCanNext] = useState(false)
   const viewerRef = useRef<HTMLDivElement>(null)
   const bookRef = useRef<Book | null>(null)
-  const blobUrlRef = useRef<string | null>(null)
 
   // Load EPUB document
   useEffect(() => {
@@ -42,21 +41,18 @@ export function EPUBReader({
 
     const loadEpub = async () => {
       try {
-        // Fetch the EPUB file
+        // Fetch the EPUB file as ArrayBuffer - pass directly to epubjs
+        // This avoids the blob URL issue where relative URLs can't be resolved
         const response = await fetch(`/api/books/${bookId}/file`)
         if (!response.ok) {
           throw new Error(`Failed to fetch EPUB: ${response.status}`)
         }
-        const blob = await response.blob()
+        const arrayBuffer = await response.arrayBuffer()
 
         if (cancelled) return
 
-        // Create a blob URL for epubjs
-        const blobUrl = URL.createObjectURL(blob)
-        blobUrlRef.current = blobUrl
-
-        // Create EPUB from blob URL
-        const epubBook = ePub(blobUrl)
+        // Create EPUB from ArrayBuffer - epubjs handles internal resource resolution internally
+        const epubBook = ePub(arrayBuffer)
         bookRef.current = epubBook
 
         // Add timeout to prevent hanging
@@ -64,7 +60,6 @@ export function EPUBReader({
         timeoutId = setTimeout(() => {
           if (!cancelled) {
             epubBook.destroy()
-            URL.revokeObjectURL(blobUrl)
             setError('EPUB loading timed out - the file may be corrupted')
             setIsLoading(false)
           }
@@ -75,7 +70,6 @@ export function EPUBReader({
 
         if (cancelled) {
           epubBook.destroy()
-          URL.revokeObjectURL(blobUrl)
           return
         }
 
@@ -120,10 +114,6 @@ export function EPUBReader({
       cancelled = true
       if (timeoutId) clearTimeout(timeoutId)
       bookRef.current?.destroy()
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current)
-        blobUrlRef.current = null
-      }
     }
   }, [bookId])
 
