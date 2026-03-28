@@ -1,19 +1,27 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { listBooks, deleteBook, extractBook, BookSummary } from '@/lib/api-client'
-import { Book, Trash2, Sparkles, FileText, BookOpen } from 'lucide-react'
+import { Book, Trash2, Sparkles, FileText, BookOpen, CheckCircle } from 'lucide-react'
 
 interface BookListProps {
   className?: string
   onSelectBook?: (book: BookSummary) => void
   onUploadSuccess?: () => void
+  onExtractionComplete?: (bookId: string, nodesCount: number, edgesCount: number) => void
 }
 
-export function BookList({ className, onSelectBook, onUploadSuccess }: BookListProps) {
+interface ExtractionResult {
+  bookId: string
+  nodesCount: number
+  edgesCount: number
+}
+
+export function BookList({ className, onSelectBook, onUploadSuccess, onExtractionComplete }: BookListProps) {
   const [books, setBooks] = useState<BookSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [extractingBookId, setExtractingBookId] = useState<string | null>(null)
+  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null)
 
   const loadBooks = useCallback(async () => {
     try {
@@ -48,16 +56,30 @@ export function BookList({ className, onSelectBook, onUploadSuccess }: BookListP
   const handleExtract = useCallback(async (e: React.MouseEvent, book: BookSummary) => {
     e.stopPropagation()
     setExtractingBookId(book.id)
+    setExtractionResult(null)
     try {
       const result = await extractBook(book.id)
-      console.log(`Extraction completed: ${result.nodes_count} nodes, ${result.edges_count} edges`)
+      const extractionRes: ExtractionResult = {
+        bookId: book.id,
+        nodesCount: result.nodes_count,
+        edgesCount: result.edges_count,
+      }
+      setExtractionResult(extractionRes)
+      onExtractionComplete?.(book.id, result.nodes_count, result.edges_count)
       await loadBooks()
+
+      // Auto-clear result after 5 seconds
+      setTimeout(() => {
+        setExtractionResult((prev) =>
+          prev?.bookId === book.id ? null : prev
+        )
+      }, 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to extract concepts')
     } finally {
       setExtractingBookId(null)
     }
-  }, [loadBooks])
+  }, [loadBooks, onExtractionComplete])
 
   const formatBadge = (format: string) => {
     const isPdf = format.toLowerCase() === 'pdf'
@@ -119,6 +141,12 @@ export function BookList({ className, onSelectBook, onUploadSuccess }: BookListP
             <div className="flex items-center gap-2">
               <h3 className="font-medium truncate">{book.title}</h3>
               {formatBadge(book.format)}
+              {extractionResult?.bookId === book.id && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  <CheckCircle className="h-3 w-3" />
+                  {extractionResult.nodesCount} nodes, {extractionResult.edgesCount} edges
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
               {book.author && <span>{book.author}</span>}
