@@ -13,6 +13,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "epubjs": "^0.3.93",
     "lucide-react": "^0.475.0",
     "pdfjs-dist": "^4.10.38",
     "react": "^18.3.1",
