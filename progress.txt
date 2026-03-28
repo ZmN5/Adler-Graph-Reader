@@ -362,3 +362,19 @@
   - Global graph shows all nodes from all books
   - Source count badge helps identify merged/important concepts
   - Node size and color can represent different metadata
+
+## 2026-03-28 - US-022
+- What was implemented
+  - Created useHighlight hook for managing active highlights
+  - Supports multiple simultaneous highlights
+  - Auto-fade after 3 seconds (configurable HIGHLIGHT_DURATION)
+  - addHighlight, removeHighlight, clearAllHighlights API
+  - isHighlighted function to check highlight state
+
+- Files changed
+  - frontend/src/hooks/useHighlight.ts - new file with highlight hook
+
+- **Learnings for future iterations:**
+  - useRef to store timeouts so they can be cleared on re-render
+  - Map-based state for tracking multiple highlights
+  - ReturnType<typeof setTimeout> for browser-compatible timeout typing
