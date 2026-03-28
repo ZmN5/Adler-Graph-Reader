@@ -210,3 +210,21 @@
   - Drag-and-drop requires handling dragenter/dragleave/dragover/drop events
   - Keep upload state machine simple: idle -> dragging -> uploading -> success/error
   - lucide-react icons need to be imported individually to tree-shake properly
+
+## 2026-03-28 - US-014
+- What was implemented
+  - Created LanguageToggle component with Globe icon
+  - Toggle between 中文 (default) and English
+  - Fetches initial language from GET /api/settings/language
+  - Calls PUT /api/settings/language on toggle
+  - Added getLanguage and setLanguage to api-client.ts
+
+- Files changed
+  - frontend/src/components/LanguageToggle.tsx - new file with language toggle
+  - frontend/src/lib/api-client.ts - added getLanguage and setLanguage functions
+  - frontend/src/components/Header.tsx - added LanguageToggle to header
+
+- **Learnings for future iterations:**
+  - Language toggle should load initial state from API on mount
+  - Use loading skeleton while fetching initial language to avoid flicker
+  - API PUT endpoint returns the updated value, but we can optimistically update UI
