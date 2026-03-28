@@ -378,3 +378,19 @@
   - useRef to store timeouts so they can be cleared on re-render
   - Map-based state for tracking multiple highlights
   - ReturnType<typeof setTimeout> for browser-compatible timeout typing
+
+## 2026-03-28 - US-023
+- What was implemented
+  - Show extraction progress indicator during extraction
+  - Display success with node/edge count after completion
+  - Success badge auto-clears after 5 seconds
+  - Added onExtractionComplete callback for graph refresh
+  - Added CheckCircle icon for success state
+
+- Files changed
+  - frontend/src/components/BookList.tsx - added extraction result display
+
+- **Learnings for future iterations:**
+  - Backend extraction is synchronous, so polling for chunks processed isn't possible without backend changes
+  - Auto-clear timeout pattern using setTimeout for temporary UI states
+  - Success badge shows nodes and edges count extracted
