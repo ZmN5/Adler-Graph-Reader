@@ -127,3 +127,23 @@
   - LM Studio uses OpenAI-compatible API at /v1/chat/completions
   - Build language-specific prompts for concept extraction
 
+## 2026-03-28 - US-010
+- What was implemented
+  - Implemented POST /api/books/:id/extract endpoint
+  - Process chunks concurrently with max 3 parallel requests using Semaphore
+  - For each chunk, call LLM extract_concepts and create nodes/edges
+  - Nodes created for each extracted concept
+  - Edges created for each extracted relation (auto-creates nodes if not found)
+  - Return {status: "completed", nodes_count, edges_count}
+  - Added basic entity matching (case-insensitive substring match for nodes)
+
+- Files changed
+  - backend/src/extractor.rs - new file with extraction pipeline
+  - backend/src/main.rs - added extract endpoint and route
+
+- **Learnings for future iterations:**
+  - Use Arc<Semaphore> with acquire().await to limit concurrent async operations
+  - sqlx::query_scalar::<_, T> requires explicit type annotation for the output type
+  - tokio::spawn takes ownership, so clone pool/llm inside the loop before spawning
+  - sqlx::query returns (), not a result row, so use execute() not fetch_one()
+
