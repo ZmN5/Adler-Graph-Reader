@@ -329,3 +329,20 @@
   - Node and link shapes are drawn via canvas callbacks (nodeCanvasObject, linkCanvasObject)
   - Force graph uses d3-force under the hood for physics simulation
   - Need to transform GraphEdge (source_node_id, target_node_id) to link format (source, target) for force-graph
+
+## 2026-03-28 - US-020
+- What was implemented
+  - Created NodeDetailPanel component
+  - Show: name, description, examples array, source citations
+  - Each source citation is clickable via onCitationClick callback
+  - Show list of connected edges with relation types
+  - Loading state and error handling
+  - Close button via onClose callback
+
+- Files changed
+  - frontend/src/components/NodeDetailPanel.tsx - new file with node detail panel
+
+- **Learnings for future iterations:**
+  - Node details need to be fetched separately via getNode endpoint
+  - Edges need to be filtered from book graph by source/target node id
+  - Source chunk IDs are shown truncated with copy/focus functionality
