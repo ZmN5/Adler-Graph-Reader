@@ -1,0 +1,273 @@
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { cn } from '@/lib/utils'
+import { getGlobalGraph, GraphNode } from '@/lib/api-client'
+import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d'
+
+interface GlobalGraphViewProps {
+  className?: string
+  onNodeClick?: (node: GraphNode | null) => void
+  selectedNodeId?: string | null
+}
+
+interface GraphData {
+  nodes: GraphNode[]
+  links: {
+    id: string
+    source: string
+    target: string
+    relation_type: string
+  }[]
+}
+
+interface ExtendedNode extends NodeObject {
+  id: string
+  name: string
+  description: string
+  examples: string[]
+  source_chunk_ids: string[]
+  sourceCount: number
+}
+
+interface ExtendedLink extends LinkObject {
+  id: string
+  source: string | ExtendedNode
+  target: string | ExtendedNode
+  relation_type: string
+}
+
+export function GlobalGraphView({
+  className,
+  onNodeClick,
+  selectedNodeId,
+}: GlobalGraphViewProps) {
+  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [hoveredNode, setHoveredNode] = useState<ExtendedNode | null>(null)
+  const graphRef = useRef<ForceGraphMethods<ExtendedNode, ExtendedLink> | undefined>()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
+
+  // Load global graph data
+  useEffect(() => {
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+
+    const loadGraph = async () => {
+      try {
+        const data = await getGlobalGraph()
+        if (!cancelled) {
+          // Count source_chunk_ids as source count
+          // In global view, we show nodes from all books
+          setGraphData({
+            nodes: data.nodes.map((node) => ({
+              ...node,
+              // sourceCount will be used for badge
+            })),
+            links: data.edges.map((edge) => ({
+              id: edge.id,
+              source: edge.source_node_id,
+              target: edge.target_node_id,
+              relation_type: edge.relation_type,
+            })),
+          })
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load global graph')
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadGraph()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Handle resize
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        })
+      }
+    }
+
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
+  }, [])
+
+  const handleNodeClick = useCallback(
+    (node: NodeObject) => {
+      const extNode = node as ExtendedNode
+      const graphNode: GraphNode = {
+        id: extNode.id,
+        name: extNode.name,
+        description: extNode.description,
+        examples: extNode.examples,
+        source_chunk_ids: extNode.source_chunk_ids,
+      }
+      onNodeClick?.(graphNode)
+    },
+    [onNodeClick]
+  )
+
+  const handleNodeHover = useCallback((node: NodeObject | null) => {
+    setHoveredNode(node as ExtendedNode | null)
+    if (containerRef.current) {
+      containerRef.current.style.cursor = node ? 'pointer' : 'grab'
+    }
+  }, [])
+
+  const nodeCanvasObject = useCallback(
+    (node: NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const extNode = node as ExtendedNode
+      const label = extNode.name
+      const fontSize = Math.max(12 / globalScale, 4)
+      const baseNodeSize = 6
+      const sourceCount = extNode.source_chunk_ids.length
+      const nodeSize = Math.min(baseNodeSize + sourceCount * 0.5, 14)
+
+      // Draw node circle
+      const isSelected = extNode.id === selectedNodeId
+      const isHovered = extNode.id === hoveredNode?.id
+
+      ctx.beginPath()
+      ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI)
+
+      // Fill color based on state
+      if (isSelected) {
+        ctx.fillStyle = '#3b82f6' // primary
+      } else if (isHovered) {
+        ctx.fillStyle = '#60a5fa' // lighter primary
+      } else {
+        // Color based on source count (more sources = more saturated)
+        const saturation = Math.min(40 + sourceCount * 5, 80)
+        ctx.fillStyle = `hsl(210, ${saturation}%, 50%)`
+      }
+      ctx.fill()
+
+      // Border for selected/hovered
+      if (isSelected || isHovered) {
+        ctx.strokeStyle = isSelected ? '#2563eb' : '#93c5fd'
+        ctx.lineWidth = 2 / globalScale
+        ctx.stroke()
+      }
+
+      // Draw source count badge if > 1
+      if (sourceCount > 1 && globalScale >= 0.4) {
+        const badgeRadius = Math.max(6 / globalScale, 3)
+        const badgeX = node.x! + nodeSize * 0.7
+        const badgeY = node.y! - nodeSize * 0.7
+
+        ctx.beginPath()
+        ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI)
+        ctx.fillStyle = '#f97316' // orange-500
+        ctx.fill()
+
+        if (globalScale >= 0.6) {
+          ctx.font = `${Math.max(8 / globalScale, 4)}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(String(Math.min(sourceCount, 99)), badgeX, badgeY)
+        }
+      }
+
+      // Draw label
+      if (globalScale >= 0.5) {
+        ctx.font = `${fontSize}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = '#1e293b' // foreground
+        ctx.fillText(label, node.x!, node.y! + nodeSize + 2 / globalScale)
+      }
+    },
+    [selectedNodeId, hoveredNode]
+  )
+
+  const linkCanvasObject = useCallback(
+    (link: LinkObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const source = link.source as NodeObject
+      const target = link.target as NodeObject
+
+      if (!source.x || !source.y || !target.x || !target.y) return
+
+      // Draw edge line
+      ctx.beginPath()
+      ctx.moveTo(source.x, source.y)
+      ctx.lineTo(target.x, target.y)
+      ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)' // muted with transparency
+      ctx.lineWidth = 0.5 / globalScale
+      ctx.stroke()
+    },
+    []
+  )
+
+  if (isLoading) {
+    return (
+      <div className={cn('flex items-center justify-center py-12', className)}>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <span className="ml-3 text-muted-foreground">Loading global graph...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={cn('flex flex-col items-center justify-center py-12 text-destructive', className)}>
+        <p>Failed to load global graph</p>
+        <p className="text-sm">{error}</p>
+      </div>
+    )
+  }
+
+  if (graphData.nodes.length === 0) {
+    return (
+      <div className={cn('flex flex-col items-center justify-center py-12 text-muted-foreground', className)}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-12 w-12 opacity-50">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+          <path d="M2 12h20" />
+        </svg>
+        <p className="mt-4">No concepts in global graph</p>
+        <p className="text-sm">Extract concepts from books to build the global graph</p>
+      </div>
+    )
+  }
+
+  return (
+    <div ref={containerRef} className={cn('relative h-full w-full', className)}>
+      <ForceGraph2D
+        ref={graphRef}
+        graphData={graphData as { nodes: ExtendedNode[]; links: ExtendedLink[] }}
+        width={dimensions.width}
+        height={dimensions.height}
+        nodeCanvasObject={nodeCanvasObject}
+        linkCanvasObject={linkCanvasObject}
+        onNodeClick={handleNodeClick}
+        onNodeHover={handleNodeHover}
+        enableZoomInteraction={true}
+        enablePanInteraction={true}
+        backgroundColor="#fafafa"
+        linkDirectionalArrowLength={0}
+        cooldownTicks={100}
+        d3AlphaDecay={0.02}
+        d3VelocityDecay={0.3}
+      />
+      <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+        {graphData.nodes.length} nodes, {graphData.links.length} edges (global)
+      </div>
+    </div>
+  )
+}
