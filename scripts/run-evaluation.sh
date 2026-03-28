@@ -136,6 +136,109 @@ if ! npm run typecheck 2>&1; then
 fi
 echo "  Frontend: OK"
 
+# US-002: Upload sample books
+echo ""
+echo "[4/4] Uploading sample books..."
+SAMPLE_BOOKS_DIR="$PROJECT_ROOT/sample_books"
+UPLOADED_BOOKS_FILE="$PROJECT_ROOT/.uploaded_books.json"
+
+if [ ! -d "$SAMPLE_BOOKS_DIR" ]; then
+    echo "  WARNING: sample_books/ directory not found, skipping book upload"
+elif [ -z "$(ls -A "$SAMPLE_BOOKS_DIR" 2>/dev/null)" ]; then
+    echo "  WARNING: sample_books/ directory is empty, skipping book upload"
+else
+    echo "  Found sample books in $SAMPLE_BOOKS_DIR"
+
+    # Initialize uploaded books tracking
+    echo "[]" > "$UPLOADED_BOOKS_FILE"
+
+    UPLOAD_SUCCESS=0
+    UPLOAD_FAIL=0
+
+    for book_file in "$SAMPLE_BOOKS_DIR"/*; do
+        if [ -f "$book_file" ]; then
+            filename=$(basename "$book_file")
+            extension="${filename##*.}"
+            lowercase_ext="${extension,,}"
+
+            if [ "$lowercase_ext" != "pdf" ] && [ "$lowercase_ext" != "epub" ]; then
+                echo "  SKIP: $filename (not a PDF or EPUB)"
+                continue
+            fi
+
+            echo "  Uploading: $filename"
+
+            # Determine title from filename
+            title="${filename%.*}"
+            title="${title//-/ }"
+
+            # Upload via multipart form
+            response=$(curl -s -X POST http://localhost:8080/api/books/upload \
+                -F "title=$title" \
+                -F "author=Sample Author" \
+                -F "file=@$book_file")
+
+            # Check if upload was successful
+            if echo "$response" | grep -q '"book_id"'; then
+                book_id=$(echo "$response" | grep -o '"book_id":"[^"]*"' | cut -d'"' -f4)
+                echo "    SUCCESS: book_id=$book_id"
+
+                # Record in uploaded books file
+                timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+                temp_file=$(mktemp)
+                jq --arg id "$book_id" --arg title "$title" --arg file "$filename" --arg timestamp "$timestamp" \
+                   '. += [{book_id: $id, title: $title, source_file: $file, uploaded_at: $timestamp}]' \
+                   "$UPLOADED_BOOKS_FILE" > "$temp_file" && mv "$temp_file" "$UPLOADED_BOOKS_FILE"
+
+                UPLOAD_SUCCESS=$((UPLOAD_SUCCESS + 1))
+            else
+                error_msg=$(echo "$response" | grep -o '"error":"[^"]*"' | cut -d'"' -f4 || echo "Unknown error")
+                echo "    FAILED: $error_msg"
+                UPLOAD_FAIL=$((UPLOAD_FAIL + 1))
+            fi
+        fi
+    done
+
+    echo ""
+    echo "  Upload Summary: $UPLOAD_SUCCESS succeeded, $UPLOAD_FAIL failed"
+
+    # Verify uploaded books appear in the list
+    if [ $UPLOAD_SUCCESS -gt 0 ]; then
+        echo ""
+        echo "  Verifying uploaded books..."
+
+        book_list=$(curl -s http://localhost:8080/api/books)
+        echo "  Book list response: $book_list"
+
+        # Check if our uploaded books are in the list
+        VERIFY_SUCCESS=0
+        VERIFY_FAIL=0
+
+        while IFS= read -r line; do
+            book_id=$(echo "$line" | jq -r '.book_id' 2>/dev/null)
+            if [ -n "$book_id" ] && [ "$book_id" != "null" ]; then
+                if echo "$book_list" | grep -q "$book_id"; then
+                    title=$(echo "$line" | jq -r '.title')
+                    echo "    VERIFIED: $title ($book_id)"
+                    VERIFY_SUCCESS=$((VERIFY_SUCCESS + 1))
+                else
+                    echo "    VERIFY FAILED: book_id=$book_id not found in list"
+                    VERIFY_FAIL=$((VERIFY_FAIL + 1))
+                fi
+            fi
+        done < <(jq -c '.[]' "$UPLOADED_BOOKS_FILE" 2>/dev/null || echo "")
+
+        echo ""
+        echo "  Verification Summary: $VERIFY_SUCCESS verified, $VERIFY_FAIL failed"
+
+        if [ $VERIFY_FAIL -gt 0 ]; then
+            echo ""
+            echo "ERROR: Some uploaded books were not found in the book list"
+            exit 1
+        fi
+    fi
+fi
+
 echo ""
 echo "=========================================="
 echo "All services started and typecheck passed!"

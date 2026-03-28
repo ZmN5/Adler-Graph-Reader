@@ -50,4 +50,19 @@ Started: 2026-03-28
   - cargo check runs silently (only outputs on error), npm run typecheck outputs "tsc --noEmit" even on success
 ---
 
+## 2026-03-28 19:50 - US-002
+- What was implemented: Added sample book upload functionality to run-evaluation.sh - finds PDF/EPUB in sample_books/, uploads via POST /api/books/upload, records book_ids to .uploaded_books.json, verifies books appear in GET /api/books list
+- Files changed:
+  - scripts/run-evaluation.sh (added step [4/4] for book upload)
+  - ralph/prd.json (updated passes:true for US-002)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - The upload endpoint expects multipart fields: title, author, file
+  - File format is determined by extension (.pdf or .epub)
+  - Use jq for JSON manipulation in bash scripts
+  - Book list API returns array of {id, title, author, format, total_pages}
+  - sample_books/ directory at project root contains test files
+  - Store uploaded book metadata in .uploaded_books.json for later reference
+---
+
 
