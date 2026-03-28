@@ -239,6 +239,118 @@ else
     fi
 fi
 
+# US-003: End-to-end functional test
+echo ""
+echo "[5/5] Running end-to-end functional test..."
+
+E2E_SUCCESS=0
+E2E_FAIL=0
+E2E_SKIP=0
+
+# Check if we have uploaded books to test
+if [ ! -f "$UPLOADED_BOOKS_FILE" ] || [ -z "$(cat "$UPLOADED_BOOKS_FILE")" ] || [ "$(cat "$UPLOADED_BOOKS_FILE")" = "[]" ]; then
+    echo "  WARNING: No uploaded books found, skipping e2e test"
+    E2E_SKIP=1
+else
+    while IFS= read -r line; do
+        book_id=$(echo "$line" | jq -r '.book_id' 2>/dev/null)
+        title=$(echo "$line" | jq -r '.title' 2>/dev/null)
+
+        if [ -z "$book_id" ] || [ "$book_id" = "null" ]; then
+            continue
+        fi
+
+        echo ""
+        echo "  Testing: $title ($book_id)"
+
+        # Step 1: Parse book
+        echo "    [Step 1] Parsing book..."
+        parse_response=$(curl -s -X POST "http://localhost:8080/api/books/$book_id/parse")
+
+        # Check for HTTP errors or error field
+        if echo "$parse_response" | grep -q '"error"'; then
+            error_msg=$(echo "$parse_response" | grep -o '"error":"[^"]*"' | cut -d'"' -f4 || echo "Unknown error")
+            echo "    [Step 1] FAILED: $error_msg"
+            echo "    E2E TEST FAILED - terminating flow"
+            E2E_FAIL=$((E2E_FAIL + 1))
+            continue
+        fi
+
+        # Check chunks_created > 0
+        chunks_created=$(echo "$parse_response" | jq -r '.chunks_created // 0' 2>/dev/null || echo "0")
+        if [ "$chunks_created" -gt 0 ]; then
+            echo "    [Step 1] OK: chunks_created=$chunks_created"
+        else
+            echo "    [Step 1] FAILED: chunks_created=$chunks_created (expected > 0)"
+            echo "    E2E TEST FAILED - terminating flow"
+            E2E_FAIL=$((E2E_FAIL + 1))
+            continue
+        fi
+
+        # Step 2: Extract concepts
+        echo "    [Step 2] Extracting concepts..."
+        extract_response=$(curl -s -X POST "http://localhost:8080/api/books/$book_id/extract")
+
+        # Check for HTTP errors or error field
+        if echo "$extract_response" | grep -q '"error"'; then
+            error_msg=$(echo "$extract_response" | grep -o '"error":"[^"]*"' | cut -d'"' -f4 || echo "Unknown error")
+            echo "    [Step 2] FAILED: $error_msg"
+            echo "    E2E TEST FAILED - terminating flow"
+            E2E_FAIL=$((E2E_FAIL + 1))
+            continue
+        fi
+
+        # Check nodes_count > 0
+        nodes_count=$(echo "$extract_response" | jq -r '.nodes_count // 0' 2>/dev/null || echo "0")
+        if [ "$nodes_count" -gt 0 ]; then
+            echo "    [Step 2] OK: nodes_count=$nodes_count"
+        else
+            echo "    [Step 2] FAILED: nodes_count=$nodes_count (expected > 0)"
+            echo "    E2E TEST FAILED - terminating flow"
+            E2E_FAIL=$((E2E_FAIL + 1))
+            continue
+        fi
+
+        # Step 3: Get graph
+        echo "    [Step 3] Getting graph..."
+        graph_response=$(curl -s -X GET "http://localhost:8080/api/books/$book_id/graph")
+
+        # Check for HTTP errors or error field
+        if echo "$graph_response" | grep -q '"error"'; then
+            error_msg=$(echo "$graph_response" | grep -o '"error":"[^"]*"' | cut -d'"' -f4 || echo "Unknown error")
+            echo "    [Step 3] FAILED: $error_msg"
+            echo "    E2E TEST FAILED - terminating flow"
+            E2E_FAIL=$((E2E_FAIL + 1))
+            continue
+        fi
+
+        # Check non-empty nodes and edges arrays
+        graph_nodes=$(echo "$graph_response" | jq -r '.nodes | length' 2>/dev/null || echo "0")
+        graph_edges=$(echo "$graph_response" | jq -r '.edges | length' 2>/dev/null || echo "0")
+
+        if [ "$graph_nodes" -gt 0 ] && [ "$graph_edges" -gt 0 ]; then
+            echo "    [Step 3] OK: nodes=$graph_nodes, edges=$graph_edges"
+            echo "  PASSED: $title"
+            E2E_SUCCESS=$((E2E_SUCCESS + 1))
+        else
+            echo "    [Step 3] FAILED: nodes=$graph_nodes, edges=$graph_edges (expected both > 0)"
+            echo "    E2E TEST FAILED - terminating flow"
+            E2E_FAIL=$((E2E_FAIL + 1))
+            continue
+        fi
+
+    done < <(jq -c '.[]' "$UPLOADED_BOOKS_FILE" 2>/dev/null || echo "")
+fi
+
+echo ""
+echo "  E2E Summary: $E2E_SUCCESS passed, $E2E_FAIL failed, $E2E_SKIP skipped"
+
+if [ $E2E_FAIL -gt 0 ]; then
+    echo ""
+    echo "ERROR: End-to-end test failed for $E2E_FAIL book(s)"
+    exit 1
+fi
+
 echo ""
 echo "=========================================="
 echo "All services started and typecheck passed!"

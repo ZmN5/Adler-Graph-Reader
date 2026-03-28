@@ -12,7 +12,7 @@ Started: 2026-03-28
 - Status: pending
 
 ## US-003: 实现端到端功能测试 - 全流程验证
-- Status: pending
+- Status: completed (2026-03-28 20:05)
 
 ## US-004: 实现 API 契约测试套件
 - Status: pending
@@ -63,6 +63,22 @@ Started: 2026-03-28
   - Book list API returns array of {id, title, author, format, total_pages}
   - sample_books/ directory at project root contains test files
   - Store uploaded book metadata in .uploaded_books.json for later reference
+---
+
+## 2026-03-28 20:05 - US-003
+- What was implemented: Added end-to-end functional test [5/5] to run-evaluation.sh - iterates through uploaded books, tests parse (POST /api/books/{id}/parse), extract (POST /api/books/{id}/extract), and graph (GET /api/books/{id}/graph) endpoints; verifies chunks_created > 0, nodes_count > 0, and non-empty nodes/edges arrays; fails fast on any step error
+- Files changed:
+  - scripts/run-evaluation.sh (added step [5/5] for e2e test)
+  - ralph/prd.json (updated passes:true for US-003)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Parse endpoint returns {status, chunks_created, total_pages}
+  - Extract endpoint returns {status, nodes_count, edges_count}
+  - Graph endpoint returns {nodes: [], edges: []} - both must be non-empty for success
+  - All three endpoints can return {error: "..."} on failure
+  - Use jq -r '.field // default' for safe JSON extraction in bash
+  - Failed step should terminate flow (continue to next book, don't continue within same book)
+  - .uploaded_books.json structure: [{book_id, title, source_file, uploaded_at}]
 ---
 
 
