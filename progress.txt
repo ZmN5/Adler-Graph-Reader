@@ -51,3 +51,19 @@
 
 - **Learnings for future iterations:**
   - For truncated content display, use content.chars().take(200).collect::<String>() to handle Unicode properly
+
+## 2026-03-28 - US-006
+- What was implemented
+  - Implemented GET /api/books/:id/graph returning {nodes: [...], edges: [...]} for a book
+  - Implemented GET /api/graph/global returning {nodes: [...], edges: [...]} for all books
+  - Implemented GET /api/nodes/:id returning node details with full description, examples, source_chunk_ids
+  - GraphNode: id, name, description, examples (array), source_chunk_ids (array)
+  - GraphEdge: id, source_node_id, target_node_id, relation_type
+
+- Files changed
+  - backend/src/main.rs - added graph handlers and routes
+
+- **Learnings for future iterations:**
+  - When querying edges for a book, need to filter by both source AND target node belonging to the book
+  - Use serde_json::from_str for parsing JSON arrays from database (examples, source_chunk_ids columns)
+  - sqlx query_as tuple must match exact column count in SELECT statement
