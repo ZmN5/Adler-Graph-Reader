@@ -86,6 +86,42 @@ export async function setLanguage(language: Language): Promise<void> {
   await apiPut<{ language: Language }, LanguageResponse>('/api/settings/language', { language })
 }
 
+// Book-related types
+export interface BookSummary {
+  id: string
+  title: string
+  author: string | null
+  format: string
+  total_pages: number | null
+}
+
+export interface BookDetails extends BookSummary {
+  file_path: string
+  created_at: string
+}
+
+export interface ExtractResponse {
+  status: string
+  nodes_count: number
+  edges_count: number
+}
+
+export async function listBooks(): Promise<BookSummary[]> {
+  return apiGet<BookSummary[]>('/api/books')
+}
+
+export async function getBook(bookId: string): Promise<BookDetails> {
+  return apiGet<BookDetails>(`/api/books/${bookId}`)
+}
+
+export async function deleteBook(bookId: string): Promise<void> {
+  await apiDelete<void>(`/api/books/${bookId}`)
+}
+
+export async function extractBook(bookId: string): Promise<ExtractResponse> {
+  return apiPost<null, ExtractResponse>(`/api/books/${bookId}/extract`, null)
+}
+
 export interface UploadBookResponse {
   book_id: string
   title: string
