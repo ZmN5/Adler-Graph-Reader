@@ -32,3 +32,15 @@ Started: Sat Mar 28 16:08:53 CST 2026
   - Foreign key constraints ON DELETE CASCADE for proper cleanup
   - JSON columns store serialized arrays as TEXT in SQLite
 ---
+
+## 2026-03-28 - EPUBReader Fix
+- Fixed EPUBReader component to use Blob URL approach with 30-second timeout
+- Simplified error handling and cleanup of Blob URLs
+- Marked US-001 through US-005 as passes: true in PRD (all were committed previously but PRD was not updated)
+- Files changed: frontend/src/components/EPUBReader.tsx, tasks/prd.json
+- **Learnings for future iterations:**
+  - EPUB loading issues may be due to epubjs internal resource fetching - Blob URL approach helps
+  - The PRD at tasks/prd.json is separate from the original prd.json at project root
+  - All US-001 through US-005 were committed in previous sessions but PRD was never updated
+  - The `start.sh` at project root is actually `scripts/run-evaluation.sh` being called by `start.sh`
+

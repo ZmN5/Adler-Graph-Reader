@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react'
 import ePub, { Book, Rendition, Location } from 'epubjs'
 
 interface EPUBReaderProps {
-  filePath: string
   bookId: string
   className?: string
   highlightAnchor?: string | null
@@ -18,7 +17,6 @@ interface Chapter {
 }
 
 export function EPUBReader({
-  filePath,
   bookId,
   className,
   highlightAnchor,
@@ -33,25 +31,51 @@ export function EPUBReader({
   const [canNext, setCanNext] = useState(false)
   const viewerRef = useRef<HTMLDivElement>(null)
   const bookRef = useRef<Book | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
 
   // Load EPUB document
   useEffect(() => {
     let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
     setIsLoading(true)
     setError(null)
 
     const loadEpub = async () => {
       try {
-        // Convert file path to URL
-        const fullUrl = `http://localhost:8080${filePath}`
+        // Fetch the EPUB file
+        const response = await fetch(`/api/books/${bookId}/file`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch EPUB: ${response.status}`)
+        }
+        const blob = await response.blob()
 
-        const epubBook = ePub(fullUrl)
+        if (cancelled) return
+
+        // Create a blob URL for epubjs
+        const blobUrl = URL.createObjectURL(blob)
+        blobUrlRef.current = blobUrl
+
+        // Create EPUB from blob URL
+        const epubBook = ePub(blobUrl)
         bookRef.current = epubBook
 
-        await epubBook.ready
+        // Add timeout to prevent hanging
+        const readyPromise = epubBook.ready
+        timeoutId = setTimeout(() => {
+          if (!cancelled) {
+            epubBook.destroy()
+            URL.revokeObjectURL(blobUrl)
+            setError('EPUB loading timed out - the file may be corrupted')
+            setIsLoading(false)
+          }
+        }, 30000) // 30 second timeout
+
+        await readyPromise
+        clearTimeout(timeoutId)
 
         if (cancelled) {
           epubBook.destroy()
+          URL.revokeObjectURL(blobUrl)
           return
         }
 
@@ -86,6 +110,7 @@ export function EPUBReader({
         if (!cancelled) {
           setIsLoading(false)
         }
+        if (timeoutId) clearTimeout(timeoutId)
       }
     }
 
@@ -93,9 +118,14 @@ export function EPUBReader({
 
     return () => {
       cancelled = true
+      if (timeoutId) clearTimeout(timeoutId)
       bookRef.current?.destroy()
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current)
+        blobUrlRef.current = null
+      }
     }
-  }, [filePath, bookId])
+  }, [bookId])
 
   // Initialize rendition
   useEffect(() => {
