@@ -1,0 +1,40 @@
+## Codebase Patterns
+- Use `&*pool` when passing `State<SqlitePool>` from Axum extractors to sqlx query executors (State wraps the pool, needs deref to get `&Pool` which implements Executor)
+- When using Axum Router with `.with_state(pool)`, the pool is moved into the router state and accessed via `axum::extract::State<T>`
+- Rust: Import routing::{get, put} for both GET and PUT route handlers
+- In Axum handlers with multiple extractors, State must come before other extractors (e.g., State<SqlitePool> first, then Multipart)
+- Use custom AppError enum implementing IntoResponse for consistent error handling across handlers
+
+## 2026-03-28 - US-003
+- What was implemented
+  - Implemented GET /api/settings/language returning {"language": "zh"} or {"language": "en"}
+  - Implemented PUT /api/settings/language accepting {"language": "zh"} or {"language": "en"}
+  - Default language is zh (Chinese) as set by db.rs init_database
+  - Settings stored in SQLite settings table
+
+- Files changed
+  - backend/src/main.rs - added settings handlers and routes
+
+- **Learnings for future iterations:**
+  - Axum State extractors need `&*pool` syntax for sqlx queries, not just `&pool`
+  - When using `.with_state(pool)` in Router, drop(pool) at end is not needed
+  - Need to import `routing::put` when adding PUT endpoints alongside GET
+
+## 2026-03-28 - US-004
+- What was implemented
+  - Implemented POST /api/books/upload accepting multipart/form-data with file, title, author fields
+  - Implemented GET /api/books returning list of books (id, title, author, format, total_pages)
+  - Implemented GET /api/books/:id returning full book details including file_path
+  - Implemented DELETE /api/books/:id deleting book and cascade deleting chunks, nodes, edges
+  - Files saved to ./data/books/{book_id}.{format}
+  - Added AppError enum with proper IntoResponse implementation for error handling
+
+- Files changed
+  - backend/src/main.rs - added books handlers, routes, and AppError type
+  - backend/Cargo.toml - enabled axum multipart feature
+
+- **Learnings for future iterations:**
+  - When using Multiple extractors in Axum (State, Multipart), State must come first in parameter order
+  - Use custom AppError enum implementing IntoResponse for consistent error handling across handlers
+  - MultipartError and sqlx errors need explicit conversion to AppError with .map_err(|e| e.to_string())
+  - Return type of (StatusCode, Json<T>) for responses with explicit status codes

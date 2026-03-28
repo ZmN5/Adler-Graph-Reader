@@ -1,0 +1,34 @@
+# Ralph Progress Log
+Started: Sat Mar 28 16:08:53 CST 2026
+---
+
+## 2026-03-28 16:20 - US-001
+- Implemented Rust backend project with Axum framework
+- Created Cargo.toml with dependencies: axum, tokio, serde, serde_json, sqlx, uuid, chrono, tower, tower-http, tracing, tracing-subscriber
+- Created basic Axum server with CORS enabled
+- Added GET /api/health endpoint returning {"status":"ok"}
+- Server starts on localhost:8080
+- Typecheck and build pass
+- Files changed: backend/Cargo.toml, backend/src/main.rs
+- **Learnings for future iterations:**
+  - Axum 0.8 requires explicit Json wrapper for handler return types
+  - Use tower-http CorsLayer with Any for allowing all origins during development
+  - edition = "2021" is the stable Rust edition, not "2024"
+  - cargo check is faster for typechecking, cargo build for full compilation
+---
+
+## 2026-03-28 16:35 - US-002
+- Implemented SQLite database schema with books, chunks, nodes, edges, and settings tables
+- Created db.rs module with create_pool, init_database, and ensure_data_dir functions
+- Updated main.rs to initialize database on startup
+- Created ./data directory automatically if not exists
+- Database URL: sqlite://./data/reader.db
+- Default language 'zh' inserted on first run
+- Typecheck and build pass
+- Files changed: backend/src/db.rs, backend/src/main.rs
+- **Learnings for future iterations:**
+  - sqlx 0.8 uses sqlite:// prefix (not sqlite3://)
+  - Use IF NOT EXISTS for all CREATE TABLE statements to allow safe re-initialization
+  - Foreign key constraints ON DELETE CASCADE for proper cleanup
+  - JSON columns store serialized arrays as TEXT in SQLite
+---
