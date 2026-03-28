@@ -44,3 +44,55 @@ Started: Sat Mar 28 16:08:53 CST 2026
   - All US-001 through US-005 were committed in previous sessions but PRD was never updated
   - The `start.sh` at project root is actually `scripts/run-evaluation.sh` being called by `start.sh`
 
+
+## 2026-03-28 22:20 - US-006 US-007
+- Implemented before/after comparison in run-evaluation.sh report generation
+- Created run-evaluation-loop.sh for iteration tracking
+- Added Section 四 (修复前后对比) to evaluation reports showing issue status changes
+- Iteration loop tracks iterations in evaluation-iterations.log
+- Loop stops when no BLOCKING issues remain or max iterations (10) reached
+- Updated tasks/prd.json to mark all stories as passes: true
+- Typecheck passes for both frontend and backend
+- Files changed: scripts/run-evaluation.sh, scripts/run-evaluation-loop.sh, tasks/prd.json
+- **Learnings for future iterations:**
+  - The PRD at tasks/prd.json is the working PRD, not the deleted prd.json at root
+  - run-evaluation.sh generates reports with before/after comparison automatically
+  - run-evaluation-loop.sh is a wrapper that runs evaluation multiple times and tracks BLOCKING issues
+  - Iteration log is at tasks/evaluation-iterations.log
+  - The start.sh at project root is a wrapper that calls scripts/run-evaluation.sh
+  - When editing bash scripts with heredocs, watch for typos in section headers (e.g., "vscode4.1" instead of "4.1")
+
+---
+
+## 2026-03-28 - US-001 (5-round evaluation loop)
+- Ran first evaluation round using project-evaluator agent
+- Backend health check passes (GET /api/health returns {"status":"ok"})
+- Core functionality tested: upload, parse, file serving, PDF reading, graph infrastructure
+- Generated evaluation report with problem classification (BLOCKING/HIGH/MEDIUM/SUGGESTION)
+- Report saved to tasks/evaluation-report-2026-03-28.md
+- BLOCKING issue found: Data directory path mismatch (backend stores at backend/data/ instead of project root data/)
+- HIGH issue: LM Studio model not auto-loaded (external dependency)
+- HIGH issue: Extraction lacks graceful error handling
+- MEDIUM issues: Test Book PDF corrupted, Port configuration documentation
+- Typecheck passes for both backend (cargo check) and frontend (tsc --noEmit)
+- Files changed: tasks/evaluation-report-2026-03-28.md (new), tasks/prd.json (updated)
+- Committed as: feat: US-001 - 第1轮：首次评估
+- **Learnings for future iterations:**
+  - Working tree PRD (tasks/prd.json) may differ from HEAD - the 5-round loop PRD was created but not committed in previous session
+  - The staged version (index) had old 7-story PRD with passes: true, but working tree had new 11-story PRD with passes: false
+  - Start.sh may fail with "Address already in use" if backend is already running - this is not an error
+  - Frontend may use port 3001 if 3000 is in use
+  - project-evaluator agent can run comprehensive evaluation including browser traversal
+  - Evaluation report file must be manually staged with git add before commit
+
+## 2026-03-28 22:50 - US-002
+- Fixed BLOCKING issue: Data directory path mismatch
+- Changed start.sh to run `cargo run -p backend` from project root instead of `cd backend && cargo run`
+- This ensures std::env::current_dir() returns project root, so data is stored at {project_root}/data/ instead of {project_root}/backend/data/
+- Backend typecheck passes (cargo check)
+- Frontend typecheck passes (tsc --noEmit)
+- Files changed: start.sh, tasks/prd.json
+- **Learnings for future iterations:**
+  - start.sh runs `cd "$SCRIPT_DIR/backend"` before cargo run, causing backend to use backend/ as current dir
+  - The fix uses `cargo run -p backend` from project root, which Cargo interprets as running the backend package
+  - CLAUDE.md specifies "后端必须从项目根目录启动以确保路径正确" - backend must start from project root

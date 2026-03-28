@@ -31,8 +31,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Fixed BLOCKING issue: Data directory path mismatch by changing start.sh to run cargo from project root instead of backend directory."
     },
     {
       "id": "US-003",
