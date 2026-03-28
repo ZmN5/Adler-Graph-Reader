@@ -228,3 +228,24 @@
   - Language toggle should load initial state from API on mount
   - Use loading skeleton while fetching initial language to avoid flicker
   - API PUT endpoint returns the updated value, but we can optimistically update UI
+
+## 2026-03-28 - US-015
+- What was implemented
+  - Created BookList component showing all uploaded books
+  - Display: title, author, format badge, total_pages
+  - Show Extract button to trigger concept extraction
+  - Show Delete button to remove book with confirmation
+  - Click book row for selection (onSelectBook callback)
+  - Added BookSummary, BookDetails, ExtractResponse types
+  - Added listBooks, getBook, deleteBook, extractBook API methods
+
+- Files changed
+  - frontend/src/components/BookList.tsx - new file with book list
+  - frontend/src/lib/api-client.ts - added book API methods
+  - frontend/src/App.tsx - integrated BookList below upload
+
+- **Learnings for future iterations:**
+  - Use key prop on list to force re-render after upload
+  - Format badges should use appropriate colors for PDF (red) vs EPUB (blue)
+  - Extract button should show loading spinner during extraction
+  - Delete should have confirmation dialog before proceeding
