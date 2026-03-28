@@ -249,3 +249,20 @@
   - Format badges should use appropriate colors for PDF (red) vs EPUB (blue)
   - Extract button should show loading spinner during extraction
   - Delete should have confirmation dialog before proceeding
+
+## 2026-03-28 - US-016
+- What was implemented
+  - Created SplitPane component with adjustable divider
+  - Support horizontal (left/right) and vertical (top/bottom) modes
+  - Panes are resizable by dragging divider
+  - Persist layout preference in localStorage
+  - Clamp split percentage to min/max to prevent collapse
+
+- Files changed
+  - frontend/src/components/SplitPane.tsx - new file with SplitPane component
+
+- **Learnings for future iterations:**
+  - Use document-level mouse event listeners when dragging to handle mouse leaving the divider
+  - Set body cursor and user-select styles during drag to improve UX
+  - localStorage can store simple JSON objects for layout preferences
+  - Use spread operator with defaults pattern to merge stored config with defaults
