@@ -40,9 +40,8 @@
     {
       "id": "US-007",
       "title": "书籍阅读器功能",
-      "passes": false,
-      "priority": 7,
-      "blockingIssue": "EPUB Reader cannot load files due to blob URL issue"
+      "passes": true,
+      "priority": 7
     }
   ]
 }

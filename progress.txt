@@ -2,12 +2,14 @@
 - Example: Use `sql<number>` template for aggregations
 - Example: Always use `IF NOT EXISTS` for migrations
 - Example: Export types from actions.ts for UI components
+- epubjs requires ArrayBuffer (not blob URL) to properly resolve internal EPUB resources
 
-## [Date/Time] - [Story ID]
-- What was implemented
-- Files changed
+## 2026-03-28 - US-007 - Fix EPUB Reader loading issue
+- Fixed EPUB Reader cannot load EPUB files by passing ArrayBuffer directly to epubjs instead of blob URL
+- Root cause: blob URLs don't support relative URL resolution for internal EPUB resources (chapters, images, CSS)
+- Files changed: frontend/src/components/EPUBReader.tsx
 - **Learnings for future iterations:**
-  - Patterns discovered (e.g., "this codebase uses X for Y")
-  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
-  - Useful context (e.g., "the evaluation panel is in component X")
+  - epubjs with blob URL fails because it extracts relative URLs from EPUB content that can't be resolved against a blob URL
+  - Solution: use `fetch('/api/books/${bookId}/file').then(r => r.arrayBuffer())` and pass to `ePub(arrayBuffer)`
+  - Don't need to call URL.revokeObjectURL when using ArrayBuffer approach
 ---
