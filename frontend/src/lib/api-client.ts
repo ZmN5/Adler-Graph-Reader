@@ -70,3 +70,53 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
   })
   return handleResponse<T>(response)
 }
+
+export interface UploadBookResponse {
+  book_id: string
+  title: string
+}
+
+export async function apiUploadBook(
+  file: File,
+  title: string,
+  author?: string,
+  onProgress?: (progress: number) => void
+): Promise<UploadBookResponse> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          onProgress((e.loaded / e.total) * 100)
+        }
+      })
+    }
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText))
+        } catch {
+          reject(new Error('Invalid response format'))
+        }
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`))
+      }
+    })
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Network error during upload'))
+    })
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('title', title)
+    if (author) {
+      formData.append('author', author)
+    }
+
+    xhr.open('POST', `${API_BASE_URL}/api/books/upload`)
+    xhr.send(formData)
+  })
+}

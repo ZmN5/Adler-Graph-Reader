@@ -1,5 +1,6 @@
 import { Header } from '@/components/Header'
 import { MainContent } from '@/components/MainContent'
+import { UploadButton } from '@/components/UploadButton'
 import { useAppStore } from '@/stores/app-store'
 
 function App() {
@@ -30,6 +31,9 @@ function App() {
           <p className="mt-2 text-muted-foreground">
             Your AI-powered reading companion for building concept graphs
           </p>
+          <div className="mt-8 w-full max-w-md">
+            <UploadButton />
+          </div>
         </div>
       </MainContent>
     </div>
