@@ -147,3 +147,46 @@
   - tokio::spawn takes ownership, so clone pool/llm inside the loop before spawning
   - sqlx::query returns (), not a result row, so use execute() not fetch_one()
 
+
+## 2026-03-28 - US-011
+- What was implemented
+  - Entity deduplication in concept extraction pipeline
+  - create_node_for_concept now checks for existing similar nodes before creating new ones
+  - Uses case-insensitive substring matching via existing find_node_by_name function
+  - When similar node found, merges source_chunk_id and examples into existing node
+  - create_edge_for_relation now merges into existing nodes when found
+  - Added duplicate edge detection (checks source_node_id, target_node_id, relation_type)
+  - When edge already exists, merges source_chunk_id into existing edge
+  - Added merge_node_sources and merge_edge_sources helper functions
+
+- Files changed
+  - backend/src/extractor.rs - added deduplication logic and merge helper functions
+
+- **Learnings for future iterations:**
+  - ExtractedRelation has 'explanation' field, not 'description' or 'examples'
+  - Relations don't have examples, so when merging via relation use empty vec
+  - Use existing find_node_by_name function for deduplication checking
+  - Edge deduplication checks (source_node_id, target_node_id, relation_type) tuple
+
+## 2026-03-28 - US-012
+- What was implemented
+  - Created Vite + React + TypeScript frontend project in /frontend
+  - Configured Tailwind CSS with shadcn/ui theme tokens
+  - Set up Zustand store for app state (loading/error states)
+  - Created Header and MainContent layout components
+  - Built API client with typed methods for localhost:8080
+  - Configured Vite proxy for /api to localhost:8080
+
+- Files changed
+  - frontend/ - new directory with complete React project structure
+  - frontend/package.json, vite.config.ts, tsconfig.json, tailwind.config.js, postcss.config.js
+  - frontend/src/main.tsx, App.tsx, index.css
+  - frontend/src/components/Header.tsx, MainContent.tsx
+  - frontend/src/stores/app-store.ts
+  - frontend/src/lib/utils.ts, api-client.ts
+
+- **Learnings for future iterations:**
+  - Use Vite path aliases (@/*) for clean imports
+  - shadcn/ui uses CSS variables for theming - define in index.css
+  - API client should be centralized in lib/api-client.ts for all components
+  - Zustand store should only hold UI state, not server data (use React Query or SWR for server data)
