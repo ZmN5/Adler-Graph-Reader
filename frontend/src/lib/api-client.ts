@@ -71,6 +71,21 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
   return handleResponse<T>(response)
 }
 
+export type Language = 'zh' | 'en'
+
+export interface LanguageResponse {
+  language: Language
+}
+
+export async function getLanguage(): Promise<Language> {
+  const response = await apiGet<LanguageResponse>('/api/settings/language')
+  return response.language
+}
+
+export async function setLanguage(language: Language): Promise<void> {
+  await apiPut<{ language: Language }, LanguageResponse>('/api/settings/language', { language })
+}
+
 export interface UploadBookResponse {
   book_id: string
   title: string

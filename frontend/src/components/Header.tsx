@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 interface HeaderProps {
   className?: string
@@ -12,7 +13,7 @@ export function Header({ className }: HeaderProps) {
         className
       )}
     >
-      <div className="container flex h-14 items-center">
+      <div className="container flex h-14 items-center justify-between">
         <div className="flex items-center gap-2 font-semibold">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -31,6 +32,7 @@ export function Header({ className }: HeaderProps) {
           <span className="hidden sm:inline-block">Intelligent Reading Concept Graph</span>
           <span className="sm:hidden">IRCG</span>
         </div>
+        <LanguageToggle />
       </div>
     </header>
   )
