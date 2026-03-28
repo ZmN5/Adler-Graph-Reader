@@ -351,6 +351,209 @@ if [ $E2E_FAIL -gt 0 ]; then
     exit 1
 fi
 
+# US-004: API Contract Test Suite
+echo ""
+echo "[6/6] Running API contract test suite..."
+
+API_TEST_PASS=0
+API_TEST_FAIL=0
+API_TEST_SKIP=0
+
+# Helper function to test API endpoint
+test_api() {
+    local name="$1"
+    local expected_status="$2"
+    local expected_body_pattern="$3"
+    local method="${4:-GET}"
+    shift 4
+    local url="$1"
+    shift
+    local data="$*"
+
+    echo "  Testing: $name"
+
+    if [ "$method" = "GET" ]; then
+        response=$(curl -s -w "\n%{http_code}" "$url")
+    else
+        response=$(curl -s -w "\n%{http_code}" -X "$method" -H "Content-Type: application/json" -d "$data" "$url")
+    fi
+
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+
+    # Check HTTP status code
+    if [ "$http_code" != "$expected_status" ]; then
+        echo "    FAIL: Expected HTTP $expected_status, got $http_code"
+        echo "    Body: $body"
+        return 1
+    fi
+
+    # Check body pattern if specified
+    if [ -n "$expected_body_pattern" ]; then
+        if ! echo "$body" | grep -q "$expected_body_pattern"; then
+            echo "    FAIL: Body does not match pattern '$expected_body_pattern'"
+            echo "    Body: $body"
+            return 1
+        fi
+    fi
+
+    echo "    PASS"
+    return 0
+}
+
+# Test 1: GET /api/health
+echo ""
+echo "  [Health Endpoint]"
+if test_api "GET /api/health returns status ok" "200" '"status":"ok"'; then
+    API_TEST_PASS=$((API_TEST_PASS + 1))
+else
+    API_TEST_FAIL=$((API_TEST_FAIL + 1))
+fi
+
+# Test 2: GET /api/settings/language
+echo ""
+echo "  [Settings Endpoints]"
+if test_api "GET /api/settings/language returns language" "200" '"language":"'; then
+    API_TEST_PASS=$((API_TEST_PASS + 1))
+else
+    API_TEST_FAIL=$((API_TEST_FAIL + 1))
+fi
+
+# Get current language to restore later
+current_lang=$(curl -s http://localhost:8080/api/settings/language | grep -o '"language":"[^"]*"' | cut -d'"' -f4 || echo "zh")
+
+# Test 3: PUT /api/settings/language (update to en)
+if test_api "PUT /api/settings/language updates to en" "200" '"language":"en"' "PUT" "http://localhost:8080/api/settings/language" '{"language":"en"}'; then
+    API_TEST_PASS=$((API_TEST_PASS + 1))
+else
+    API_TEST_FAIL=$((API_TEST_FAIL + 1))
+fi
+
+# Restore original language
+curl -s -X PUT http://localhost:8080/api/settings/language -H "Content-Type: application/json" -d "{\"language\":\"$current_lang\"}" > /dev/null
+
+# Test 4: GET /api/books (list books)
+echo ""
+echo "  [Book Endpoints]"
+if test_api "GET /api/books returns array" "200" '\['; then
+    API_TEST_PASS=$((API_TEST_PASS + 1))
+else
+    API_TEST_FAIL=$((API_TEST_FAIL + 1))
+fi
+
+# Get first book ID for further tests
+first_book_id=$(curl -s http://localhost:8080/api/books | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+if [ -n "$first_book_id" ]; then
+    echo ""
+    echo "  Using book ID for tests: $first_book_id"
+
+    # Test 5: GET /api/books/{id} (get book details)
+    if test_api "GET /api/books/{id} returns book details" "200" '"id":"'"$first_book_id"'"'; then
+        API_TEST_PASS=$((API_TEST_PASS + 1))
+    else
+        API_TEST_FAIL=$((API_TEST_FAIL + 1))
+    fi
+
+    # Test 6: GET /api/books/{id}/chunks
+    echo ""
+    if test_api "GET /api/books/{id}/chunks returns array" "200" '\['; then
+        API_TEST_PASS=$((API_TEST_PASS + 1))
+    else
+        API_TEST_FAIL=$((API_TEST_FAIL + 1))
+    fi
+
+    # Test 7: GET /api/books/{id}/graph
+    echo ""
+    if test_api "GET /api/books/{id}/graph returns nodes and edges" "200" '"nodes"'; then
+        API_TEST_PASS=$((API_TEST_PASS + 1))
+    else
+        API_TEST_FAIL=$((API_TEST_FAIL + 1))
+    fi
+
+    # Test 8: DELETE /api/books/{id}
+    echo ""
+    if test_api "DELETE /api/books/{id} returns deleted:true" "200" '"deleted":true'; then
+        API_TEST_PASS=$((API_TEST_PASS + 1))
+    else
+        API_TEST_FAIL=$((API_TEST_FAIL + 1))
+    fi
+
+    # Test 9: GET /api/books/{id} after delete (should be 404)
+    echo ""
+    response=$(curl -s -w "\n%{http_code}" "http://localhost:8080/api/books/$first_book_id")
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+
+    if [ "$http_code" = "404" ]; then
+        echo "    Testing: GET /api/books/{id} after delete returns 404"
+        echo "    PASS"
+        API_TEST_PASS=$((API_TEST_PASS + 1))
+    else
+        echo "    Testing: GET /api/books/{id} after delete returns 404"
+        echo "    FAIL: Expected HTTP 404, got $http_code"
+        API_TEST_FAIL=$((API_TEST_FAIL + 1))
+    fi
+else
+    echo "  SKIP: No books available for detailed endpoint tests"
+    API_TEST_SKIP=$((API_TEST_SKIP + 4))
+fi
+
+# Test 10: Error case - invalid language
+echo ""
+echo "  [Error Cases]"
+response=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/api/settings/language -H "Content-Type: application/json" -d '{"language":"invalid"}')
+http_code=$(echo "$response" | tail -n1)
+
+if [ "$http_code" = "400" ]; then
+    echo "    Testing: PUT /api/settings/language with invalid language returns 400"
+    echo "    PASS"
+    API_TEST_PASS=$((API_TEST_PASS + 1))
+else
+    echo "    Testing: PUT /api/settings/language with invalid language returns 400"
+    echo "    FAIL: Expected HTTP 400, got $http_code"
+    API_TEST_FAIL=$((API_TEST_FAIL + 1))
+fi
+
+# Test 11: Error case - non-existent book
+echo ""
+response=$(curl -s -w "\n%{http_code}" "http://localhost:8080/api/books/non-existent-id-12345")
+http_code=$(echo "$response" | tail -n1)
+
+if [ "$http_code" = "404" ]; then
+    echo "    Testing: GET /api/books/{non-existent} returns 404"
+    echo "    PASS"
+    API_TEST_PASS=$((API_TEST_PASS + 1))
+else
+    echo "    Testing: GET /api/books/{non-existent} returns 404"
+    echo "    FAIL: Expected HTTP 404, got $http_code"
+    API_TEST_FAIL=$((API_TEST_FAIL + 1))
+fi
+
+# Test 12: Error case - non-existent chunk
+echo ""
+response=$(curl -s -w "\n%{http_code}" "http://localhost:8080/api/chunks/non-existent-id-12345")
+http_code=$(echo "$response" | tail -n1)
+
+if [ "$http_code" = "404" ]; then
+    echo "    Testing: GET /api/chunks/{non-existent} returns 404"
+    echo "    PASS"
+    API_TEST_PASS=$((API_TEST_PASS + 1))
+else
+    echo "    Testing: GET /api/chunks/{non-existent} returns 404"
+    echo "    FAIL: Expected HTTP 404, got $http_code"
+    API_TEST_FAIL=$((API_TEST_FAIL + 1))
+fi
+
+echo ""
+echo "  API Contract Test Summary: $API_TEST_PASS passed, $API_TEST_FAIL failed, $API_TEST_SKIP skipped"
+
+if [ $API_TEST_FAIL -gt 0 ]; then
+    echo ""
+    echo "ERROR: API contract test failed for $API_TEST_FAIL case(s)"
+    exit 1
+fi
+
 echo ""
 echo "=========================================="
 echo "All services started and typecheck passed!"

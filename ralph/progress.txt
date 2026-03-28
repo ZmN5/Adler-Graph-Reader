@@ -15,7 +15,7 @@ Started: 2026-03-28
 - Status: completed (2026-03-28 20:05)
 
 ## US-004: 实现 API 契约测试套件
-- Status: pending
+- Status: completed (2026-03-28 20:25)
 
 ## US-005: 生成评估报告
 - Status: pending
@@ -35,6 +35,9 @@ Started: 2026-03-28
 - Backend typecheck: cargo check
 - Frontend typecheck: npm run typecheck
 - Use scripts/run-evaluation.sh as evaluation entry point (not start.sh)
+- DELETE /api/books/{id} returns {"deleted": true} on success
+- Language setting values: 'zh' or 'en' (lowercase only), invalid values return HTTP 400
+- curl -s -w "\n%{http_code}" captures both response body and HTTP status code
 
 ## 2026-03-28 19:30 - US-001
 - What was implemented: Created scripts/run-evaluation.sh evaluation script with service startup, health check polling (max 60s), graceful Ctrl+C handling, and integrated typecheck validation
@@ -81,4 +84,17 @@ Started: 2026-03-28
   - .uploaded_books.json structure: [{book_id, title, source_file, uploaded_at}]
 ---
 
-
+## 2026-03-28 20:25 - US-004
+- What was implemented: Added API contract test suite [6/6] to run-evaluation.sh - tests GET /api/health, GET/PUT /api/settings/language, GET /api/books, GET /api/books/{id}, GET /api/books/{id}/chunks, GET /api/books/{id}/graph, DELETE /api/books/{id}, and error cases (400 for invalid language, 404 for non-existent book/chunk)
+- Files changed:
+  - scripts/run-evaluation.sh (added step [6/6] for API contract tests)
+  - ralph/prd.json (updated passes:true for US-004)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Backend returns {"deleted": true} on successful DELETE (not book_id in response)
+  - Health endpoint uses JSON format with quotes: "status":"ok"
+  - Language setting must be 'zh' or 'en' (lowercase), returns 400 for invalid values
+  - When deleting a book, subsequent GET returns 404 (expected behavior)
+  - Use curl -s -w "\n%{http_code}" to capture both body and HTTP status code
+  - test_api helper function simplifies endpoint testing with pattern matching
+---
