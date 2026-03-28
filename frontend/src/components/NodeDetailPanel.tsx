@@ -1,0 +1,205 @@
+import { useState, useEffect, useCallback } from 'react'
+import { cn } from '@/lib/utils'
+import { GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph } from '@/lib/api-client'
+import { X, ExternalLink, BookOpen } from 'lucide-react'
+
+interface NodeDetailPanelProps {
+  node: GraphNode | null
+  bookId?: string
+  className?: string
+  onCitationClick?: (chunkId: string) => void
+  onClose?: () => void
+}
+
+export function NodeDetailPanel({
+  node,
+  bookId,
+  className,
+  onCitationClick,
+  onClose,
+}: NodeDetailPanelProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [nodeDetails, setNodeDetails] = useState<NodeDetails | null>(null)
+  const [edges, setEdges] = useState<GraphEdge[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!node) {
+      setNodeDetails(null)
+      setEdges([])
+      return
+    }
+
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+
+    const loadDetails = async () => {
+      try {
+        // Get full node details
+        const details = await getNode(node.id)
+        if (!cancelled) {
+          setNodeDetails(details)
+        }
+
+        // If we have a bookId, fetch edges for this book
+        if (bookId) {
+          const graphData = await getBookGraph(bookId)
+          if (!cancelled) {
+            // Filter edges where this node is source or target
+            const nodeEdges = graphData.edges.filter(
+              (edge) => edge.source_node_id === node.id || edge.target_node_id === node.id
+            )
+            setEdges(nodeEdges)
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load details')
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadDetails()
+
+    return () => {
+      cancelled = true
+    }
+  }, [node, bookId])
+
+  const handleCitationClick = useCallback(
+    (chunkId: string) => {
+      onCitationClick?.(chunkId)
+    },
+    [onCitationClick]
+  )
+
+  if (!node) {
+    return null
+  }
+
+  return (
+    <div className={cn('flex flex-col h-full', className)}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b bg-muted/50">
+        <h2 className="text-lg font-semibold truncate">{node.name}</h2>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-4">
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="h-6 w-6 animate-spin rounded-full border-3 border-primary border-t-transparent" />
+          </div>
+        )}
+
+        {error && (
+          <div className="text-center text-destructive py-4">
+            <p>{error}</p>
+          </div>
+        )}
+
+        {!isLoading && !error && (
+          <>
+            {/* Description */}
+            {node.description && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                <p className="text-sm">{node.description}</p>
+              </div>
+            )}
+
+            {/* Examples */}
+            {nodeDetails?.examples && nodeDetails.examples.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Examples</h3>
+                <ul className="space-y-2">
+                  {nodeDetails.examples.map((example, idx) => (
+                    <li key={idx} className="text-sm bg-muted/50 rounded-md p-2">
+                      {example}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Source Citations */}
+            {node.source_chunk_ids.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Source Citations ({node.source_chunk_ids.length})
+                </h3>
+                <div className="space-y-1">
+                  {node.source_chunk_ids.slice(0, 10).map((chunkId) => (
+                    <button
+                      key={chunkId}
+                      onClick={() => handleCitationClick(chunkId)}
+                      className={cn(
+                        'flex items-center gap-2 w-full text-left text-sm rounded-md px-2 py-1.5',
+                        'hover:bg-muted transition-colors text-primary'
+                      )}
+                    >
+                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate font-mono text-xs">{chunkId.substring(0, 8)}...</span>
+                    </button>
+                  ))}
+                  {node.source_chunk_ids.length > 10 && (
+                    <p className="text-xs text-muted-foreground pl-2">
+                      +{node.source_chunk_ids.length - 10} more citations
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Connected Edges */}
+            {edges.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Related Concepts ({edges.length})
+                </h3>
+                <div className="space-y-2">
+                  {edges.map((edge) => {
+                    const isSource = edge.source_node_id === node.id
+                    const otherNodeId = isSource ? edge.target_node_id : edge.source_node_id
+                    return (
+                      <div
+                        key={edge.id}
+                        className="flex items-center gap-2 text-sm bg-muted/50 rounded-md p-2"
+                      >
+                        <BookOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span className="flex-1 truncate">
+                          <span className="font-medium">{edge.relation_type}</span>
+                          {' to '}
+                          <span className="text-primary">{otherNodeId.substring(0, 8)}...</span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Metadata */}
+            <div className="text-xs text-muted-foreground">
+              {nodeDetails?.language && <p>Language: {nodeDetails.language}</p>}
+              {nodeDetails?.category && <p>Category: {nodeDetails.category}</p>}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
