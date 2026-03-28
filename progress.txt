@@ -287,3 +287,23 @@
   - PDF pages need to be rendered at appropriate scale to fit container
   - Keyboard navigation should be disabled when input is focused
   - PDF highlighting requires matching chunk boundaries to PDF text positions (complex feature)
+
+## 2026-03-28 - US-018
+- What was implemented
+  - Integrated epub.js for EPUB rendering
+  - Display EPUB content with proper formatting
+  - Support chapter navigation via dropdown select
+  - Support prev/next page buttons and keyboard navigation
+  - Show current chapter name
+  - Highlight support via anchor (CFI or element id)
+
+- Files changed
+  - frontend/src/components/EPUBReader.tsx - new file with EPUB reader
+  - frontend/package.json - added epubjs dependency
+  - frontend/package-lock.json - updated with epubjs
+
+- **Learnings for future iterations:**
+  - epub.js requires calling book.destroy() to clean up
+  - EPUB chapter navigation uses href from the TOC
+  - locationChanged event provides start.index for prev/next availability
+  - epub.js rendition.display() can accept CFI or href for highlighting
