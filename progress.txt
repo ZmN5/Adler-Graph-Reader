@@ -190,3 +190,23 @@
   - shadcn/ui uses CSS variables for theming - define in index.css
   - API client should be centralized in lib/api-client.ts for all components
   - Zustand store should only hold UI state, not server data (use React Query or SWR for server data)
+
+## 2026-03-28 - US-013
+- What was implemented
+  - Created UploadButton component with drag-and-drop zone
+  - Accept .pdf and .epub files only with validation
+  - Show upload progress bar during upload using XMLHttpRequest
+  - Display success message with book title after upload
+  - Display error message if upload fails
+  - Added apiUploadBook function to api-client.ts
+
+- Files changed
+  - frontend/src/components/UploadButton.tsx - new file with upload component
+  - frontend/src/lib/api-client.ts - added apiUploadBook function
+  - frontend/src/App.tsx - added UploadButton to main view
+
+- **Learnings for future iterations:**
+  - Use XMLHttpRequest (not fetch) for upload progress tracking since fetch doesn't support upload progress
+  - Drag-and-drop requires handling dragenter/dragleave/dragover/drop events
+  - Keep upload state machine simple: idle -> dragging -> uploading -> success/error
+  - lucide-react icons need to be imported individually to tree-shake properly
