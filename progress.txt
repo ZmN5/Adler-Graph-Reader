@@ -266,3 +266,24 @@
   - Set body cursor and user-select styles during drag to improve UX
   - localStorage can store simple JSON objects for layout preferences
   - Use spread operator with defaults pattern to merge stored config with defaults
+
+## 2026-03-28 - US-017
+- What was implemented
+  - Integrated pdf.js for PDF rendering
+  - Display PDF pages in reader pane with canvas
+  - Show current page / total pages indicator
+  - Support page input for direct jump
+  - Support prev/next page buttons and keyboard navigation (arrow keys)
+  - Highlight support placeholder for chunk_id (to be implemented later)
+
+- Files changed
+  - frontend/src/components/PDFReader.tsx - new file with PDF reader
+  - frontend/package.json - added pdfjs-dist dependency
+  - frontend/package-lock.json - updated with pdfjs-dist
+
+- **Learnings for future iterations:**
+  - pdfjs-dist requires setting GlobalWorkerOptions.workerSrc before use
+  - Use cMapUrl for proper character mapping in PDFs
+  - PDF pages need to be rendered at appropriate scale to fit container
+  - Keyboard navigation should be disabled when input is focused
+  - PDF highlighting requires matching chunk boundaries to PDF text positions (complex feature)
