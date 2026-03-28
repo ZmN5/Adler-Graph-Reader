@@ -122,6 +122,45 @@ export async function extractBook(bookId: string): Promise<ExtractResponse> {
   return apiPost<null, ExtractResponse>(`/api/books/${bookId}/extract`, null)
 }
 
+// Graph-related types
+export interface GraphNode {
+  id: string
+  name: string
+  description: string
+  examples: string[]
+  source_chunk_ids: string[]
+}
+
+export interface GraphEdge {
+  id: string
+  source_node_id: string
+  target_node_id: string
+  relation_type: string
+}
+
+export interface GraphResponse {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
+
+export async function getBookGraph(bookId: string): Promise<GraphResponse> {
+  return apiGet<GraphResponse>(`/api/books/${bookId}/graph`)
+}
+
+export async function getGlobalGraph(): Promise<GraphResponse> {
+  return apiGet<GraphResponse>('/api/graph/global')
+}
+
+export interface NodeDetails extends GraphNode {
+  book_id?: string
+  language?: string
+  category?: string
+}
+
+export async function getNode(nodeId: string): Promise<NodeDetails> {
+  return apiGet<NodeDetails>(`/api/nodes/${nodeId}`)
+}
+
 export interface UploadBookResponse {
   book_id: string
   title: string
