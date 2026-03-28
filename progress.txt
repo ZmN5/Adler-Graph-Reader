@@ -108,3 +108,22 @@
   - Remove <script> and <style> tags before stripping HTML tags
   - Chapters are treated as "pages" for EPUB (total_pages = chapter count)
 
+## 2026-03-28 - US-009
+- What was implemented
+  - Created LLM client connecting to http://localhost:1234/v1 (LM Studio)
+  - OpenAI-compatible chat completions API support
+  - Built system prompt enforcing output language (zh/en) and source_chunk_id
+  - Parse JSON response extracting concepts, relations, explanations, examples
+  - Handle connection errors gracefully with custom LlmError enum
+  - Added reqwest dependency for HTTP client
+
+- Files changed
+  - backend/Cargo.toml - added reqwest dependency
+  - backend/src/llm_client.rs - new file with LLM client implementation
+  - backend/src/main.rs - added llm_client module
+
+- **Learnings for future iterations:**
+  - Use serde aliases (e.g., #[serde(alias = "source_chunk_id")]) for JSON fields with different names
+  - LM Studio uses OpenAI-compatible API at /v1/chat/completions
+  - Build language-specific prompts for concept extraction
+
