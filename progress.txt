@@ -67,3 +67,44 @@
   - When querying edges for a book, need to filter by both source AND target node belonging to the book
   - Use serde_json::from_str for parsing JSON arrays from database (examples, source_chunk_ids columns)
   - sqlx query_as tuple must match exact column count in SELECT statement
+
+## 2026-03-28 - US-007
+- What was implemented
+  - Implemented PDF parsing using pdf-extract crate
+  - Implemented POST /api/books/:id/parse endpoint
+  - Extract text per page maintaining page numbers
+  - Split pages into ~1000 char chunks with 100 char overlap
+  - Store chunks in database with UUIDs and page_start/page_end
+  - Update total_pages in books table after parsing
+  - Ignore images, extract only text
+
+- Files changed
+  - backend/Cargo.toml - added pdf-extract dependency
+  - backend/src/pdf_parser.rs - new file with PDF parsing logic
+  - backend/src/main.rs - added parse endpoint and route
+
+- **Learnings for future iterations:**
+  - pdf-extract extracts text from PDF files, may not preserve exact page boundaries
+  - Use split_pages_from_text() to detect page breaks via form feeds or "Page X" patterns
+  - When format column in query is TEXT, use String type, not i32
+
+## 2026-03-28 - US-008
+- What was implemented
+  - Implemented EPUB parsing using zip crate (EPUB is a ZIP archive)
+  - Extract text from XHTML/HTML content files in the EPUB
+  - Chapters treated as pages (total_pages = number of chapters)
+  - Split chapters into ~1000 char chunks with 100 char overlap
+  - Store chunks in database with UUIDs and chapter index as page_start/page_end
+  - Ignore images, extract only text
+
+- Files changed
+  - backend/Cargo.toml - added zip crate dependency
+  - backend/src/epub_parser.rs - new file with EPUB parsing logic
+  - backend/src/main.rs - updated parse endpoint to handle both PDF and EPUB
+
+- **Learnings for future iterations:**
+  - EPUB files are ZIP archives - use zip crate to extract contents
+  - Content files are XHTML/HTML - need to strip tags to get plain text
+  - Remove <script> and <style> tags before stripping HTML tags
+  - Chapters are treated as "pages" for EPUB (total_pages = chapter count)
+
