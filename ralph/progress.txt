@@ -98,3 +98,17 @@ Started: 2026-03-28
   - Use curl -s -w "\n%{http_code}" to capture both body and HTTP status code
   - test_api helper function simplifies endpoint testing with pattern matching
 ---
+
+## 2026-03-28 21:00 - US-005
+- What was implemented: Added evaluation report generation [7/7] to run-evaluation.sh - tracks test results from all phases (typecheck, upload, e2e, API contract), collects issues by severity (BLOCKING/HIGH/MEDIUM/SUGGESTION), generates markdown report saved to tasks/evaluation-report-YYYY-MM-DD.md
+- Files changed:
+  - scripts/run-evaluation.sh (added report generation infrastructure)
+  - ralph/prd.json (updated passes:true for US-005)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Use bash arrays for tracking multiple issues by severity
+  - generate_report function creates structured markdown with execution time, test statistics, and categorized issues
+  - START_TIME captured at beginning for duration calculation
+  - add_issue helper function simplifies issue tracking with severity levels
+  - Report includes: execution summary table, detailed test results, issues grouped by severity, conclusion
+---
