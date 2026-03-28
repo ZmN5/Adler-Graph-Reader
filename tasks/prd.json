@@ -1,113 +1,171 @@
 {
   "project": "Intelligent Reading Concept Graph - Evaluation Loop",
   "branchName": "ralph/evaluation-fix-loop",
-  "description": "评估-修复迭代循环系统：建立系统化评估流程，快速发现修复问题，形成闭环",
+  "description": "评估-修复迭代循环系统：5轮评估-修复迭代，逐步解决 BLOCKING/HIGH/MEDIUM 问题直到系统稳定",
   "userStories": [
     {
       "id": "US-001",
-      "title": "评估脚本框架",
-      "description": "作为开发者，我需要一个可重复运行的评估脚本，能够一键启动服务并执行完整评估流程",
+      "title": "第1轮：首次评估",
+      "description": "作为评估者，我需要启动服务并执行首次评估，得到系统当前问题报告",
       "acceptanceCriteria": [
-        "start.sh 能够启动后端(8080)和前端(3000)",
-        "服务启动后健康检查通过 (GET /api/health)",
-        "评估脚本能够检测服务是否正常运行",
+        "服务启动 (./start.sh)",
+        "健康检查通过 (GET /api/health)",
+        "遍历核心功能（上传/解析/抽取/阅读/图谱）",
+        "产出问题报告，分类：BLOCKING/HIGH/MEDIUM/SUGGESTION",
+        "报告保存到 tasks/evaluation-report-YYYY-MM-DD.md",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "start.sh works, health check passes, evaluation infrastructure in place"
+      "notes": "Initial evaluation completed. Report saved to tasks/evaluation-report-2026-03-28.md. BLOCKING issue found: Data directory path mismatch (backend stores at backend/data/ instead of project root data/)."
     },
     {
       "id": "US-002",
-      "title": "浏览器自动化评估",
-      "description": "作为评估者，我需要使用 browser-use skill 自动遍历产品核心流程，验证功能完整性",
+      "title": "第1轮：修复 BLOCKING 问题",
+      "description": "作为开发者，我需要修复第1轮评估中发现的所有 BLOCKING 问题",
       "acceptanceCriteria": [
-        "能够上传一本书籍(EPub/PDF)",
-        "能够解析书籍(Parse按钮)",
-        "能够提取概念(Extract按钮)",
-        "能够打开书籍详情页查看PDF/EPUB阅读器",
-        "能够查看概念图谱",
-        "Typecheck passes",
-        "Verify in browser using browser-use skill"
+        "定位每个 BLOCKING 问题根源（文件:行号）",
+        "修复所有 BLOCKING 问题",
+        "每个修复有对应 commit",
+        "修复后服务正常启动",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Browser automation tested via project-evaluator. PDF reading works, EPUB partially works (blocked by epubjs architecture)"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "问题分类与定级",
-      "description": "作为评估者，我需要对发现的问题进行严重程度分类，确保优先修复关键问题",
+      "title": "第2轮：回归评估",
+      "description": "作为评估者，验证 BLOCKING 问题修复后系统状态",
       "acceptanceCriteria": [
-        "BLOCKING - 阻塞性问题，无法正常使用",
-        "HIGH - 严重问题，影响核心功能",
-        "MEDIUM - 一般问题，不影响主要流程",
-        "SUGGESTION - 建议改进",
-        "每个问题有明确的文件位置和代码行号",
+        "执行完整评估流程",
+        "确认 BLOCKING 问题已修复",
+        "无新 BLOCKING 问题引入",
+        "更新评估报告",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Issues classified in evaluation report: BLOCKING (EPUB loading), HIGH (test data), HIGH (LM Studio external)"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "问题追踪与修复",
-      "description": "作为开发者，我需要追踪每个问题的修复状态，确保所有 BLOCKING 问题被及时解决",
+      "title": "第2轮：修复 HIGH 问题",
+      "description": "作为开发者，我需要修复第2轮评估中发现的 HIGH 问题",
       "acceptanceCriteria": [
-        "创建问题追踪列表(Task)",
-        "BLOCKING 问题标记为最高优先级",
-        "修复后更新问题状态为 completed",
+        "定位每个 HIGH 问题根源",
+        "修复所有 HIGH 问题",
+        "每个修复有对应 commit",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Issues tracked in evaluation report. EPUB fix committed as 7baadfa"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "修复验证评估",
-      "description": "作为评估者，我需要在问题修复后重新运行评估，确认问题已解决且无引入新问题",
+      "title": "第3轮：回归评估",
+      "description": "作为评估者，验证 HIGH 问题修复后系统状态",
       "acceptanceCriteria": [
-        "重新执行完整浏览器遍历流程",
-        "确认之前的 BLOCKING 问题已修复",
-        "检查是否有新引入的问题",
+        "执行完整评估流程",
+        "确认 HIGH 问题已修复",
+        "无新 BLOCKING 问题引入",
         "更新评估报告",
-        "Typecheck passes",
-        "Verify in browser using browser-use skill"
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Post-fix evaluation done in evaluation-report-2026-03-28-v2.md"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-006",
-      "title": "评估报告生成",
-      "description": "作为项目管理者，我需要生成评估报告，记录问题状态和改进进展",
+      "title": "第3轮：继续修复 HIGH/MEDIUM",
+      "description": "作为开发者，继续修复评估中发现的问题",
       "acceptanceCriteria": [
-        "报告包含：问题列表、修复状态、优先顺序",
-        "报告保存到 tasks/evaluation-report-YYYY-MM-DD.md",
-        "包含修复前后的对比",
+        "修复剩余 HIGH 问题",
+        "开始修复 MEDIUM 问题",
+        "每个修复有对应 commit",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Automated report generation in run-evaluation.sh with before/after comparison section. Reports saved to tasks/evaluation-report-YYYY-MM-DD.md"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-007",
-      "title": "迭代循环直到稳定",
-      "description": "作为项目团队，我们需要重复评估-修复循环，直到没有 BLOCKING 问题",
+      "title": "第4轮：回归评估",
+      "description": "作为评估者，验证修复后系统状态",
       "acceptanceCriteria": [
-        "循环执行直到所有 BLOCKING 问题被修复",
-        "每次迭代生成新的评估报告",
-        "MEDIUM/SUGGESTION 问题可延后处理",
-        "记录迭代次数和修复耗时",
+        "执行完整评估流程",
+        "确认 HIGH 问题已修复",
+        "MEDIUM 问题数量减少",
+        "无新 BLOCKING 问题引入",
+        "更新评估报告",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Iteration loop implemented in run-evaluation-loop.sh. Tracks iterations in evaluation-iterations.log. Stops when no BLOCKING issues remain."
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "第4轮：修复 MEDIUM 问题",
+      "description": "作为开发者，修复 MEDIUM 优先级问题",
+      "acceptanceCriteria": [
+        "修复所有 MEDIUM 问题",
+        "处理有价值的 SUGGESTION",
+        "每个修复有对应 commit",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "第5轮：回归评估",
+      "description": "作为评估者，验证 MEDIUM 问题修复后系统状态",
+      "acceptanceCriteria": [
+        "执行完整评估流程",
+        "确认 MEDIUM 问题已修复",
+        "无新 BLOCKING 问题引入",
+        "更新评估报告（最终状态）",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "第5轮：最终修复",
+      "description": "作为开发者，完成最终问题修复",
+      "acceptanceCriteria": [
+        "处理所有剩余 MEDIUM 问题",
+        "处理有价值的 SUGGESTION",
+        "代码清理和优化",
+        "每个修复有对应 commit",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "第5轮：最终回归评估",
+      "description": "作为评估者，验证系统达到稳定状态",
+      "acceptanceCriteria": [
+        "执行完整评估流程",
+        "无 BLOCKING 问题",
+        "HIGH/MEDIUM 问题数量显著减少",
+        "生成最终评估报告",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
