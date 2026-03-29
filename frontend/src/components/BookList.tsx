@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { listBooks, deleteBook, extractBook, parseBook, BookSummary } from '@/lib/api-client'
 import { Book, Trash2, Sparkles, FileText, BookOpen, CheckCircle, PlayCircle } from 'lucide-react'
+import { ConfirmDialog } from './ConfirmDialog'
 
 interface BookListProps {
   className?: string
@@ -23,6 +24,8 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
   const [extractingBookId, setExtractingBookId] = useState<string | null>(null)
   const [parsingBookId, setParsingBookId] = useState<string | null>(null)
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [bookToDelete, setBookToDelete] = useState<{ id: string; name: string } | null>(null)
 
   const loadBooks = useCallback(async () => {
     try {
@@ -41,18 +44,21 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
     loadBooks()
   }, [loadBooks, onUploadSuccess])
 
-  const handleDelete = useCallback(async (e: React.MouseEvent, bookId: string) => {
+  const handleDelete = useCallback((e: React.MouseEvent, bookId: string, bookName: string) => {
     e.stopPropagation()
-    if (!confirm('Are you sure you want to delete this book?')) {
-      return
-    }
+    setBookToDelete({ id: bookId, name: bookName })
+    setIsDeleteModalOpen(true)
+  }, [])
+
+  const confirmDelete = useCallback(async () => {
+    if (!bookToDelete) return
     try {
-      await deleteBook(bookId)
-      setBooks((prev) => prev.filter((b) => b.id !== bookId))
+      await deleteBook(bookToDelete.id)
+      setBooks((prev) => prev.filter((b) => b.id !== bookToDelete.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete book')
     }
-  }, [])
+  }, [bookToDelete])
 
   const handleExtract = useCallback(async (e: React.MouseEvent, book: BookSummary) => {
     e.stopPropagation()
@@ -207,7 +213,7 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
               </button>
             )}
             <button
-              onClick={(e) => handleDelete(e, book.id)}
+              onClick={(e) => handleDelete(e, book.id, book.title)}
               className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors bg-destructive/10 text-destructive hover:bg-destructive/20"
               title="Delete book"
             >
@@ -217,6 +223,15 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
           </div>
         </div>
       ))}
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Confirm Delete"
+        message={bookToDelete ? `Confirm delete "${bookToDelete.name}"? This cannot be undone.` : ''}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   )
 }

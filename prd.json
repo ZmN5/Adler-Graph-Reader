@@ -1,87 +1,132 @@
 {
   "project": "Intelligent-Reading-Concept-Graph",
-  "branchName": "ralph/bug-fixes-sprint",
-  "description": "Bug Fixes Sprint - Fix EPUB rendering, PDF overflow, citation navigation, and graph label sizing",
+  "branchName": "ralph/ux-bugfixes",
+  "description": "UX Bug Fixes Sprint - Fix delete confirmation, navigation display, progress indication, modal close, and language selection",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Fix EPUB Reader Rendering",
-      "description": "As a user, I want to view EPUB format books so that I can read EPUB files.",
+      "title": "Delete confirmation modal dialog",
+      "description": "As a user, I want to confirm before deleting a book so that I don't accidentally delete data.",
       "acceptanceCriteria": [
-        "EPUB file loads without 'No EPUB document' error",
-        "Book content is visible in the reader area",
-        "Chapter navigation sidebar shows all chapters",
-        "Previous/Next buttons work to navigate chapters",
+        "Click Delete button shows confirmation modal",
+        "Modal content: 'Confirm delete {book name}? This cannot be undone.'",
+        "Cancel button closes modal without deleting",
+        "Confirm Delete button executes deletion",
+        "Clicking outside modal does not trigger delete",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Frontend fix - EPUB display issue"
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Fix PDF Container Overflow",
-      "description": "As a user, I want PDF pages to fit within the display area so that I can read without scrolling horizontally.",
+      "title": "Navigation dropdown expands",
+      "description": "As a user, I want the chapter navigation dropdown to expand so I can select chapters.",
       "acceptanceCriteria": [
-        "PDF page width fits within container bounds",
-        "PDF page height fits within container bounds",
-        "No horizontal scrollbar appears",
-        "Canvas is centered when smaller than container",
+        "Clicking dropdown shows chapter list (5 options visible)",
+        "Dropdown arrow changes direction when expanded",
+        "Selecting chapter navigates and closes dropdown",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Frontend fix - PDF overflow issue"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "PDF Citation Navigation",
-      "description": "As a user, I want to click on a source citation and jump to the exact PDF page so that I can verify the context.",
+      "title": "Display correct chapter title",
+      "description": "As a user, I want to see the actual chapter title instead of 'Unknown'.",
       "acceptanceCriteria": [
-        "Click citation in NodeDetailPanel triggers page navigation",
-        "PDF reader jumps to the page number stored in chunk.page_start",
-        "Page number input field updates to show current page",
-        "Works for both direct citation click and 'View in PDF' button",
+        "Entering book shows first chapter title correctly",
+        "Navigating chapters updates title display",
+        "Title shows chapter number and name (e.g., '1. Introduction to DeepSeek')",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Frontend fix - citation click to PDF page - Already implemented"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "EPUB Citation Navigation",
-      "description": "As a user, I want to click on a source citation and jump to the correct EPUB location so that I can verify the context.",
+      "title": "Previous/Next buttons work correctly",
+      "description": "As a user, I want Previous/Next buttons to navigate chapters properly.",
       "acceptanceCriteria": [
-        "Click citation triggers navigation to approximate chapter location",
-        "EPUB reader uses percentage-based navigation",
-        "Chapter dropdown updates to show current chapter",
-        "Works for both direct citation click and 'View in EPUB' button",
+        "Previous button enabled when not on first chapter",
+        "Next button enabled when not on last chapter",
+        "Clicking Previous navigates to previous chapter",
+        "Clicking Next navigates to next chapter",
+        "First/last chapter disables corresponding button",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
       "passes": false,
-      "notes": "Frontend fix - citation click to EPUB location"
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Fix Graph Node Label Size",
-      "description": "As a user, I want readable node labels at all zoom levels so that I can understand the concept graph.",
+      "title": "Concept Graph button shows feedback",
+      "description": "As a user, I want the Concept Graph button to show feedback when clicked.",
       "acceptanceCriteria": [
-        "Labels don't become excessively large at low zoom (cap at 14px)",
-        "Labels still visible at medium zoom (0.4 globalScale)",
-        "Labels hidden at very low zoom (< 0.3) for performance",
-        "Labels use bold for core concepts",
+        "Clicking Concept Graph button switches to graph view",
+        "Active button has visual highlight (border or background change)",
+        "Current view is clearly indicated",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
       "passes": false,
-      "notes": "Frontend fix - graph label sizing"
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Extract button shows progress indicator",
+      "description": "As a user, I want to see progress when extracting concepts so I know the system is working.",
+      "acceptanceCriteria": [
+        "Clicking Extract shows spinner animation",
+        "Status text 'Extracting concepts...' is displayed",
+        "Progress indicator disappears when extraction completes",
+        "Error message shown if extraction fails",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Core Concepts modal closes with Escape",
+      "description": "As a user, I want to close the Core Concepts modal with Escape key.",
+      "acceptanceCriteria": [
+        "Pressing Escape while modal is open closes it",
+        "Close has appropriate transition animation",
+        "Focus returns to trigger button after close",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Upload language selection has description",
+      "description": "As a user, I want to understand the language selection meaning.",
+      "acceptanceCriteria": [
+        "Language dropdown has clear option labels",
+        "Help text explains: 'Select language for concept extraction'",
+        "Auto-detect option is selected by default",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
     }
   ]
 }

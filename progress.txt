@@ -1,87 +1,22 @@
-## Bug Fixes Sprint - Ralph Progress
-
-Branch: ralph/bug-fixes-sprint
-Started: 2026-03-29
-
 ## Codebase Patterns
-- Backend API returns should match frontend type expectations directly (e.g., `Vec<GraphNode>` instead of wrapper objects)
-- Always add defensive Array.isArray checks when consuming API responses in React components
-- SQL queries should filter by `is_core = TRUE` for core concepts and maintain consistent ordering
+- Use `cn()` utility from `@/lib/utils` for merging Tailwind classes
+- Modal/dialog components should be placed at the end of the return JSX, inside the root element
+- Use `useCallback` for event handlers that are passed to child components to avoid unnecessary re-renders
+- Book list state uses `BookSummary` type from `@/lib/api-client`
 
----
-
-## 2026-03-29 - New Sprint Focus: Display Bug Fixes
-
-Archive note: Previous prd.json (12 user stories including core concepts API, EPUB parser, etc.) archived to 2026-03-29-bug-fixes-display/
-
-### New Focus (5 User Stories):
-1. US-001: Fix EPUB Reader Rendering
-2. US-002: Fix PDF Container Overflow
-3. US-003: PDF Citation Navigation
-4. US-004: EPUB Citation Navigation
-5. US-005: Fix Graph Node Label Size
-
----
-
-## Previous Sprint Learnings (2026-03-29)
-
-- When modifying API return types, ensure both backend struct and frontend type definitions stay in sync
-- The `core_concept::get_core_concepts` module function is no longer used by the API (kept for potential future use)
-- SQLx query_as with tuple types requires exact column ordering matching the type definition
-
----
-
-## 2026-03-29 - US-001: Fix EPUB Reader Rendering
-- **Bug**: EPUBReader had a chicken-and-egg problem where the viewer div required `rendition` to be non-null to render, but `rendition` was only set inside an effect that required the viewer div to exist first.
-- **Fix**: Restructured EPUBReader so the viewer div renders whenever `book` is loaded (even if `rendition` hasn't been set yet). Added a spinner inside the viewer until rendition is initialized.
-- **Files changed**: `frontend/src/components/EPUBReader.tsx`
+## 2026-03-29 20:45 - US-001
+- What was implemented
+  - Created `ConfirmDialog.tsx` component with backdrop, close on Escape key, close on backdrop click, danger variant styling
+  - Modified `BookList.tsx` to use state-managed modal instead of browser `confirm()` dialog
+  - Delete button now opens modal showing "Confirm delete '{book name}'? This cannot be undone."
+  - Cancel button closes modal without action, Confirm button executes deletion
+- Files changed
+  - frontend/src/components/BookList.tsx (modified)
+  - frontend/src/components/ConfirmDialog.tsx (new)
+  - prd.json (updated US-001 passes to true)
 - **Learnings for future iterations:**
-  - React effects run AFTER the DOM is painted, so refs should be available if the element is rendered
-  - When using refs with conditional rendering, ensure the element exists before the effect runs
-  - If an effect depends on a DOM element being rendered, that element must not depend on state set inside the effect
+  - When adding modal components to a list view, ensure the modal is placed inside the root JSX element but after the `.map()` iteration
+  - Modal state needs both `isOpen` boolean and the item being acted upon (e.g., `bookToDelete`)
+  - The `confirm()` browser dialog should never be used - always create a proper modal component
+  - For delete actions, use `variant="danger"` to show appropriate warning styling
 ---
-
-## 2026-03-29 - US-003: PDF Citation Navigation
-- **Status**: Already implemented - no code changes needed
-- **Implementation**: Citation click → `handleCitationClick` in App.tsx → `getChunk(chunkId)` → `setPdfPageNumber(chunk.page_start)` → PDFReader `useEffect` → `goToPage(pageNumber)` → updates `currentPage` and `pageInputValue`
-- **Files changed**: None (existing implementation was correct)
-- **Learnings for future iterations:**
-  - The citation navigation infrastructure was already in place - verify existing code before implementing
-  - PDFReader uses `pageNumber` prop for external navigation and `goToPage` keeps `pageInputValue` in sync
-  - `handleCitationClick` handles async chunk fetching correctly with try/catch
----
-
-## 2026-03-29 - US-002: Fix PDF Container Overflow
-- **Bug**: PDF canvas overflowed container horizontally and didn't fit vertically
-- **Fix**: Changed `overflow-auto` to `overflow-hidden` on canvas wrapper, added `max-w-full h-auto` to canvas. Captured container dimensions synchronously before async render to avoid TypeScript null errors, added height-based scale calculation.
-- **Files changed**: `frontend/src/components/PDFReader.tsx`
-- **Browser verification**: Confirmed no horizontal scrollbar, PDF fits within container bounds
-- **Learnings for future iterations:**
-  - Container ref dimensions should be captured synchronously before async operations (avoid TypeScript null check issues in effects)
-  - Canvas scaling should consider both width AND height constraints to prevent overflow
-  - Use `overflow-hidden` instead of `overflow-auto` on canvas container to prevent scrollbars
----
-
-## 2026-03-29 - US-004: EPUB Citation Navigation
-- **Bug**: For EPUB books, citation clicks passed `highlightChunkId` (UUID) as `highlightAnchor`, but epubjs `rendition.display()` requires CFI or href strings - UUIDs cause silent failures
-- **Fix**: Pass `highlightAnchor={null}` for EPUB so citation navigation uses percentage-based navigation via `pageNumber` prop instead (which is the correct approach for EPUB)
-- **Files changed**: `frontend/src/App.tsx`
-- **Browser verification**: Basic EPUB navigation works (chapter dropdown, Next/Previous buttons). EPUB citation navigation requires concept extraction (LLM processing) which takes too long for automated testing.
-- **Learnings for future iterations:**
-  - For EPUB citation navigation, epubjs percentage-based navigation via `rendition.display(percentage)` is the correct approach (EPUBs don't have fixed pages)
-  - `highlightChunkId` is a database UUID - not usable by epubjs directly
-  - `pageNumber` prop in EPUBReader represents chapter number (page_start from chunks table) which is used to calculate percentage
-  - `totalPages` from `selectedBook.total_pages` is used to normalize chapter number to percentage
----
-
-## 2026-03-29 - US-005: Fix Graph Node Label Size
-- **Bug**: At low zoom, labels became excessively large (e.g., 12/0.4 = 30px font size)
-- **Fix**: Added `MAX_FONT_SIZE = 14` cap and changed conditions to show labels when `globalScale >= 0.3` (hidden below 0.3)
-- **Files changed**: `frontend/src/components/GraphCanvas.tsx`
-- **Browser verification**: Graph renders with 10 nodes. Label sizing at various zoom levels cannot be visually verified due to CLI limitations.
-- **Learnings for future iterations:**
-  - Canvas font sizing: when using `fontSize / globalScale` formula, always cap the result to prevent huge labels at low zoom
-  - GraphCanvas uses 0.3, 0.4, 0.8 as zoom thresholds for label visibility and style
-  - Canvas element can be inspected via `document.querySelector('canvas')?.toDataURL()` to verify rendering
----
-
