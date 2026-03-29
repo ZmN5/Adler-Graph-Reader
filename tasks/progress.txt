@@ -21,3 +21,19 @@
   - When filtering, empty selectedCategories means show all (no filter)
   - Category filter UI integrated into existing legend panel
 ---
+
+## 2026-03-29 - US-006
+- Implemented Graph node filtering functionality
+- Added search filter for node names and descriptions (case-insensitive)
+- Added "Show Core Only" toggle button with Star icon
+- Filters are combined: search + core + category
+- Added Clear filters button when any filter is active
+- Search input with Search icon in legend panel
+- Files changed:
+  - frontend/src/components/GraphCanvas.tsx
+- **Learnings for future iterations:**
+  - Multiple filters are combined with AND logic
+  - Search matches both node name and description
+  - Filters are displayed in legend panel for space efficiency
+  - Clear filters button appears when any filter is active
+---

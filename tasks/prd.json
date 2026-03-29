@@ -98,8 +98,8 @@
         "Verify in browser: 筛选器正常工作，graph 正确过滤"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 8327980 提交中完成：添加了搜索框和 Show Core Only 筛选按钮"
     },
     {
       "id": "US-007",
