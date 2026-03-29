@@ -65,8 +65,8 @@
         "Verify in browser: Graph 缩放/拖拽流畅，无明显卡顿"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 1eb111b 提交中完成：实现了节点数量限制、useMemo 优化、force simulation 参数优化"
     },
     {
       "id": "US-005",

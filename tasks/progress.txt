@@ -5,17 +5,18 @@
 
 ## Progress Log
 
-## 2026-03-29 - US-003
-- Implemented Related Concepts display with node names
-- Added onRelatedNodeClick prop to NodeDetailPanel
-- Modified NodeDetailPanel to fetch related node info from graph data
-- Related Concepts now display node names instead of hex IDs
-- Clicking on a related concept navigates to that node's details
+## 2026-03-29 - US-004
+- Implemented Graph performance optimization
+- Added node limit (initial 50 nodes) with Load More functionality
+- Nodes sorted by importance (core concepts first, then by source chunk count)
+- Added useMemo for visible nodes, links, and filtered data
+- Optimized force simulation parameters (d3AlphaDecay=0.05, d3VelocityDecay=0.4)
+- Added visible/total node count display with Load More button
 - Files changed:
-  - frontend/src/components/NodeDetailPanel.tsx
-  - frontend/src/App.tsx
+  - frontend/src/components/GraphCanvas.tsx
 - **Learnings for future iterations:**
-  - Related nodes are loaded from book graph data (already fetched)
-  - Edge items are now clickable buttons with hover effects
-  - Node names are displayed instead of truncated hex IDs
+  - react-force-graph-2D uses cooldownTicks, d3AlphaDecay, d3VelocityDecay for performance tuning
+  - useMemo prevents unnecessary re-renders of graph data
+  - Load More pattern works well for incremental graph exploration
+  - Nodes should be sorted before slicing to ensure important nodes are visible first
 ---
