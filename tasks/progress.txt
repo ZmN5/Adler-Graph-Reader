@@ -5,18 +5,19 @@
 
 ## Progress Log
 
-## 2026-03-29 - US-004
-- Implemented Graph performance optimization
-- Added node limit (initial 50 nodes) with Load More functionality
-- Nodes sorted by importance (core concepts first, then by source chunk count)
-- Added useMemo for visible nodes, links, and filtered data
-- Optimized force simulation parameters (d3AlphaDecay=0.05, d3VelocityDecay=0.4)
-- Added visible/total node count display with Load More button
+## 2026-03-29 - US-005
+- Implemented Graph node grouping and clustering by category
+- Added category field to GraphNode in backend and frontend
+- Modified GraphCanvas to color nodes by category using CATEGORY_COLORS mapping
+- Added category filter in legend panel with clickable category buttons
+- Nodes can be filtered by selecting/deselecting categories
 - Files changed:
+  - backend/src/main.rs
   - frontend/src/components/GraphCanvas.tsx
+  - frontend/src/lib/api-client.ts
 - **Learnings for future iterations:**
-  - react-force-graph-2D uses cooldownTicks, d3AlphaDecay, d3VelocityDecay for performance tuning
-  - useMemo prevents unnecessary re-renders of graph data
-  - Load More pattern works well for incremental graph exploration
-  - Nodes should be sorted before slicing to ensure important nodes are visible first
+  - Category colors defined in CATEGORY_COLORS constant for consistency
+  - Filter state uses Set<string> to track selected categories
+  - When filtering, empty selectedCategories means show all (no filter)
+  - Category filter UI integrated into existing legend panel
 ---

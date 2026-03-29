@@ -81,8 +81,8 @@
         "Verify in browser: 节点按分组显示不同颜色，图例可交互"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 6389e1a 提交中完成：添加了 category 字段，节点按 category 着色，添加了 category 筛选器"
     },
     {
       "id": "US-006",
