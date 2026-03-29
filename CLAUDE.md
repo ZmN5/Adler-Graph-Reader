@@ -94,10 +94,50 @@
 ## 项目规范
 
 ### 数据目录
-- 数据目录统一使用 `{项目根目录}/data/`
-- 书籍文件存储在 `data/books/`
-- 数据库存储在 `data/reader.db`
-- 后端必须从项目根目录启动以确保路径正确
+
+**⚠️ 重要：数据库实际路径是 `backend/data/reader.db`，不是项目根目录的 `data/reader.db`**
+
+由于后端服务从 `backend/` 目录启动，数据目录结构如下：
+
+| 类型 | 路径 | 说明 |
+|------|------|------|
+| 数据库 | `backend/data/reader.db` | ✅ SQLite 数据库文件 |
+| 书籍文件 | `backend/data/books/` | PDF/EPUB 文件存储 |
+| 数据库备份 | `backend/data/backups/` | 自动备份存储 |
+
+**常见错误**：
+- ❌ 根目录 `data/reader.db` 是空的（如果存在可以删除）
+- ✅ 实际使用的是 `backend/data/reader.db`
+
+### 运维脚本
+
+项目提供以下运维脚本（位于 `scripts/` 目录）：
+
+| 脚本 | 用途 | 示例 |
+|------|------|------|
+| `db.sh` | 数据库管理 | `./scripts/db.sh reset` 重置数据库 |
+| `service.sh` | 服务管理 | `./scripts/service.sh restart` 重启服务 |
+
+**常用命令**：
+```bash
+# 查看数据库路径信息
+./scripts/db.sh path
+
+# 查看数据库表结构和记录数
+./scripts/db.sh tables
+
+# 重置数据库（数据会丢失，自动备份）
+./scripts/db.sh reset
+
+# 查看服务状态
+./scripts/service.sh status
+
+# 重启所有服务
+./scripts/service.sh restart
+
+# 查看后端日志
+./scripts/service.sh logs backend
+```
 
 ### API 配置
 - 前端 API 请求使用相对路径（空字符串），通过 Vite 代理转发
