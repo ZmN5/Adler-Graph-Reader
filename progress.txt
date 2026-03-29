@@ -35,6 +35,20 @@
   - epubjs `location.start.index` is the spine index, not the flattened TOC index - use the chapter list's own index
 ---
 
+## 2026-03-29 21:35 - US-004
+- What was implemented
+  - Previous/Next buttons now navigate using flattened chapter list indices instead of epubjs spine
+  - `goToPrevious` navigates to `chapters[currentChapterIndex - 1]`
+  - `goToNext` navigates to `chapters[currentChapterIndex + 1]`
+  - Buttons properly disabled at first/last chapter boundaries
+- Files changed
+  - frontend/src/components/EPUBReader.tsx (modified)
+  - prd.json (updated US-004 passes to true)
+- **Learnings for future iterations:**
+  - epubjs `rendition.prev/next` navigates by spine index which may not match TOC structure
+  - Always navigate using `rendition.display(href)` with the chapter's own href from the TOC
+---
+
 ## 2026-03-29 20:45 - US-001
 - What was implemented
   - Created `ConfirmDialog.tsx` component with backdrop, close on Escape key, close on backdrop click, danger variant styling

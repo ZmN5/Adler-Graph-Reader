@@ -39,6 +39,7 @@ export function EPUBReader({
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(false)
+  const [currentChapterIndex, setCurrentChapterIndex] = useState(0)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<HTMLDivElement>(null)
@@ -162,13 +163,14 @@ export function EPUBReader({
         const currentHref = location.start.href.split('#')[0]
         // Match by href - currentHref is full URL, chapter.href is relative
         // Use endsWith since the relative href is appended to the base URL
-        const currentChapterIndex = chapters.findIndex((c) => currentHref.endsWith(c.href))
-        if (currentChapterIndex !== -1) {
-          const chapter = chapters[currentChapterIndex]
+        const foundIndex = chapters.findIndex((c) => currentHref.endsWith(c.href))
+        if (foundIndex !== -1) {
+          const chapter = chapters[foundIndex]
           setCurrentChapter(chapter.title)
+          setCurrentChapterIndex(foundIndex)
           // Update prev/next availability based on flattened chapter list
-          setCanPrev(currentChapterIndex > 0)
-          setCanNext(currentChapterIndex < chapters.length - 1)
+          setCanPrev(foundIndex > 0)
+          setCanNext(foundIndex < chapters.length - 1)
         }
       }
     }
@@ -248,16 +250,22 @@ export function EPUBReader({
   }, [rendition, chapterHref, chapters])
 
   const goToPrevious = useCallback(() => {
-    if (rendition && canPrev) {
-      rendition.prev()
+    if (rendition && canPrev && currentChapterIndex > 0) {
+      const prevChapter = chapters[currentChapterIndex - 1]
+      if (prevChapter) {
+        rendition.display(prevChapter.href)
+      }
     }
-  }, [rendition, canPrev])
+  }, [rendition, canPrev, currentChapterIndex, chapters])
 
   const goToNext = useCallback(() => {
-    if (rendition && canNext) {
-      rendition.next()
+    if (rendition && canNext && currentChapterIndex < chapters.length - 1) {
+      const nextChapter = chapters[currentChapterIndex + 1]
+      if (nextChapter) {
+        rendition.display(nextChapter.href)
+      }
     }
-  }, [rendition, canNext])
+  }, [rendition, canNext, currentChapterIndex, chapters])
 
   const goToChapter = useCallback((chapter: Chapter) => {
     if (rendition) {
