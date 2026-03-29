@@ -71,7 +71,12 @@ function App() {
                   pageNumber={pdfPageNumber}
                 />
               ) : (
-                <EPUBReader bookId={selectedBook.id} className="h-full" />
+                <EPUBReader
+                  bookId={selectedBook.id}
+                  className="h-full"
+                  pageNumber={pdfPageNumber}
+                  totalPages={selectedBook.total_pages ?? undefined}
+                />
               )
             }
             centerPanel={

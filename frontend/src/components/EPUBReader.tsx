@@ -7,6 +7,10 @@ interface EPUBReaderProps {
   bookId: string
   className?: string
   highlightAnchor?: string | null
+  /** External page number to navigate to (approximate for EPUB based on percentage) */
+  pageNumber?: number
+  /** Total pages for calculating percentage position in EPUB */
+  totalPages?: number
 }
 
 interface Chapter {
@@ -20,6 +24,8 @@ export function EPUBReader({
   bookId,
   className,
   highlightAnchor,
+  pageNumber,
+  totalPages: totalPagesProp,
 }: EPUBReaderProps) {
   const [book, setBook] = useState<Book | null>(null)
   const [rendition, setRendition] = useState<Rendition | null>(null)
@@ -167,6 +173,26 @@ export function EPUBReader({
       }
     }
   }, [rendition, highlightAnchor])
+
+  // Handle external page number navigation (approximate for EPUB)
+  useEffect(() => {
+    if (rendition && pageNumber && pageNumber > 0) {
+      // For EPUB, we use percentage-based navigation since EPUB doesn't have fixed pages
+      // If totalPages is provided, calculate percentage; otherwise assume pageNumber is percentage
+      const percentage = totalPagesProp && totalPagesProp > 0
+        ? (pageNumber - 1) / totalPagesProp
+        : (pageNumber - 1) / 100
+
+      const percentageClamped = Math.max(0, Math.min(0.999, percentage))
+
+      try {
+        // Navigate to the calculated percentage location
+        rendition.display(percentageClamped)
+      } catch (err) {
+        console.log('Could not navigate to page:', pageNumber)
+      }
+    }
+  }, [rendition, pageNumber, totalPagesProp])
 
   const goToPrevious = useCallback(() => {
     if (rendition && canPrev) {
