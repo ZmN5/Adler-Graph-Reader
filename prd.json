@@ -160,8 +160,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added 'Core Concepts' tab next to 'Concept Graph' tab in book detail view. CoreConceptsList component fetches core concepts via API, displays name/description/examples/page numbers. Each concept has 'View' button for PDF jump and click opens concept in graph view. Handles empty/loading/error states gracefully."
     }
   ]
 }
