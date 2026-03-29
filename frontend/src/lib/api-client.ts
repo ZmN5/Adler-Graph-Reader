@@ -182,6 +182,19 @@ export async function getCoreConcepts(bookId: string): Promise<GraphNode[]> {
   return apiGet<GraphNode[]>(`/api/books/${bookId}/core-concepts`)
 }
 
+// Chunk-related types and API
+export interface ChunkDetails {
+  id: string
+  book_id: string
+  page_start: number
+  page_end: number
+  content: string
+}
+
+export async function getChunk(chunkId: string): Promise<ChunkDetails> {
+  return apiGet<ChunkDetails>(`/api/chunks/${chunkId}`)
+}
+
 export type BookLanguage = 'auto' | 'zh' | 'en'
 
 export interface UploadBookResponse {

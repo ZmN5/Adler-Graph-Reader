@@ -11,7 +11,7 @@ import { CoreConceptsList } from '@/components/CoreConceptsList'
 import { useAppStore } from '@/stores/app-store'
 import { cn } from '@/lib/utils'
 import { useState, useCallback } from 'react'
-import { UploadBookResponse, BookSummary, GraphNode } from '@/lib/api-client'
+import { UploadBookResponse, BookSummary, GraphNode, getChunk } from '@/lib/api-client'
 import { X, Network, Star } from 'lucide-react'
 
 function App() {
@@ -21,6 +21,7 @@ function App() {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [pdfPageNumber, setPdfPageNumber] = useState<number | undefined>(undefined)
   const [activeTab, setActiveTab] = useState<'graph' | 'core-concepts'>('graph')
+  const [highlightChunkId, setHighlightChunkId] = useState<string | null>(null)
 
   const handleUploadSuccess = useCallback((_response: UploadBookResponse) => {
     setRefreshKey((k) => k + 1)
@@ -49,6 +50,25 @@ function App() {
     setSelectedNode(null)
   }, [])
 
+  const handleCitationClick = useCallback(async (chunkId: string) => {
+    if (!selectedBook) return
+
+    try {
+      // Get chunk details to find the page number
+      const chunk = await getChunk(chunkId)
+
+      // Set highlight chunk ID for both PDF and EPUB
+      setHighlightChunkId(chunkId)
+
+      // Navigate to the page (for PDF) or approximate location (for EPUB)
+      if (chunk.page_start > 0) {
+        setPdfPageNumber(chunk.page_start)
+      }
+    } catch (err) {
+      console.error('Failed to handle citation click:', err)
+    }
+  }, [selectedBook])
+
   // Show book detail view when a book is selected
   if (selectedBook) {
     const isPdf = selectedBook.format.toLowerCase() === 'pdf'
@@ -72,6 +92,7 @@ function App() {
                   bookId={selectedBook.id}
                   className="h-full"
                   pageNumber={pdfPageNumber}
+                  highlightChunkId={highlightChunkId}
                 />
               ) : (
                 <EPUBReader
@@ -79,6 +100,7 @@ function App() {
                   className="h-full"
                   pageNumber={pdfPageNumber}
                   totalPages={selectedBook.total_pages ?? undefined}
+                  highlightAnchor={highlightChunkId}
                 />
               )
             }
@@ -141,6 +163,7 @@ function App() {
                 bookId={selectedBook.id}
                 onClose={handleCloseDetailPanel}
                 onViewInPDF={isPdf ? handleViewInPDF : undefined}
+                onCitationClick={handleCitationClick}
                 className="h-full"
               />
             }

@@ -1,49 +1,51 @@
 {
-  "project": "Intelligent Reading Concept Graph - Evaluation Loop",
-  "branchName": "ralph/evaluation-fix-loop",
-  "description": "评估-修复迭代循环系统：5轮评估-修复迭代，逐步解决 BLOCKING/HIGH/MEDIUM 问题直到系统稳定",
+  "project": "Intelligent Reading Concept Graph - Bug Fixes Sprint",
+  "branchName": "ralph/bug-fixes-sprint",
+  "description": "修复智能阅读概念图谱系统中5个关键 bug：Core Concepts 显示问题、Source Citations/Related Concepts 点击跳转、Graph 性能与可视化、EPUB 格式支持",
   "userStories": [
     {
       "id": "US-001",
-      "title": "第1轮：首次评估",
-      "description": "作为评估者，我需要启动服务并执行首次评估，得到系统当前问题报告",
+      "title": "修复 Core Concepts API 返回格式问题",
+      "description": "作为用户，我希望看到正确的核心概念列表，而不是报错",
       "acceptanceCriteria": [
-        "服务启动 (./start.sh)",
-        "健康检查通过 (GET /api/health)",
-        "遍历核心功能（上传/解析/抽取/阅读/图谱）",
-        "产出问题报告，分类：BLOCKING/HIGH/MEDIUM/SUGGESTION",
-        "报告保存到 tasks/evaluation-report-YYYY-MM-DD.md",
-        "Typecheck passes"
+        "修复 getCoreConcepts API 返回格式，确保返回数组而非对象",
+        "前端添加类型检查，防御性处理非数组返回",
+        "当返回空数组时显示友好提示而非报错",
+        "后端确保 SQL 查询正确返回 core concepts 列表",
+        "Typecheck passes",
+        "Verify in browser: Core Concepts 列表正常显示，无 console 报错"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Initial evaluation completed. Report saved to tasks/evaluation-report-2026-03-28.md. BLOCKING issue found: Data directory path mismatch (backend stores at backend/data/ instead of project root data/)."
+      "notes": "已在 2c538ba 提交中完成：修复了 getCoreConcepts API 返回格式问题"
     },
     {
       "id": "US-002",
-      "title": "第1轮：修复 BLOCKING 问题",
-      "description": "作为开发者，我需要修复第1轮评估中发现的所有 BLOCKING 问题",
+      "title": "Source Citations 点击跳转 PDF/EPUB",
+      "description": "作为用户，我希望点击 Source Citations 可以跳转到原文位置进行验证",
       "acceptanceCriteria": [
-        "定位每个 BLOCKING 问题根源（文件:行号）",
-        "修复所有 BLOCKING 问题",
-        "每个修复有对应 commit",
-        "修复后服务正常启动",
-        "Typecheck passes"
+        "修改 NodeDetailPanel 中 Source Citations 展示方式，显示可理解的摘要而非 hex ID",
+        "点击 Source Citation 时调用 onCitationClick 回调并传递 chunk ID",
+        "MainContent 组件接收 chunk ID 并定位到对应 PDF 页面高亮显示",
+        "支持 PDF 和 EPUB 两种格式的定位跳转",
+        "Typecheck passes",
+        "Verify in browser: 点击 citation 正确跳转到原文位置"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Fixed BLOCKING issue: Data directory path mismatch by changing start.sh to run cargo from project root instead of backend directory."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "第2轮：回归评估",
-      "description": "作为评估者，验证 BLOCKING 问题修复后系统状态",
+      "title": "Related Concepts 显示节点名称并支持点击",
+      "description": "作为用户，我希望看到 Related Concepts 的名称而非 hex ID，并可以点击查看详情",
       "acceptanceCriteria": [
-        "执行完整评估流程",
-        "确认 BLOCKING 问题已修复",
-        "无新 BLOCKING 问题引入",
-        "更新评估报告",
-        "Typecheck passes"
+        "修改 NodeDetailPanel 获取关联节点的完整信息（名称、描述）",
+        "Related Concepts 列表显示节点名称而非 hex ID",
+        "点击 Related Concept 触发 onNodeClick 显示该节点详情",
+        "支持点击 relation type 筛选（可选增强）",
+        "Typecheck passes",
+        "Verify in browser: Related Concepts 显示名称，点击可查看详情"
       ],
       "priority": 3,
       "passes": false,
@@ -51,13 +53,16 @@
     },
     {
       "id": "US-004",
-      "title": "第2轮：修复 HIGH 问题",
-      "description": "作为开发者，我需要修复第2轮评估中发现的 HIGH 问题",
+      "title": "优化 Graph 渲染性能",
+      "description": "作为用户，我希望概念图谱即使在大量节点时也能流畅交互",
       "acceptanceCriteria": [
-        "定位每个 HIGH 问题根源",
-        "修复所有 HIGH 问题",
-        "每个修复有对应 commit",
-        "Typecheck passes"
+        "实现节点数量限制（初始只渲染前 50 个核心概念）",
+        "添加虚拟化或懒加载机制，视口外节点不渲染",
+        "优化 force simulation 参数，减少计算开销",
+        "使用 useMemo/useCallback 减少不必要的重渲染",
+        "目标：100+ 节点时仍保持 60fps 交互",
+        "Typecheck passes",
+        "Verify in browser: Graph 缩放/拖拽流畅，无明显卡顿"
       ],
       "priority": 4,
       "passes": false,
@@ -65,14 +70,15 @@
     },
     {
       "id": "US-005",
-      "title": "第3轮：回归评估",
-      "description": "作为评估者，验证 HIGH 问题修复后系统状态",
+      "title": "Graph 节点分组与聚类",
+      "description": "作为用户，我希望相关概念在图谱中按类别分组显示",
       "acceptanceCriteria": [
-        "执行完整评估流程",
-        "确认 HIGH 问题已修复",
-        "无新 BLOCKING 问题引入",
-        "更新评估报告",
-        "Typecheck passes"
+        "根据 category 或 relation_type 对节点进行颜色编码分组",
+        "添加图例显示不同分组的含义",
+        "相同分组的节点在 graph 中自然聚集（调整力导向参数）",
+        "添加分组筛选器，可选择显示/隐藏特定分组",
+        "Typecheck passes",
+        "Verify in browser: 节点按分组显示不同颜色，图例可交互"
       ],
       "priority": 5,
       "passes": false,
@@ -80,13 +86,16 @@
     },
     {
       "id": "US-006",
-      "title": "第3轮：继续修复 HIGH/MEDIUM",
-      "description": "作为开发者，继续修复评估中发现的问题",
+      "title": "Graph 节点筛选功能",
+      "description": "作为用户，我希望可以筛选图谱显示只显示核心概念或特定类别",
       "acceptanceCriteria": [
-        "修复剩余 HIGH 问题",
-        "开始修复 MEDIUM 问题",
-        "每个修复有对应 commit",
-        "Typecheck passes"
+        "添加筛选工具栏：只显示 Core Concepts / 显示全部",
+        "添加按 Category 筛选下拉框",
+        "添加按节点名称搜索功能",
+        "筛选后 graph 自动重新布局",
+        "筛选状态持久化到 URL query params（可选）",
+        "Typecheck passes",
+        "Verify in browser: 筛选器正常工作，graph 正确过滤"
       ],
       "priority": 6,
       "passes": false,
@@ -94,15 +103,16 @@
     },
     {
       "id": "US-007",
-      "title": "第4轮：回归评估",
-      "description": "作为评估者，验证修复后系统状态",
+      "title": "改进 Graph 节点可视化设计",
+      "description": "作为用户，我希望图谱节点易于区分和点击",
       "acceptanceCriteria": [
-        "执行完整评估流程",
-        "确认 HIGH 问题已修复",
-        "MEDIUM 问题数量减少",
-        "无新 BLOCKING 问题引入",
-        "更新评估报告",
-        "Typecheck passes"
+        "增大节点最小尺寸，确保可点击区域不小于 44x44px",
+        "添加节点悬停效果（放大、阴影、tooltip）",
+        "节点标签在缩放较小时显示缩写或图标",
+        "核心概念节点添加特殊标识（皇冠图标、发光效果）",
+        "高 DPI 屏幕下保持清晰渲染",
+        "Typecheck passes",
+        "Verify in browser: 节点易于点击，视觉层次分明"
       ],
       "priority": 7,
       "passes": false,
@@ -110,13 +120,15 @@
     },
     {
       "id": "US-008",
-      "title": "第4轮：修复 MEDIUM 问题",
-      "description": "作为开发者，修复 MEDIUM 优先级问题",
+      "title": "修复 EPUB 书籍展示功能",
+      "description": "作为用户，我希望在系统中正常查看 EPUB 格式书籍",
       "acceptanceCriteria": [
-        "修复所有 MEDIUM 问题",
-        "处理有价值的 SUGGESTION",
-        "每个修复有对应 commit",
-        "Typecheck passes"
+        "修复 EPUBReader 组件渲染问题",
+        "确保 EPUB 内容正确解析并显示",
+        "支持章节导航",
+        "支持文本高亮（与 PDF 功能对等）",
+        "Typecheck passes",
+        "Verify in browser: EPUB 文件可正常阅读、翻页、跳转"
       ],
       "priority": 8,
       "passes": false,
@@ -124,14 +136,15 @@
     },
     {
       "id": "US-009",
-      "title": "第5轮：回归评估",
-      "description": "作为评估者，验证 MEDIUM 问题修复后系统状态",
+      "title": "修复 EPUB 概念抽取功能",
+      "description": "作为用户，我希望可以从 EPUB 书籍中抽取概念",
       "acceptanceCriteria": [
-        "执行完整评估流程",
-        "确认 MEDIUM 问题已修复",
-        "无新 BLOCKING 问题引入",
-        "更新评估报告（最终状态）",
-        "Typecheck passes"
+        "修复 epub_parser.rs 中的文本提取逻辑",
+        "确保 EPUB 内容正确传递给 LLM 进行概念抽取",
+        "抽取的概念正确关联到 EPUB 章节位置",
+        "支持 Source Citation 定位到 EPUB 具体位置",
+        "Rust 编译通过，无 warning",
+        "Verify: EPUB 上传后可成功抽取概念"
       ],
       "priority": 9,
       "passes": false,
@@ -139,31 +152,17 @@
     },
     {
       "id": "US-010",
-      "title": "第5轮：最终修复",
-      "description": "作为开发者，完成最终问题修复",
+      "title": "EPUB 与 PDF 功能对齐",
+      "description": "作为用户，我希望 EPUB 和 PDF 有相同的功能集",
       "acceptanceCriteria": [
-        "处理所有剩余 MEDIUM 问题",
-        "处理有价值的 SUGGESTION",
-        "代码清理和优化",
-        "每个修复有对应 commit",
-        "Typecheck passes"
+        "EPUB 支持 View in Book 跳转功能",
+        "EPUB 支持文本选择和高亮",
+        "EPUB 支持章节导航侧边栏",
+        "EPUB 阅读器 UI 与 PDF 阅读器一致",
+        "Typecheck passes",
+        "Verify in browser: EPUB 功能完整性与 PDF 相当"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-011",
-      "title": "第5轮：最终回归评估",
-      "description": "作为评估者，验证系统达到稳定状态",
-      "acceptanceCriteria": [
-        "执行完整评估流程",
-        "无 BLOCKING 问题",
-        "HIGH/MEDIUM 问题数量显著减少",
-        "生成最终评估报告",
-        "Typecheck passes"
-      ],
-      "priority": 11,
       "passes": false,
       "notes": ""
     }

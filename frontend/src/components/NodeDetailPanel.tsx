@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph } from '@/lib/api-client'
+import { GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph, getChunk, ChunkDetails } from '@/lib/api-client'
 import { X, ExternalLink, BookOpen, FileText } from 'lucide-react'
 
 interface NodeDetailPanelProps {
@@ -26,11 +26,14 @@ export function NodeDetailPanel({
   const [edges, setEdges] = useState<GraphEdge[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pageNumber, setPageNumber] = useState<number | null>(null)
+  const [chunkContents, setChunkContents] = useState<Map<string, ChunkDetails>>(new Map())
+  const [loadingChunks, setLoadingChunks] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!node) {
       setNodeDetails(null)
       setEdges([])
+      setChunkContents(new Map())
       return
     }
 
@@ -56,6 +59,37 @@ export function NodeDetailPanel({
               (edge) => edge.source_node_id === node.id || edge.target_node_id === node.id
             )
             setEdges(nodeEdges)
+          }
+        }
+
+        // Load chunk contents for source citations
+        if (node.source_chunk_ids.length > 0) {
+          const chunkIdsToLoad = node.source_chunk_ids.slice(0, 10) // Load first 10
+          const chunkMap = new Map<string, ChunkDetails>()
+          const loadingSet = new Set<string>()
+
+          chunkIdsToLoad.forEach(id => loadingSet.add(id))
+          if (!cancelled) {
+            setLoadingChunks(loadingSet)
+          }
+
+          // Load chunks in parallel
+          await Promise.all(
+            chunkIdsToLoad.map(async (chunkId) => {
+              try {
+                const chunk = await getChunk(chunkId)
+                if (!cancelled) {
+                  chunkMap.set(chunkId, chunk)
+                }
+              } catch (err) {
+                console.error(`Failed to load chunk ${chunkId}:`, err)
+              }
+            })
+          )
+
+          if (!cancelled) {
+            setChunkContents(chunkMap)
+            setLoadingChunks(new Set())
           }
         }
       } catch (err) {
@@ -172,19 +206,32 @@ export function NodeDetailPanel({
                   Source Citations ({node.source_chunk_ids.length})
                 </h3>
                 <div className="space-y-1">
-                  {node.source_chunk_ids.slice(0, 10).map((chunkId) => (
-                    <button
-                      key={chunkId}
-                      onClick={() => handleCitationClick(chunkId)}
-                      className={cn(
-                        'flex items-center gap-2 w-full text-left text-sm rounded-md px-2 py-1.5',
-                        'hover:bg-muted transition-colors text-primary'
-                      )}
-                    >
-                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate font-mono text-xs">{chunkId.substring(0, 8)}...</span>
-                    </button>
-                  ))}
+                  {node.source_chunk_ids.slice(0, 10).map((chunkId) => {
+                    const chunk = chunkContents.get(chunkId)
+                    const isLoadingChunk = loadingChunks.has(chunkId)
+                    // Get summary text: first 50 chars of content or placeholder
+                    const summary = chunk
+                      ? chunk.content.slice(0, 50).replace(/\n/g, ' ') + (chunk.content.length > 50 ? '...' : '')
+                      : isLoadingChunk
+                      ? 'Loading...'
+                      : `${chunkId.substring(0, 8)}...`
+
+                    return (
+                      <button
+                        key={chunkId}
+                        onClick={() => handleCitationClick(chunkId)}
+                        className={cn(
+                          'flex items-center gap-2 w-full text-left text-sm rounded-md px-2 py-1.5',
+                          'hover:bg-muted transition-colors text-primary'
+                        )}
+                      >
+                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate" title={chunk?.content || chunkId}>
+                          {summary}
+                        </span>
+                      </button>
+                    )
+                  })}
                   {node.source_chunk_ids.length > 10 && (
                     <p className="text-xs text-muted-foreground pl-2">
                       +{node.source_chunk_ids.length - 10} more citations
