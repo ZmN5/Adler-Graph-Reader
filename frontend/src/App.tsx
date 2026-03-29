@@ -125,7 +125,7 @@ function App() {
                     className={cn(
                       'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors',
                       activeTab === 'graph'
-                        ? 'text-primary border-b-2 border-primary bg-background'
+                        ? 'text-primary border-b-2 border-primary bg-background font-semibold'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     )}
                   >
@@ -137,7 +137,7 @@ function App() {
                     className={cn(
                       'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors',
                       activeTab === 'core-concepts'
-                        ? 'text-primary border-b-2 border-primary bg-background'
+                        ? 'text-primary border-b-2 border-primary bg-background font-semibold'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     )}
                   >

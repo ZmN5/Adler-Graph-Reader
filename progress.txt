@@ -49,6 +49,17 @@
   - Always navigate using `rendition.display(href)` with the chapter's own href from the TOC
 ---
 
+## 2026-03-29 21:42 - US-005
+- What was implemented
+  - Enhanced active tab styling: added `font-semibold` to active tab buttons
+  - Both "Concept Graph" and "Core Concepts" tabs now have clearer active state
+- Files changed
+  - frontend/src/App.tsx (modified)
+  - prd.json (updated US-005 passes to true)
+- **Learnings for future iterations:**
+  - Active tabs should use `font-semibold` in addition to border for better visibility
+---
+
 ## 2026-03-29 20:45 - US-001
 - What was implemented
   - Created `ConfirmDialog.tsx` component with backdrop, close on Escape key, close on backdrop click, danger variant styling
