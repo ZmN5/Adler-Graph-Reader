@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { getBookGraph, GraphNode } from '@/lib/api-client'
 import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d'
+import { Search, Star } from 'lucide-react'
 
 const INITIAL_NODE_LIMIT = 50
 const NODE_INCREMENT = 50
@@ -67,6 +68,8 @@ export function GraphCanvas({
   const [hoveredNode, setHoveredNode] = useState<ExtendedNode | null>(null)
   const [visibleNodeCount, setVisibleNodeCount] = useState(INITIAL_NODE_LIMIT)
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showOnlyCore, setShowOnlyCore] = useState(false)
   const graphRef = useRef<ForceGraphMethods<ExtendedNode, ExtendedLink> | undefined>()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -147,12 +150,28 @@ export function GraphCanvas({
   // Memoized visible nodes and links for performance
   const visibleNodes = useMemo(() => {
     let nodes = graphData.nodes.slice(0, visibleNodeCount)
+
+    // Filter by core concept only
+    if (showOnlyCore) {
+      nodes = nodes.filter((node) => node.is_core)
+    }
+
     // Filter by selected categories if any
     if (selectedCategories.size > 0) {
       nodes = nodes.filter((node) => node.category && selectedCategories.has(node.category))
     }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      nodes = nodes.filter((node) =>
+        node.name.toLowerCase().includes(query) ||
+        node.description.toLowerCase().includes(query)
+      )
+    }
+
     return nodes
-  }, [graphData.nodes, visibleNodeCount, selectedCategories])
+  }, [graphData.nodes, visibleNodeCount, selectedCategories, searchQuery, showOnlyCore])
 
   const visibleNodeIds = useMemo(() => {
     return new Set(visibleNodes.map((n) => n.id))
@@ -424,6 +443,49 @@ export function GraphCanvas({
             )}
           </div>
         )}
+        {/* Core concepts filter */}
+        <div className="mt-3 pt-2 border-t">
+          <button
+            onClick={() => setShowOnlyCore(!showOnlyCore)}
+            className={cn(
+              'flex items-center gap-2 w-full text-xs rounded px-2 py-1.5 transition-colors',
+              showOnlyCore
+                ? 'bg-violet-500/10 text-violet-600'
+                : 'hover:bg-muted text-muted-foreground'
+            )}
+          >
+            <Star className="h-3 w-3" />
+            <span>{showOnlyCore ? 'Showing Core Only' : 'Show Core Only'}</span>
+          </button>
+        </div>
+        {/* Search filter */}
+        <div className="mt-3 pt-2 border-t">
+          <div className="text-xs font-medium text-foreground mb-1.5">Search Nodes</div>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(
+                'w-full pl-7 pr-2 py-1.5 text-xs rounded border bg-background',
+                'focus:outline-none focus:ring-1 focus:ring-primary'
+              )}
+            />
+          </div>
+          {(searchQuery || showOnlyCore) && (
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setShowOnlyCore(false)
+              }}
+              className="mt-2 text-xs text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
         {visibleNodes.length < graphData.nodes.length && (
           <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
             Showing {visibleNodes.length} of {graphData.nodes.length} nodes
