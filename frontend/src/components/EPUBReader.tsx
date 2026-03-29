@@ -29,6 +29,7 @@ export function EPUBReader({
 }: EPUBReaderProps) {
   const [book, setBook] = useState<Book | null>(null)
   const [rendition, setRendition] = useState<Rendition | null>(null)
+  const [isRendering, setIsRendering] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentChapter, setCurrentChapter] = useState<string>('Unknown')
@@ -127,6 +128,8 @@ export function EPUBReader({
   useEffect(() => {
     if (!book || !viewerRef.current) return
 
+    setIsRendering(true)
+
     const rend = book.renderTo(viewerRef.current, {
       width: '100%',
       height: '100%',
@@ -134,9 +137,15 @@ export function EPUBReader({
     })
 
     // Display the book - must await to prevent cleanup destroying rendition mid-display
-    rend.display().catch((err) => {
-      console.log('EPUB display error:', err)
-    })
+    rend.display()
+      .then(() => {
+        setIsRendering(false)
+      })
+      .catch((err) => {
+        console.error('EPUB display error:', err)
+        setIsRendering(false)
+        setError(err instanceof Error ? err.message : 'Failed to display EPUB')
+      })
 
     setRendition(rend)
 
@@ -249,33 +258,6 @@ export function EPUBReader({
     )
   }
 
-  // Show loading or error states before book is loaded
-  if (!book) {
-    if (isLoading) {
-      return (
-        <div className={cn('flex items-center justify-center py-12', className)}>
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <span className="ml-3 text-muted-foreground">Loading EPUB...</span>
-        </div>
-      )
-    }
-    if (error) {
-      return (
-        <div className={cn('flex flex-col items-center justify-center py-12 text-destructive', className)}>
-          <BookOpen className="h-12 w-12 opacity-50" />
-          <p className="mt-4">Failed to load EPUB</p>
-          <p className="text-sm">{error}</p>
-        </div>
-      )
-    }
-    return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-muted-foreground', className)}>
-        <BookOpen className="h-12 w-12 opacity-50" />
-        <p className="mt-4">No EPUB document</p>
-      </div>
-    )
-  }
-
   // Book is loaded - render the viewer div so effect can initialize rendition
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -334,9 +316,9 @@ export function EPUBReader({
       {/* Show spinner inside viewer until rendition is initialized */}
       <div
         ref={viewerRef}
-        className="flex-1 overflow-hidden relative"
+        className="flex-1 min-h-0 overflow-hidden relative"
       >
-        {!rendition && (
+        {(isRendering || !rendition) && (
           <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
