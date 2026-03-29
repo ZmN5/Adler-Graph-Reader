@@ -1,0 +1,188 @@
+{
+  "project": "Intelligent-Reading-Concept-Graph",
+  "branchName": "ralph/bug-fixes-sprint",
+  "description": "Bug Fixes Sprint - Fix core concepts display, citation navigation, graph performance/visualization, and EPUB support",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix Core Concepts API return format",
+      "description": "As a user, I want to see the correct list of core concepts so that I can quickly access important concepts from the book.",
+      "acceptanceCriteria": [
+        "Fix getCoreConcepts API to return array format instead of object",
+        "Add Array.isArray defensive check in CoreConceptsList component",
+        "Backend SQL query correctly returns core concepts with is_core=true",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Backend fix first - ensure API returns GraphNode[]"
+    },
+    {
+      "id": "US-002",
+      "title": "Fix EPUB parser text extraction",
+      "description": "As a developer, I need EPUB parser to correctly extract text content for concept extraction.",
+      "acceptanceCriteria": [
+        "Fix epub_parser.rs HTML parsing logic to extract clean text",
+        "Extract chapter structure with position mapping",
+        "Rust compilation passes with no warnings",
+        "Unit test with sample EPUB file passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Backend fix - EPUB foundation"
+    },
+    {
+      "id": "US-003",
+      "title": "Add chunk content API endpoint",
+      "description": "As a developer, I need an API to retrieve chunk content and position for citation navigation.",
+      "acceptanceCriteria": [
+        "Add GET /api/chunks/{id} endpoint to main.rs",
+        "Return chunk content, page_number, and book_id",
+        "Handle 404 error for non-existent chunks",
+        "Rust compilation passes",
+        "Test endpoint returns correct chunk data"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Backend fix - needed for citation navigation"
+    },
+    {
+      "id": "US-004",
+      "title": "Fix EPUB reader component rendering",
+      "description": "As a user, I want to view EPUB format books in the reader so that I can read EPUB files.",
+      "acceptanceCriteria": [
+        "Fix EPUBReader component to render EPUB HTML content correctly",
+        "Add chapter navigation sidebar",
+        "Support text selection and highlighting",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Frontend fix - EPUB display"
+    },
+    {
+      "id": "US-005",
+      "title": "Fix EPUB concept extraction integration",
+      "description": "As a user, I want to extract concepts from EPUB books so that I can build concept graphs from EPUB sources.",
+      "acceptanceCriteria": [
+        "Fix extractor to pass EPUB content to LLM correctly",
+        "Extracted concepts include chapter position info",
+        "Source citations link to correct EPUB locations",
+        "Rust compilation passes",
+        "Test EPUB upload and extraction flow"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Backend fix - EPUB extraction"
+    },
+    {
+      "id": "US-006",
+      "title": "Add Source Citation click navigation",
+      "description": "As a user, I want to click on source citations to jump to the exact location in the PDF/EPUB so that I can verify the context.",
+      "acceptanceCriteria": [
+        "Modify NodeDetailPanel to show chunk preview instead of hex ID",
+        "Click citation calls onCitationClick callback with chunk ID",
+        "MainContent handles citation click and jumps to PDF/EPUB position",
+        "Typecheck passes",
+        "Verify in browser: clicking citation jumps to correct location"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Frontend - citation navigation"
+    },
+    {
+      "id": "US-007",
+      "title": "Fix Related Concepts to show node names",
+      "description": "As a user, I want to see related concept names instead of hex IDs so that I can understand the relationships.",
+      "acceptanceCriteria": [
+        "Fetch related node details via getNode API in NodeDetailPanel",
+        "Display node names instead of hex IDs in Related Concepts section",
+        "Click Related Concept opens its details in the panel",
+        "Typecheck passes",
+        "Verify in browser: Related Concepts show names and are clickable"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Frontend - related concepts display"
+    },
+    {
+      "id": "US-008",
+      "title": "Optimize Graph rendering performance",
+      "description": "As a user, I want the concept graph to render smoothly even with many nodes so that I can interact without lag.",
+      "acceptanceCriteria": [
+        "Limit initial node render to 50 most important nodes",
+        "Add 'Load More' button to render additional nodes",
+        "Optimize d3AlphaDecay to 0.05 and d3VelocityDecay to 0.4",
+        "Hide labels when zoom < 0.3 for performance",
+        "Typecheck passes",
+        "Verify in browser: 100+ nodes graph is smooth"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Frontend - graph performance"
+    },
+    {
+      "id": "US-009",
+      "title": "Add Graph node category color coding",
+      "description": "As a user, I want related concepts to be grouped visually so that I can understand the structure of knowledge.",
+      "acceptanceCriteria": [
+        "Assign colors to nodes based on category field",
+        "Add legend showing color-category mapping",
+        "Core concepts have distinct visual treatment (purple)",
+        "Typecheck passes",
+        "Verify in browser: nodes have category colors"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Frontend - graph visualization"
+    },
+    {
+      "id": "US-010",
+      "title": "Add Graph node filter controls",
+      "description": "As a user, I want to filter the graph to show only core concepts or specific categories so that I can focus on what's important.",
+      "acceptanceCriteria": [
+        "Add filter toolbar: Show Core Only / Show All toggle",
+        "Add category filter dropdown",
+        "Add node name search input",
+        "Filters update graph in real-time",
+        "Typecheck passes",
+        "Verify in browser: filters work correctly"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Frontend - graph filtering"
+    },
+    {
+      "id": "US-011",
+      "title": "Improve Graph node visual design",
+      "description": "As a user, I want nodes to be visually distinct and easy to click so that I can navigate the graph intuitively.",
+      "acceptanceCriteria": [
+        "Increase minimum node size to ensure 44px click area",
+        "Add hover effect: scale up and shadow",
+        "Show tooltip on hover with full name and description",
+        "Core concept nodes have crown icon or glow effect",
+        "Typecheck passes",
+        "Verify in browser: nodes are easy to click and visually distinct"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Frontend - graph UX improvements"
+    },
+    {
+      "id": "US-012",
+      "title": "Align EPUB feature parity with PDF",
+      "description": "As a user, I want EPUB and PDF to have the same feature set so that my experience is consistent.",
+      "acceptanceCriteria": [
+        "EPUB supports 'View in Book' navigation from citations",
+        "EPUB reader UI matches PDF reader layout",
+        "EPUB supports concept highlighting in text",
+        "Typecheck passes",
+        "Verify in browser: EPUB has feature parity with PDF"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Frontend - EPUB polish"
+    }
+  ]
+}

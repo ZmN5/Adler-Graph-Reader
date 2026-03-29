@@ -1,0 +1,22 @@
+## Concept Extraction Enhancement - Ralph Progress
+
+Branch: ralph/concept-extraction-enhancement
+Started: 2026-03-29
+
+---
+
+## 2026-03-29 - US-001
+- Updated database schema to support concept extraction enhancement
+- Added `is_core` (BOOLEAN, default FALSE) and `page_number` (INTEGER) columns to nodes table
+- Added `language` (TEXT, default 'auto') column to books table
+- Used ALTER TABLE ADD COLUMN IF NOT EXISTS for backward compatibility
+- Updated ExtractedConcept struct to include page_number field
+- Updated node creation logic in extractor.rs to handle new columns
+- Files changed: src/db.rs, src/llm_client.rs, src/extractor.rs
+- **Learnings for future iterations:**
+  - The existing `nodes` table is used as the `concepts` table in this codebase
+  - description and examples columns already existed in nodes table (as JSON arrays)
+  - SQLite ALTER TABLE ADD COLUMN IF NOT EXISTS handles migrations gracefully
+  - cargo check passes with all changes
+---
+

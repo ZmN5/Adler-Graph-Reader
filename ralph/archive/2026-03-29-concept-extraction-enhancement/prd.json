@@ -1,0 +1,167 @@
+{
+  "project": "Intelligent-Reading-Concept-Graph",
+  "branchName": "ralph/concept-extraction-enhancement",
+  "description": "智能概念抽取与核心概念识别增强 - 支持语言配置、概念详情（解释+示例）、核心概念识别、PDF页码跳转",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "更新数据库 schema 存储概念详情",
+      "description": "As a developer, I need to extend database schema to store concept descriptions, examples, core flags, and page numbers.",
+      "acceptanceCriteria": [
+        "Add description column to concepts table (TEXT, nullable)",
+        "Add examples column to concepts table (JSON, nullable, stores array of examples)",
+        "Add is_core column to concepts table (BOOLEAN, default false)",
+        "Add page_number column to concepts table (INTEGER, nullable)",
+        "Add chunk_id column to concepts table (INTEGER, foreign key to chunks)",
+        "Create database migration file",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "description and examples already existed in nodes table; added is_core, page_number to nodes; added language to books table"
+    },
+    {
+      "id": "US-002",
+      "title": "修改 chunk 切分策略（4K tokens + 全量）",
+      "description": "As a developer, I need to increase chunk size to 4000 tokens and process entire book content without sampling.",
+      "acceptanceCriteria": [
+        "Change chunk size configuration from current value to 4000 tokens",
+        "Remove sampling logic, ensure all book content is processed",
+        "Update chunk boundary handling for large chunks",
+        "Verify memory and performance with large chunks",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "增强概念抽取 Prompt",
+      "description": "As a developer, I need to update LLM extraction prompt to output concept descriptions, examples, and page numbers.",
+      "acceptanceCriteria": [
+        "Update prompt to require LLM output: name, description (2-3 sentences), examples (1-2 items), page_number",
+        "Include language instruction in prompt based on book configuration",
+        "Define JSON Schema for structured output validation",
+        "Handle malformed LLM responses gracefully",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "实现核心概念识别算法",
+      "description": "As a user, I want the system to automatically identify the most important core concepts in a book.",
+      "acceptanceCriteria": [
+        "Implement multi-dimensional scoring algorithm: frequency (appearance count), centrality (PageRank), importance (LLM score)",
+        "Sort by composite score and mark top N (e.g., top 20% or fixed 10) as core concepts",
+        "Set is_core = true for core concepts in database",
+        "Create API endpoint GET /api/books/{id}/core-concepts",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "添加书籍语言配置选项",
+      "description": "As a user, I want to select extraction language (Chinese or English) when importing a book.",
+      "acceptanceCriteria": [
+        "Add language selection to book upload form (options: Auto, Chinese, English)",
+        "Store language in books table (lang: 'zh' | 'en' | 'auto')",
+        "Default to 'auto' for backward compatibility",
+        "Update book creation API to accept language parameter",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "更新概念抽取流程集成",
+      "description": "As a developer, I need to integrate new features into the existing extraction pipeline.",
+      "acceptanceCriteria": [
+        "Update extraction flow to read book language config and pass to prompt",
+        "Update extraction to store description, examples, page_number from LLM output",
+        "Run core concept identification as separate step after extraction",
+        "Update progress indicators to include core concept identification phase",
+        "Maintain backward compatibility with existing books",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "更新概念图谱节点展示",
+      "description": "As a user, I want core concepts to be visually distinct from regular concepts in the graph.",
+      "acceptanceCriteria": [
+        "Core concept nodes use special visual marker (larger size or different color/border)",
+        "Add legend explaining core concept indicator",
+        "Maintain graph interaction smoothness",
+        "Update graph API to include is_core flag in node data",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "实现节点详情弹窗",
+      "description": "As a user, I want to see detailed concept information when clicking a node.",
+      "acceptanceCriteria": [
+        "Clicking node opens detail panel/sidebar",
+        "Panel displays: concept name, description, examples",
+        "Panel includes 'View in PDF' button",
+        "Panel can be closed/dismissed",
+        "Responsive design for different screen sizes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "实现 PDF 页面跳转定位",
+      "description": "As a user, I want to jump directly to the PDF page where a concept appears.",
+      "acceptanceCriteria": [
+        "Clicking 'View in PDF' opens PDF reader",
+        "PDF automatically jumps to concept's page number",
+        "Support returning to concept graph from PDF view",
+        "Handle page numbers correctly for both PDF and EPUB",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "添加核心概念列表视图",
+      "description": "As a user, I want a dedicated view listing all core concepts of a book.",
+      "acceptanceCriteria": [
+        "Add 'Core Concepts' tab/link in book detail page",
+        "List displays core concept name, brief description, page number",
+        "List items clickable to view concept details",
+        "Support direct PDF jump from list items",
+        "Handle empty state (when no concepts extracted)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

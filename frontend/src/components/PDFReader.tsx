@@ -72,7 +72,12 @@ export function PDFReader({
 
   // Render current page
   useEffect(() => {
-    if (!pdfDoc || !canvasRef.current) return
+    if (!pdfDoc || !canvasRef.current || !containerRef.current) return
+
+    // Capture container dimensions synchronously (refs are available after render)
+    const container = containerRef.current
+    const containerWidth = container.clientWidth
+    const containerHeight = container.clientHeight - 60 // Account for header height (approx 60px)
 
     const renderPage = async () => {
       try {
@@ -80,10 +85,13 @@ export function PDFReader({
         const canvas = canvasRef.current!
         const context = canvas.getContext('2d')!
 
-        // Calculate scale to fit container width
-        const containerWidth = containerRef.current?.clientWidth || 600
+        // Calculate scale to fit container width with padding
         const viewport = page.getViewport({ scale: 1 })
-        const scale = (containerWidth - 40) / viewport.width
+        const scaleFactor = (containerWidth - 40) / viewport.width
+        const heightScaleFactor = (containerHeight - 40) / viewport.height
+
+        // Use the smaller scale to ensure both width and height fit
+        const scale = Math.min(scaleFactor, heightScaleFactor)
         const scaledViewport = page.getViewport({ scale })
 
         canvas.height = scaledViewport.height
@@ -240,10 +248,10 @@ export function PDFReader({
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto p-5 flex justify-center">
+      <div className="flex-1 overflow-hidden p-5 flex justify-center items-start">
         <canvas
           ref={canvasRef}
-          className="shadow-lg"
+          className="shadow-lg max-w-full h-auto"
         />
       </div>
     </div>
