@@ -12,6 +12,12 @@ Started: 2026-03-29
 - No sampling logic exists - all content is already processed
 - LLM prompts include JSON Schema for structured output validation
 - Validation logic filters out invalid concepts/relations with detailed logging
+- **Core Concept Identification:** Uses PageRank + frequency scoring with 50/50 weight
+  - PageRank damping factor: 0.85, iterations: 20
+  - Default: top 20% of nodes (min 5, max 20) marked as core
+  - API endpoint: POST /api/books/{id}/identify-core-concepts to trigger
+  - API endpoint: GET /api/books/{id}/core-concepts to retrieve list
+  - GraphNode includes is_core field for visualization
 
 ---
 
@@ -45,5 +51,25 @@ Started: 2026-03-29
   - page_number validation filters non-positive values (p > 0)
   - Examples are filtered to remove empty strings
   - cargo check passes with all changes
+---
+
+## 2026-03-29 - US-004
+- Implemented core concept identification algorithm in `core_concept.rs`:
+  * PageRank algorithm: 0.85 damping factor, 20 iterations for centrality scoring
+  * Frequency scoring: counts how many chunks reference each concept
+  * Composite score: 50% frequency + 50% PageRank
+  * Top 20% (min 5, max 20) of concepts marked as core by default
+- Added API endpoints:
+  * POST /api/books/{id}/identify-core-concepts - triggers identification algorithm
+  * GET /api/books/{id}/core-concepts - retrieves list of core concepts
+- Updated GraphNode struct to include `is_core: bool` field
+- Updated get_book_graph and get_global_graph to return is_core field
+- Files changed: backend/src/core_concept.rs (new), backend/src/main.rs
+- **Learnings for future iterations:**
+  - PageRank implementation follows standard power iteration with damping
+  - Composite scoring allows easy weight adjustment if needed
+  - Core concept identification should run after extraction is complete
+  - Tests added for PageRank edge cases (empty, single node, cycle)
+  - cargo check and all tests pass
 ---
 

@@ -62,8 +62,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented PageRank + frequency scoring with 50/50 weight. API endpoints: GET /api/books/{id}/core-concepts and POST /api/books/{id}/identify-core-concepts. GraphNode now includes is_core field."
     },
     {
       "id": "US-005",
