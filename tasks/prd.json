@@ -115,8 +115,8 @@
         "Verify in browser: 节点易于点击，视觉层次分明"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 e48bb6c 提交中完成：改进了节点可视化设计，添加了悬停效果和 tooltip"
     },
     {
       "id": "US-008",

@@ -37,3 +37,20 @@
   - Filters are displayed in legend panel for space efficiency
   - Clear filters button appears when any filter is active
 ---
+
+## 2026-03-29 - US-007
+- Improved Graph node visualization design
+- Increased minimum node size for better clickability (MIN_NODE_SIZE = 6)
+- Added hover effect: nodes grow 20% when hovered with shadow
+- Added glow effect for core concepts using radial gradient
+- Label display based on zoom level: full at >0.8, short at 0.4-0.8, none below
+- Added tooltip showing node name, category, and core status
+- Core concepts have larger size multiplier (1.8x vs 1.2x)
+- Files changed:
+  - frontend/src/components/GraphCanvas.tsx
+- **Learnings for future iterations:**
+  - Canvas shadow properties: shadowColor, shadowBlur, shadowOffsetX/Y
+  - Radial gradients create nice glow effects for important nodes
+  - Tooltip positioning uses absolute positioning with transform
+  - Pointer-events: none on tooltip prevents interference with graph interaction
+---
