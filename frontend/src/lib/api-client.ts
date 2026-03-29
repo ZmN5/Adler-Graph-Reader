@@ -144,6 +144,7 @@ export interface GraphNode {
   examples: string[]
   source_chunk_ids: string[]
   is_core: boolean
+  category?: string
 }
 
 export interface GraphEdge {

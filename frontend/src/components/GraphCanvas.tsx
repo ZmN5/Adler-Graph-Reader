@@ -6,6 +6,21 @@ import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-f
 const INITIAL_NODE_LIMIT = 50
 const NODE_INCREMENT = 50
 
+// Category colors mapping
+const CATEGORY_COLORS: Record<string, string> = {
+  Philosophy: '#3b82f6', // blue-500
+  Science: '#10b981', // emerald-500
+  History: '#f59e0b', // amber-500
+  Art: '#ec4899', // pink-500
+  Technology: '#06b6d4', // cyan-500
+  Politics: '#ef4444', // red-500
+  Economics: '#84cc16', // lime-500
+  Psychology: '#8b5cf6', // violet-500
+  Other: '#64748b', // slate-500
+}
+
+const DEFAULT_CATEGORY_COLOR = '#64748b' // slate-500
+
 interface GraphCanvasProps {
   bookId: string
   className?: string
@@ -30,6 +45,7 @@ interface ExtendedNode extends NodeObject {
   examples: string[]
   source_chunk_ids: string[]
   is_core: boolean
+  category?: string
 }
 
 interface ExtendedLink extends LinkObject {
@@ -50,6 +66,7 @@ export function GraphCanvas({
   const [error, setError] = useState<string | null>(null)
   const [hoveredNode, setHoveredNode] = useState<ExtendedNode | null>(null)
   const [visibleNodeCount, setVisibleNodeCount] = useState(INITIAL_NODE_LIMIT)
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const graphRef = useRef<ForceGraphMethods<ExtendedNode, ExtendedLink> | undefined>()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -116,10 +133,26 @@ export function GraphCanvas({
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
+  // Get all unique categories from nodes
+  const allCategories = useMemo(() => {
+    const categories = new Set<string>()
+    graphData.nodes.forEach((node) => {
+      if (node.category) {
+        categories.add(node.category)
+      }
+    })
+    return Array.from(categories).sort()
+  }, [graphData.nodes])
+
   // Memoized visible nodes and links for performance
   const visibleNodes = useMemo(() => {
-    return graphData.nodes.slice(0, visibleNodeCount)
-  }, [graphData.nodes, visibleNodeCount])
+    let nodes = graphData.nodes.slice(0, visibleNodeCount)
+    // Filter by selected categories if any
+    if (selectedCategories.size > 0) {
+      nodes = nodes.filter((node) => node.category && selectedCategories.has(node.category))
+    }
+    return nodes
+  }, [graphData.nodes, visibleNodeCount, selectedCategories])
 
   const visibleNodeIds = useMemo(() => {
     return new Set(visibleNodes.map((n) => n.id))
@@ -142,6 +175,22 @@ export function GraphCanvas({
   const handleLoadMore = useCallback(() => {
     setVisibleNodeCount((prev) => Math.min(prev + NODE_INCREMENT, graphData.nodes.length))
   }, [graphData.nodes.length])
+
+  const toggleCategory = useCallback((category: string) => {
+    setSelectedCategories((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(category)) {
+        newSet.delete(category)
+      } else {
+        newSet.add(category)
+      }
+      return newSet
+    })
+  }, [])
+
+  const clearCategoryFilter = useCallback(() => {
+    setSelectedCategories(new Set())
+  }, [])
 
   // Center on selected node
   useEffect(() => {
@@ -192,13 +241,16 @@ export function GraphCanvas({
       ctx.beginPath()
       ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI)
 
-      // Fill color based on state and core status
+      // Fill color based on state, core status, and category
       if (isSelected) {
         ctx.fillStyle = '#3b82f6' // primary
       } else if (isHovered) {
         ctx.fillStyle = '#60a5fa' // lighter primary
+      } else if (extNode.category) {
+        // Use category color if available
+        ctx.fillStyle = CATEGORY_COLORS[extNode.category] || DEFAULT_CATEGORY_COLOR
       } else if (extNode.is_core) {
-        ctx.fillStyle = '#8b5cf6' // purple-500 for core concepts
+        ctx.fillStyle = '#8b5cf6' // purple-500 for core concepts without category
       } else {
         ctx.fillStyle = '#94a3b8' // muted-foreground for regular concepts
       }
@@ -322,7 +374,7 @@ export function GraphCanvas({
         )}
       </div>
       {/* Legend */}
-      <div className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-sm">
+      <div className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-sm max-w-[180px]">
         <div className="text-xs font-medium text-foreground mb-1.5">Legend</div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
@@ -338,6 +390,40 @@ export function GraphCanvas({
             </span>
           </div>
         </div>
+        {/* Category filter */}
+        {allCategories.length > 0 && (
+          <div className="mt-3 pt-2 border-t">
+            <div className="text-xs font-medium text-foreground mb-1.5">Filter by Category</div>
+            <div className="flex flex-col gap-1">
+              {allCategories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => toggleCategory(category)}
+                  className={cn(
+                    'flex items-center gap-2 text-xs rounded px-1.5 py-1 transition-colors',
+                    selectedCategories.has(category)
+                      ? 'bg-primary/10 text-primary'
+                      : 'hover:bg-muted text-muted-foreground'
+                  )}
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: CATEGORY_COLORS[category] || DEFAULT_CATEGORY_COLOR }}
+                  />
+                  <span className="truncate">{category}</span>
+                </button>
+              ))}
+            </div>
+            {selectedCategories.size > 0 && (
+              <button
+                onClick={clearCategoryFilter}
+                className="mt-2 text-xs text-primary hover:underline"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+        )}
         {visibleNodes.length < graphData.nodes.length && (
           <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
             Showing {visibleNodes.length} of {graphData.nodes.length} nodes
