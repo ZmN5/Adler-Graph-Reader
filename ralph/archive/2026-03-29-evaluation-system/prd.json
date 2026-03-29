@@ -1,0 +1,140 @@
+{
+  "project": "Intelligent-Reading-Concept-Graph-Evaluation",
+  "branchName": "ralph/evaluation-system",
+  "description": "评估验证系统 - 对智能阅读概念图谱系统进行端到端、API契约、UI自动化验证",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "创建评估脚本框架和健康检查",
+      "description": "As an evaluation system, I need to create the evaluation script framework with service startup and health check.",
+      "acceptanceCriteria": [
+        "Create scripts/run-evaluation.sh as main evaluation entry point",
+        "Script can start backend (cargo run) and frontend (npm run dev)",
+        "Script polls GET /api/health until service is ready (max 60s)",
+        "Script reports clear error if service fails to start",
+        "Script handles Ctrl+C gracefully (cleanup processes)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "实现测试数据准备 - 上传样本书籍",
+      "description": "As an evaluation system, I need to upload sample books via API to prepare test data.",
+      "acceptanceCriteria": [
+        "Find PDF and EPUB files in sample_books/ directory",
+        "Upload each sample book via POST /api/books/upload with multipart/form-data",
+        "Record returned book_id for each uploaded book",
+        "Verify uploaded books appear in GET /api/books list",
+        "Report upload failures with clear error messages",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "实现端到端功能测试 - 全流程验证",
+      "description": "As an evaluation system, I need to verify the complete flow from upload to graph generation.",
+      "acceptanceCriteria": [
+        "Parse uploaded book: POST /api/books/{id}/parse returns chunks_created > 0",
+        "Extract concepts: POST /api/books/{id}/extract returns nodes_count > 0",
+        "Get graph: GET /api/books/{id}/graph returns non-empty nodes and edges arrays",
+        "All steps return HTTP 200 with no error fields",
+        "Failed step records error and terminates flow",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "实现 API 契约测试套件",
+      "description": "As an evaluation system, I need to test all REST API endpoints for correct behavior.",
+      "acceptanceCriteria": [
+        "GET /api/health returns {status: 'ok'}",
+        "GET /api/settings/language returns {language: 'zh'|'en'}",
+        "PUT /api/settings/language accepts {language: 'zh'|'en'} and updates setting",
+        "GET /api/books returns array of books",
+        "GET /api/books/{id} returns book details",
+        "GET /api/books/{id}/chunks returns array of chunks",
+        "GET /api/books/{id}/graph returns {nodes: [], edges: []}",
+        "DELETE /api/books/{id} returns {deleted: true}",
+        "Error cases return appropriate HTTP status codes (400, 404, 500)",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "生成评估报告",
+      "description": "As an evaluation system, I need to generate structured evaluation reports after each run.",
+      "acceptanceCriteria": [
+        "Report saved to tasks/evaluation-report-YYYY-MM-DD.md",
+        "Report includes: execution time, test scope, pass/fail statistics",
+        "Report includes detailed results for each test case",
+        "Report includes discovered issues grouped by severity (BLOCKING/HIGH/MEDIUM/SUGGESTION)",
+        "Report includes issue description, location, severity, suggested fix",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "建立问题跟踪机制",
+      "description": "As an evaluation system, I need to track discovered issues and verify fixes in subsequent runs.",
+      "acceptanceCriteria": [
+        "Each evaluation report includes 'Open Issues' list",
+        "Issues tracked with: description, location, severity, suggested fix, status",
+        "Issue status transitions: New -> In Progress -> Resolved",
+        "Re-evaluation after fix should mark issue as Resolved",
+        "Generate summary of issue resolution rate",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Issue tracking mechanism implemented with status transitions (New/In Progress/Resolved), Open Issues list in reports, and resolution rate calculation."
+    },
+    {
+      "id": "US-007",
+      "title": "UI 浏览器自动化验证",
+      "description": "As an evaluation system, I need to verify UI components render and function correctly using browser automation.",
+      "acceptanceCriteria": [
+        "Use dev-browser skill to launch browser and navigate to http://localhost:3000",
+        "Verify homepage loads and displays book list",
+        "Verify PDF reader component renders when book is selected",
+        "Verify EPUB reader component renders when book is selected",
+        "Verify graph visualization component renders nodes and edges",
+        "Capture and log console errors (Error level only)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "编译和类型检查验证",
+      "description": "As an evaluation system, I need to verify the project compiles and passes type checks.",
+      "acceptanceCriteria": [
+        "Backend: cargo check passes without errors or warnings",
+        "Frontend: npm run typecheck passes without errors",
+        "Frontend: npm run build generates dist/ without errors",
+        "Report compilation warnings as issues",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

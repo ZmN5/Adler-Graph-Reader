@@ -1,0 +1,47 @@
+# Rust / Backend
+backend/target/
+backend/Cargo.lock
+backend/.env
+backend/.env.*
+
+# Node.js / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+frontend/*.log
+frontend/npm-debug.log*
+
+# Frontend build outputs
+frontend/.next/
+frontend/.nuxt/
+frontend/dist/
+frontend/build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Local development
+*.local
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/

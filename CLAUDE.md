@@ -3,7 +3,13 @@
 ## 项目概述
 
 - **项目路径**: `/Users/heshi/fcy-learning/reader-v3`
-- **项目类型**: 待定义（根据实际项目补充）
+- **项目类型**: 智能阅读概念图谱系统 (Intelligent Reading Concept Graph)
+- **技术栈**:
+  - 后端: Rust + Axum 0.8 + SQLite + sqlx
+  - 前端: React 18 + TypeScript + Vite 6 + Tailwind CSS
+  - LLM: LM Studio (OpenAI 兼容 API)
+- **启动端口**: 后端 8080，前端 3000
+- **启动脚本**: `./start.sh`
 
 ---
 
@@ -27,7 +33,7 @@
 
 ### 3. 后端开发流程
 
-**所有后端开发任务必须使用 `backend-architect` 子 agent**
+**所有前端开发任务必须使用 `backend-architect` 子 agent**
 
 - 遵循良好的架构设计原则
 - 提供清晰的 API 契约
@@ -39,7 +45,7 @@
 
 - 评估维度：功能完整性、代码质量、设计一致性、性能表现
 - 评估通过方可进入下一阶段
-- 评估报告需存档记录
+- 评估报告需存档记录到 `tasks/` 目录
 
 ---
 
@@ -82,6 +88,25 @@
 - 禁止在 UI 未确认前开始前端开发
 - 禁止跳过评估直接进入下一阶段
 - 禁止手动编写重复性代码（使用 agent 自动化）
+
+---
+
+## 项目规范
+
+### 数据目录
+- 数据目录统一使用 `{项目根目录}/data/`
+- 书籍文件存储在 `data/books/`
+- 数据库存储在 `data/reader.db`
+- 后端必须从项目根目录启动以确保路径正确
+
+### API 配置
+- 前端 API 请求使用相对路径（空字符串），通过 Vite 代理转发
+- 生产环境通过 `VITE_API_BASE_URL` 环境变量配置
+- PDF/EPUB 文件加载使用 `window.location.origin` 动态获取当前域
+
+### CORS 配置
+- 开发环境允许所有来源
+- 生产环境应限制具体来源
 
 ---
 

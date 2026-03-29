@@ -1,4 +1,8 @@
-const API_BASE_URL = 'http://localhost:8080'
+// Use relative URL to work with Vite proxy in development
+// In production, this should be set via environment variable
+const API_BASE_URL = import.meta.env.PROD
+  ? (import.meta.env.VITE_API_BASE_URL || '')
+  : ''
 
 export interface ApiResponse<T> {
   data: T
@@ -120,6 +124,16 @@ export async function deleteBook(bookId: string): Promise<void> {
 
 export async function extractBook(bookId: string): Promise<ExtractResponse> {
   return apiPost<null, ExtractResponse>(`/api/books/${bookId}/extract`, null)
+}
+
+export interface ParseResponse {
+  status: string
+  chunks_created: number
+  total_pages: number
+}
+
+export async function parseBook(bookId: string): Promise<ParseResponse> {
+  return apiPost<null, ParseResponse>(`/api/books/${bookId}/parse`, null)
 }
 
 // Graph-related types

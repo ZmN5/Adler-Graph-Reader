@@ -1,130 +1,22 @@
-## Evaluation System - Ralph Progress
+## Concept Extraction Enhancement - Ralph Progress
 
-Branch: ralph/evaluation-system
-Started: 2026-03-28
+Branch: ralph/concept-extraction-enhancement
+Started: 2026-03-29
 
 ---
 
-## US-001: 创建评估脚本框架和健康检查
-- Status: pending
-
-## US-002: 实现测试数据准备 - 上传样本书籍
-- Status: pending
-
-## US-003: 实现端到端功能测试 - 全流程验证
-- Status: completed (2026-03-28 20:05)
-
-## US-004: 实现 API 契约测试套件
-- Status: completed (2026-03-28 20:25)
-
-## US-005: 生成评估报告
-- Status: pending
-
-## US-006: 建立问题跟踪机制
-- Status: pending
-
-## US-007: UI 浏览器自动化验证
-- Status: pending
-
-## US-008: 编译和类型检查验证
-- Status: pending
-
-## Codebase Patterns
-- Backend runs on port 8080, frontend on port 3000
-- Health endpoint: GET /api/health returns {"status": "ok"}
-- Backend typecheck: cargo check
-- Frontend typecheck: npm run typecheck
-- Use scripts/run-evaluation.sh as evaluation entry point (not start.sh)
-- DELETE /api/books/{id} returns {"deleted": true} on success
-- Language setting values: 'zh' or 'en' (lowercase only), invalid values return HTTP 400
-- curl -s -w "\n%{http_code}" captures both response body and HTTP status code
-
-## 2026-03-28 19:30 - US-001
-- What was implemented: Created scripts/run-evaluation.sh evaluation script with service startup, health check polling (max 60s), graceful Ctrl+C handling, and integrated typecheck validation
-- Files changed:
-  - scripts/run-evaluation.sh (new file)
-  - ralph/prd.json (updated passes:true for US-001)
-  - ralph/progress.txt (updated)
+## 2026-03-29 - US-001
+- Updated database schema to support concept extraction enhancement
+- Added `is_core` (BOOLEAN, default FALSE) and `page_number` (INTEGER) columns to nodes table
+- Added `language` (TEXT, default 'auto') column to books table
+- Used ALTER TABLE ADD COLUMN IF NOT EXISTS for backward compatibility
+- Updated ExtractedConcept struct to include page_number field
+- Updated node creation logic in extractor.rs to handle new columns
+- Files changed: src/db.rs, src/llm_client.rs, src/extractor.rs
 - **Learnings for future iterations:**
-  - The health endpoint returns JSON with "status":"ok" (not status:"ok"), need to grep for the exact string
-  - Backend uses cargo run in backend/ directory, frontend uses npm run dev in frontend/ directory
-  - The project root is one level above scripts/ directory
-  - MAX_WAIT=60 for health polling matches acceptance criteria
-  - cargo check runs silently (only outputs on error), npm run typecheck outputs "tsc --noEmit" even on success
+  - The existing `nodes` table is used as the `concepts` table in this codebase
+  - description and examples columns already existed in nodes table (as JSON arrays)
+  - SQLite ALTER TABLE ADD COLUMN IF NOT EXISTS handles migrations gracefully
+  - cargo check passes with all changes
 ---
 
-## 2026-03-28 19:50 - US-002
-- What was implemented: Added sample book upload functionality to run-evaluation.sh - finds PDF/EPUB in sample_books/, uploads via POST /api/books/upload, records book_ids to .uploaded_books.json, verifies books appear in GET /api/books list
-- Files changed:
-  - scripts/run-evaluation.sh (added step [4/4] for book upload)
-  - ralph/prd.json (updated passes:true for US-002)
-  - ralph/progress.txt (updated)
-- **Learnings for future iterations:**
-  - The upload endpoint expects multipart fields: title, author, file
-  - File format is determined by extension (.pdf or .epub)
-  - Use jq for JSON manipulation in bash scripts
-  - Book list API returns array of {id, title, author, format, total_pages}
-  - sample_books/ directory at project root contains test files
-  - Store uploaded book metadata in .uploaded_books.json for later reference
----
-
-## 2026-03-28 20:05 - US-003
-- What was implemented: Added end-to-end functional test [5/5] to run-evaluation.sh - iterates through uploaded books, tests parse (POST /api/books/{id}/parse), extract (POST /api/books/{id}/extract), and graph (GET /api/books/{id}/graph) endpoints; verifies chunks_created > 0, nodes_count > 0, and non-empty nodes/edges arrays; fails fast on any step error
-- Files changed:
-  - scripts/run-evaluation.sh (added step [5/5] for e2e test)
-  - ralph/prd.json (updated passes:true for US-003)
-  - ralph/progress.txt (updated)
-- **Learnings for future iterations:**
-  - Parse endpoint returns {status, chunks_created, total_pages}
-  - Extract endpoint returns {status, nodes_count, edges_count}
-  - Graph endpoint returns {nodes: [], edges: []} - both must be non-empty for success
-  - All three endpoints can return {error: "..."} on failure
-  - Use jq -r '.field // default' for safe JSON extraction in bash
-  - Failed step should terminate flow (continue to next book, don't continue within same book)
-  - .uploaded_books.json structure: [{book_id, title, source_file, uploaded_at}]
----
-
-## 2026-03-28 20:25 - US-004
-- What was implemented: Added API contract test suite [6/6] to run-evaluation.sh - tests GET /api/health, GET/PUT /api/settings/language, GET /api/books, GET /api/books/{id}, GET /api/books/{id}/chunks, GET /api/books/{id}/graph, DELETE /api/books/{id}, and error cases (400 for invalid language, 404 for non-existent book/chunk)
-- Files changed:
-  - scripts/run-evaluation.sh (added step [6/6] for API contract tests)
-  - ralph/prd.json (updated passes:true for US-004)
-  - ralph/progress.txt (updated)
-- **Learnings for future iterations:**
-  - Backend returns {"deleted": true} on successful DELETE (not book_id in response)
-  - Health endpoint uses JSON format with quotes: "status":"ok"
-  - Language setting must be 'zh' or 'en' (lowercase), returns 400 for invalid values
-  - When deleting a book, subsequent GET returns 404 (expected behavior)
-  - Use curl -s -w "\n%{http_code}" to capture both body and HTTP status code
-  - test_api helper function simplifies endpoint testing with pattern matching
----
-
-## 2026-03-28 21:00 - US-005
-- What was implemented: Added evaluation report generation [7/7] to run-evaluation.sh - tracks test results from all phases (typecheck, upload, e2e, API contract), collects issues by severity (BLOCKING/HIGH/MEDIUM/SUGGESTION), generates markdown report saved to tasks/evaluation-report-YYYY-MM-DD.md
-- Files changed:
-  - scripts/run-evaluation.sh (added report generation infrastructure)
-  - ralph/prd.json (updated passes:true for US-005)
-  - ralph/progress.txt (updated)
-- **Learnings for future iterations:**
-  - Use bash arrays for tracking multiple issues by severity
-  - generate_report function creates structured markdown with execution time, test statistics, and categorized issues
-  - START_TIME captured at beginning for duration calculation
-  - add_issue helper function simplifies issue tracking with severity levels
-  - Report includes: execution summary table, detailed test results, issues grouped by severity, conclusion
----
-
-## 2026-03-28 22:50 - US-006
-- What was implemented: Added issue tracking mechanism with status transitions (New -> In Progress -> Resolved), Open Issues section in reports, and resolution rate calculation
-- Files changed:
-  - scripts/run-evaluation.sh (added issue tracking with status, resolve_stale_issues, calculate_resolution_rate functions, Open Issues section in generate_report)
-  - ralph/prd.json (updated passes:true for US-006)
-  - ralph/progress.txt (updated)
-- **Learnings for future iterations:**
-  - Use tasks/issues.json to persist issue tracking across evaluation runs
-  - Issue key is derived from description (lowercase, no spaces, first 50 chars)
-  - When an issue reappears after being Resolved, it goes back to In Progress
-  - Issues with status != "Resolved" are shown in Open Issues section
-  - calculate_resolution_rate returns percentage of resolved issues
-  - jq is required for JSON manipulation in bash scripts
-  - resolve_stale_issues must be called before generate_report to update issue statuses
----

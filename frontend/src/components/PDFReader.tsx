@@ -7,14 +7,12 @@ import * as pdfjsLib from 'pdfjs-dist'
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
 
 interface PDFReaderProps {
-  filePath: string
   bookId: string
   className?: string
   highlightChunkId?: string | null
 }
 
 export function PDFReader({
-  filePath,
   bookId,
   className,
   highlightChunkId,
@@ -36,8 +34,8 @@ export function PDFReader({
 
     const loadPdf = async () => {
       try {
-        // Convert file path to URL - filePath is relative like ./data/books/{book_id}.pdf
-        const fullUrl = `http://localhost:8080${filePath}`
+        // Use the API endpoint to get the file
+        const fullUrl = `/api/books/${bookId}/file`
         const loadingTask = pdfjsLib.getDocument({
           url: fullUrl,
           cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
@@ -67,7 +65,7 @@ export function PDFReader({
     return () => {
       cancelled = true
     }
-  }, [filePath, bookId])
+  }, [bookId])
 
   // Render current page
   useEffect(() => {

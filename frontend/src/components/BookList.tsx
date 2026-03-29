@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { listBooks, deleteBook, extractBook, BookSummary } from '@/lib/api-client'
-import { Book, Trash2, Sparkles, FileText, BookOpen, CheckCircle } from 'lucide-react'
+import { listBooks, deleteBook, extractBook, parseBook, BookSummary } from '@/lib/api-client'
+import { Book, Trash2, Sparkles, FileText, BookOpen, CheckCircle, PlayCircle } from 'lucide-react'
 
 interface BookListProps {
   className?: string
@@ -21,6 +21,7 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [extractingBookId, setExtractingBookId] = useState<string | null>(null)
+  const [parsingBookId, setParsingBookId] = useState<string | null>(null)
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null)
 
   const loadBooks = useCallback(async () => {
@@ -80,6 +81,19 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
       setExtractingBookId(null)
     }
   }, [loadBooks, onExtractionComplete])
+
+  const handleParse = useCallback(async (e: React.MouseEvent, book: BookSummary) => {
+    e.stopPropagation()
+    setParsingBookId(book.id)
+    try {
+      await parseBook(book.id)
+      await loadBooks()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to parse book')
+    } finally {
+      setParsingBookId(null)
+    }
+  }, [loadBooks])
 
   const formatBadge = (format: string) => {
     const isPdf = format.toLowerCase() === 'pdf'
@@ -155,23 +169,43 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
           </div>
 
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => handleExtract(e, book)}
-              disabled={extractingBookId === book.id}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                'bg-primary text-primary-foreground hover:bg-primary/90',
-                'disabled:opacity-50'
-              )}
-              title="Extract concepts"
-            >
-              {extractingBookId === book.id ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              Extract
-            </button>
+            {book.total_pages == null ? (
+              <button
+                onClick={(e) => handleParse(e, book)}
+                disabled={parsingBookId === book.id}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  'bg-blue-600 text-white hover:bg-blue-700',
+                  'disabled:opacity-50'
+                )}
+                title="Parse book to extract concepts"
+              >
+                {parsingBookId === book.id ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <PlayCircle className="h-4 w-4" />
+                )}
+                Parse
+              </button>
+            ) : (
+              <button
+                onClick={(e) => handleExtract(e, book)}
+                disabled={extractingBookId === book.id}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  'bg-primary text-primary-foreground hover:bg-primary/90',
+                  'disabled:opacity-50'
+                )}
+                title="Extract concepts"
+              >
+                {extractingBookId === book.id ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Extract
+              </button>
+            )}
             <button
               onClick={(e) => handleDelete(e, book.id)}
               className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors bg-destructive/10 text-destructive hover:bg-destructive/20"

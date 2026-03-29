@@ -27,8 +27,8 @@ trap cleanup INT TERM
 
 # Start backend
 echo "[1/2] Starting backend (Rust + Axum)..."
-cd "$SCRIPT_DIR"
-cargo run -p backend &
+cd "$SCRIPT_DIR/backend"
+cargo run &
 BACKEND_PID=$!
 
 # Wait for backend to be ready
