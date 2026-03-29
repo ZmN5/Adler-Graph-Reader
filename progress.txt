@@ -41,6 +41,16 @@ Archive note: Previous prd.json (12 user stories including core concepts API, EP
   - If an effect depends on a DOM element being rendered, that element must not depend on state set inside the effect
 ---
 
+## 2026-03-29 - US-003: PDF Citation Navigation
+- **Status**: Already implemented - no code changes needed
+- **Implementation**: Citation click → `handleCitationClick` in App.tsx → `getChunk(chunkId)` → `setPdfPageNumber(chunk.page_start)` → PDFReader `useEffect` → `goToPage(pageNumber)` → updates `currentPage` and `pageInputValue`
+- **Files changed**: None (existing implementation was correct)
+- **Learnings for future iterations:**
+  - The citation navigation infrastructure was already in place - verify existing code before implementing
+  - PDFReader uses `pageNumber` prop for external navigation and `goToPage` keeps `pageInputValue` in sync
+  - `handleCitationClick` handles async chunk fetching correctly with try/catch
+---
+
 ## 2026-03-29 - US-002: Fix PDF Container Overflow
 - **Bug**: PDF canvas overflowed container horizontally and didn't fit vertically
 - **Fix**: Changed `overflow-auto` to `overflow-hidden` on canvas wrapper, added `max-w-full h-auto` to canvas. Captured container dimensions synchronously before async render to avoid TypeScript null errors, added height-based scale calculation.

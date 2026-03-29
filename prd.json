@@ -48,8 +48,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Frontend fix - citation click to PDF page"
+      "passes": true,
+      "notes": "Frontend fix - citation click to PDF page - Already implemented"
     },
     {
       "id": "US-004",
