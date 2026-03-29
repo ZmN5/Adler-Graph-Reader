@@ -1,22 +1,23 @@
-## Concept Extraction Enhancement - Ralph Progress
+## Bug Fixes Sprint - Ralph Progress
 
-Branch: ralph/concept-extraction-enhancement
+Branch: ralph/bug-fixes-sprint
 Started: 2026-03-29
+
+## Codebase Patterns
+- Backend API returns should match frontend type expectations directly (e.g., `Vec<GraphNode>` instead of wrapper objects)
+- Always add defensive Array.isArray checks when consuming API responses in React components
+- SQL queries should filter by `is_core = TRUE` for core concepts and maintain consistent ordering
 
 ---
 
 ## 2026-03-29 - US-001
-- Updated database schema to support concept extraction enhancement
-- Added `is_core` (BOOLEAN, default FALSE) and `page_number` (INTEGER) columns to nodes table
-- Added `language` (TEXT, default 'auto') column to books table
-- Used ALTER TABLE ADD COLUMN IF NOT EXISTS for backward compatibility
-- Updated ExtractedConcept struct to include page_number field
-- Updated node creation logic in extractor.rs to handle new columns
-- Files changed: src/db.rs, src/llm_client.rs, src/extractor.rs
+- Fixed getCoreConcepts API to return `Vec<GraphNode>` array directly instead of `CoreConceptsListResponse` wrapper object
+- Added Array.isArray defensive check in CoreConceptsList component
+- Backend SQL query now correctly returns core concepts with is_core=TRUE
+- Files changed: backend/src/main.rs, frontend/src/components/CoreConceptsList.tsx
 - **Learnings for future iterations:**
-  - The existing `nodes` table is used as the `concepts` table in this codebase
-  - description and examples columns already existed in nodes table (as JSON arrays)
-  - SQLite ALTER TABLE ADD COLUMN IF NOT EXISTS handles migrations gracefully
-  - cargo check passes with all changes
+  - When modifying API return types, ensure both backend struct and frontend type definitions stay in sync
+  - The `core_concept::get_core_concepts` module function is no longer used by the API (kept for potential future use)
+  - SQLx query_as with tuple types requires exact column ordering matching the type definition
 ---
 
