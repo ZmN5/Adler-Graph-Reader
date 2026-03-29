@@ -1,0 +1,22 @@
+## Codebase Patterns
+- Chunk API endpoint: GET /api/chunks/{id} returns ChunkDetails with content and page_start/page_end
+- PDFReader uses highlightChunkId prop to highlight content
+- EPUBReader uses highlightAnchor prop for navigation
+
+## Progress Log
+
+## 2026-03-29 - US-002
+- Implemented Source Citations click to jump feature
+- Modified NodeDetailPanel.tsx to display chunk content summary (first 50 chars) instead of hex ID
+- Added getChunk API and ChunkDetails type to api-client.ts
+- Added handleCitationClick handler in App.tsx to navigate to chunk location
+- Added highlightChunkId state for PDF/EPUB highlighting
+- Files changed:
+  - frontend/src/components/NodeDetailPanel.tsx
+  - frontend/src/App.tsx
+  - frontend/src/lib/api-client.ts
+- **Learnings for future iterations:**
+  - Chunk data is loaded lazily when node is selected (first 10 chunks)
+  - PDF page navigation uses pageNumber prop, EPUB uses highlightAnchor prop
+  - Chunk content can be long, so we truncate to 50 chars for display
+---

@@ -32,8 +32,8 @@
         "Verify in browser: 点击 citation 正确跳转到原文位置"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 60bbb68 提交中完成：修改了 Source Citations 显示方式，显示 chunk 摘要而非 hex ID，支持点击跳转到对应位置"
     },
     {
       "id": "US-003",
