@@ -5,7 +5,21 @@ Started: 2026-03-29
 
 ---
 
-## 2026-03-29 - US-005
+## 2026-03-29 - US-006
+- Updated extraction flow to read book language from books table instead of global settings
+- Language mapping: 'auto' → 'zh', 'zh' → 'zh', 'en' → 'en' for backward compatibility
+- Integrated core concept identification to run automatically after extraction completes
+- Updated ExtractResponse to include core_concepts_count field
+- Extraction API now returns core concept count in the response
+- Graceful handling: core concept identification failures don't fail the entire extraction
+- Files changed: backend/src/extractor.rs, backend/src/main.rs
+- **Learnings for future iterations:**
+  - Extraction uses book-specific language config instead of global setting
+  - Core concept identification runs as post-processing step after extraction
+  - API response structure changes should maintain backward compatibility
+  - Pool reference handling: use &pool when calling async functions expecting &SqlitePool
+  - cargo check and all tests pass
+---
 - Added language selection UI to book upload form with options: Auto, Chinese (中文), English
 - Updated backend upload_book API to accept and store language parameter
 - Modified apiUploadBook function to support language parameter with default 'auto'

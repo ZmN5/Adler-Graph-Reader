@@ -94,8 +94,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Extraction now reads language from books table (auto→zh, zh→zh, en→en). Core concept identification runs automatically after extraction completes. API response includes core_concepts_count."
     },
     {
       "id": "US-007",
