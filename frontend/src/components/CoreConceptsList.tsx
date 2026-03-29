@@ -31,9 +31,11 @@ export function CoreConceptsList({
       try {
         const concepts = await getCoreConcepts(bookId)
         if (!cancelled) {
-          setCoreConcepts(concepts)
+          // Defensive check: ensure concepts is an array
+          const conceptsArray = Array.isArray(concepts) ? concepts : []
+          setCoreConcepts(conceptsArray)
           // Load details for each concept to get page numbers
-          concepts.forEach((concept) => {
+          conceptsArray.forEach((concept) => {
             loadNodeDetails(concept.id)
           })
         }
