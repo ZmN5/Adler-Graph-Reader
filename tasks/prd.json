@@ -48,8 +48,8 @@
         "Verify in browser: Related Concepts 显示名称，点击可查看详情"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 2652b7e 提交中完成：Related Concepts 现在显示节点名称而非 hex ID，支持点击查看详情"
     },
     {
       "id": "US-004",
