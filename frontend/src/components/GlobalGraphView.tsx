@@ -133,6 +133,12 @@ export function GlobalGraphView({
 
   const nodeCanvasObject = useCallback(
     (node: NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      // Guard: skip nodes without valid position (can happen during force simulation initialization)
+      if (node.x === undefined || node.y === undefined ||
+          !Number.isFinite(node.x) || !Number.isFinite(node.y)) {
+        return
+      }
+
       const extNode = node as ExtendedNode
       const label = extNode.name
       const fontSize = Math.max(12 / globalScale, 4)

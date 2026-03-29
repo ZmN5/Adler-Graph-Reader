@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react'
+import { ChevronLeft, ChevronRight, BookOpen, ChevronDown } from 'lucide-react'
 import ePub, { Book, Rendition, Location } from 'epubjs'
 
 interface EPUBReaderProps {
@@ -11,6 +11,8 @@ interface EPUBReaderProps {
   pageNumber?: number
   /** Total pages for calculating percentage position in EPUB */
   totalPages?: number
+  /** Chapter href to navigate to directly (from chunk.chapter_href) */
+  chapterHref?: string | null
 }
 
 interface Chapter {
@@ -26,6 +28,7 @@ export function EPUBReader({
   highlightAnchor,
   pageNumber,
   totalPages: totalPagesProp,
+  chapterHref,
 }: EPUBReaderProps) {
   const [book, setBook] = useState<Book | null>(null)
   const [rendition, setRendition] = useState<Rendition | null>(null)
@@ -36,6 +39,8 @@ export function EPUBReader({
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<HTMLDivElement>(null)
   const bookRef = useRef<Book | null>(null)
 
@@ -134,6 +139,7 @@ export function EPUBReader({
       width: '100%',
       height: '100%',
       spread: 'auto',
+      allowScriptedContent: true,
     })
 
     // Display the book - must await to prevent cleanup destroying rendition mid-display
@@ -175,19 +181,34 @@ export function EPUBReader({
 
   // Highlight handling
   useEffect(() => {
-    if (rendition && highlightAnchor) {
-      // highlightAnchor can be a CFI or element id
+    if (rendition && highlightAnchor && book) {
+      // Validate: ensure book spine is loaded and highlightAnchor is not empty
+      const isValidTarget = highlightAnchor &&
+        typeof highlightAnchor === 'string' &&
+        highlightAnchor.trim().length > 0
+
+      if (!isValidTarget) return
+
+      // Check if it's a CFI string
+      const isCfi = highlightAnchor.includes('epubcfi')
+
       try {
-        rendition.display(highlightAnchor)
+        if (isCfi) {
+          // For CFI, check if the spine can resolve it
+          rendition.display(highlightAnchor)
+        } else {
+          // For element ID or href, try display directly
+          rendition.display(highlightAnchor)
+        }
       } catch (err) {
-        console.log('Could not navigate to highlight:', highlightAnchor)
+        console.log('Could not navigate to highlight:', highlightAnchor, err)
       }
     }
-  }, [rendition, highlightAnchor])
+  }, [rendition, highlightAnchor, book])
 
   // Handle external page number navigation (approximate for EPUB)
   useEffect(() => {
-    if (rendition && pageNumber && pageNumber > 0) {
+    if (rendition && pageNumber && pageNumber > 0 && book) {
       // For EPUB, we use percentage-based navigation since EPUB doesn't have fixed pages
       // If totalPages is provided, calculate percentage; otherwise assume pageNumber is percentage
       const percentage = totalPagesProp && totalPagesProp > 0
@@ -196,14 +217,33 @@ export function EPUBReader({
 
       const percentageClamped = Math.max(0, Math.min(0.999, percentage))
 
+      // Only use percentage-based navigation if book locations are loaded
+      // Otherwise fall back to displaying the first section
       try {
-        // Navigate to the calculated percentage location
-        rendition.display(percentageClamped)
+        if (book.locations && book.locations.length && book.locations.length() > 0) {
+          // Navigate to the calculated percentage location
+          rendition.display(percentageClamped)
+        } else {
+          // Fall back to initial display if locations not yet available
+          rendition.display()
+        }
       } catch (err) {
         console.log('Could not navigate to page:', pageNumber)
       }
     }
-  }, [rendition, pageNumber, totalPagesProp])
+  }, [rendition, pageNumber, totalPagesProp, book])
+
+  // Handle chapter href navigation (for Source Citations)
+  useEffect(() => {
+    if (rendition && chapterHref && chapters.length > 0) {
+      // chapterHref is the direct href from the chunk (e.g., "chapter-1.html")
+      try {
+        rendition.display(chapterHref)
+      } catch (err) {
+        console.log('Could not navigate to chapter href:', chapterHref, err)
+      }
+    }
+  }, [rendition, chapterHref, chapters])
 
   const goToPrevious = useCallback(() => {
     if (rendition && canPrev) {
@@ -238,6 +278,19 @@ export function EPUBReader({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [goToPrevious, goToNext])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isDropdownOpen])
 
   if (isLoading) {
     return (
@@ -278,24 +331,48 @@ export function EPUBReader({
         <div className="flex-1 min-w-0 text-center">
           <p className="text-sm font-medium truncate">{currentChapter}</p>
           {chapters.length > 0 && (
-            <select
-              value={chapters.find((c) => c.title === currentChapter)?.index ?? -1}
-              onChange={(e) => {
-                const idx = parseInt(e.target.value, 10)
-                const chapter = chapters[idx]
-                if (chapter) goToChapter(chapter)
-              }}
-              className={cn(
-                'mt-1 w-full max-w-xs mx-auto text-sm rounded-md border bg-background px-2 py-1',
-                'focus:outline-none focus:ring-2 focus:ring-primary'
+            <div ref={dropdownRef} className="relative mt-1 mx-auto max-w-xs">
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className={cn(
+                  'w-full flex items-center justify-between gap-2 text-sm rounded-md border bg-background px-3 py-1.5',
+                  'focus:outline-none focus:ring-2 focus:ring-primary transition-colors',
+                  'hover:bg-muted'
+                )}
+              >
+                <span className="truncate">
+                  {chapters.find((c) => c.title === currentChapter)?.title ?? 'Select chapter'}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 flex-shrink-0 transition-transform duration-200',
+                    isDropdownOpen && 'rotate-180'
+                  )}
+                />
+              </button>
+              {isDropdownOpen && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {chapters.map((chapter) => (
+                    <button
+                      key={chapter.id}
+                      type="button"
+                      onClick={() => {
+                        goToChapter(chapter)
+                        setIsDropdownOpen(false)
+                      }}
+                      className={cn(
+                        'w-full text-left px-3 py-2 text-sm transition-colors',
+                        'hover:bg-muted',
+                        chapter.title === currentChapter && 'bg-muted font-medium'
+                      )}
+                    >
+                      {chapter.title}
+                    </button>
+                  ))}
+                </div>
               )}
-            >
-              {chapters.map((chapter) => (
-                <option key={chapter.id} value={chapter.index}>
-                  {chapter.title}
-                </option>
-              ))}
-            </select>
+            </div>
           )}
         </div>
 

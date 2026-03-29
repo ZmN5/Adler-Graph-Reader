@@ -3,6 +3,24 @@
 - Modal/dialog components should be placed at the end of the return JSX, inside the root element
 - Use `useCallback` for event handlers that are passed to child components to avoid unnecessary re-renders
 - Book list state uses `BookSummary` type from `@/lib/api-client`
+- Custom dropdowns need `useRef` for the container and `useEffect` for click-outside handling
+- Dropdown menus should use `absolute positioning` with `z-50` and `shadow-lg` for proper layering
+
+## 2026-03-29 21:15 - US-002
+- What was implemented
+  - Replaced native `<select>` with custom dropdown component
+  - Dropdown shows chapter list when expanded (all 5 options visible)
+  - ChevronDown icon rotates 180° when dropdown is open
+  - Clicking chapter navigates and closes dropdown
+  - Clicking outside dropdown closes it
+- Files changed
+  - frontend/src/components/EPUBReader.tsx (modified)
+  - prd.json (updated US-002 passes to true)
+- **Learnings for future iterations:**
+  - Native `<select>` elements don't provide good visual expansion feedback - use custom dropdowns
+  - Need `useRef` on dropdown container for click-outside detection
+  - Custom dropdowns need `onClick` handlers on chapter items to close after selection
+---
 
 ## 2026-03-29 20:45 - US-001
 - What was implemented

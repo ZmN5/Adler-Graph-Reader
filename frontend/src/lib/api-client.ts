@@ -190,6 +190,7 @@ export interface ChunkDetails {
   page_start: number
   page_end: number
   content: string
+  chapter_href?: string | null // For EPUB navigation
 }
 
 export async function getChunk(chunkId: string): Promise<ChunkDetails> {

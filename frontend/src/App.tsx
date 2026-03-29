@@ -20,6 +20,7 @@ function App() {
   const [selectedBook, setSelectedBook] = useState<BookSummary | null>(null)
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [pdfPageNumber, setPdfPageNumber] = useState<number | undefined>(undefined)
+  const [epubChapterHref, setEpubChapterHref] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'graph' | 'core-concepts'>('graph')
   const [highlightChunkId, setHighlightChunkId] = useState<string | null>(null)
 
@@ -36,6 +37,7 @@ function App() {
     setSelectedBook(null)
     setSelectedNode(null)
     setPdfPageNumber(undefined)
+    setEpubChapterHref(null)
   }, [])
 
   const handleNodeClick = useCallback((node: GraphNode | null) => {
@@ -60,9 +62,17 @@ function App() {
       // Set highlight chunk ID for both PDF and EPUB
       setHighlightChunkId(chunkId)
 
-      // Navigate to the page (for PDF) or approximate location (for EPUB)
-      if (chunk.page_start > 0) {
-        setPdfPageNumber(chunk.page_start)
+      // Navigate to the page/chapter
+      if (selectedBook.format.toLowerCase() === 'pdf') {
+        // For PDF, use page number directly
+        if (chunk.page_start > 0) {
+          setPdfPageNumber(chunk.page_start)
+        }
+      } else {
+        // For EPUB, use chapter_href for direct navigation
+        if (chunk.chapter_href) {
+          setEpubChapterHref(chunk.chapter_href)
+        }
       }
     } catch (err) {
       console.error('Failed to handle citation click:', err)
@@ -98,10 +108,10 @@ function App() {
                 <EPUBReader
                   bookId={selectedBook.id}
                   className="h-full"
-                  pageNumber={pdfPageNumber}
+                  chapterHref={epubChapterHref}
                   totalPages={selectedBook.total_pages ?? undefined}
                   // Don't pass UUID as highlightAnchor for EPUB - epubjs can't navigate with UUIDs
-                  // EPUB uses percentage-based navigation via pageNumber prop instead
+                  // EPUB uses chapter-based navigation via chapterHref prop instead
                   highlightAnchor={null}
                 />
               )
