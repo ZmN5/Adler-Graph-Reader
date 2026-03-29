@@ -10,6 +10,8 @@ Started: 2026-03-29
 - Approximate token-to-char ratio: ~4 characters per token (16000 chars ≈ 4000 tokens)
 - Overlap ratio: 10% of chunk size (400 char overlap for 4000 char chunks)
 - No sampling logic exists - all content is already processed
+- LLM prompts include JSON Schema for structured output validation
+- Validation logic filters out invalid concepts/relations with detailed logging
 
 ---
 
@@ -25,18 +27,23 @@ Started: 2026-03-29
   - cargo check passes with all changes
 ---
 
-## 2026-03-29 - US-001
-- Updated database schema to support concept extraction enhancement
-- Added `is_core` (BOOLEAN, default FALSE) and `page_number` (INTEGER) columns to nodes table
-- Added `language` (TEXT, default 'auto') column to books table
-- Used ALTER TABLE ADD COLUMN IF NOT EXISTS for backward compatibility
-- Updated ExtractedConcept struct to include page_number field
-- Updated node creation logic in extractor.rs to handle new columns
-- Files changed: src/db.rs, src/llm_client.rs, src/extractor.rs
+## 2026-03-29 - US-003
+- Enhanced LLM extraction prompt with detailed output requirements:
+  * System prompt now requires 2-3 sentence descriptions
+  * System prompt specifies 1-2 examples per concept
+  * System prompt includes page_number requirement with extraction instructions
+- Added JSON Schema definition to user prompt for structured output validation
+- Enhanced error handling in parse_extraction_response:
+  * Added detailed validation for concepts (name, description, examples, page_number)
+  * Added detailed validation for relations (source/target names, relation_type)
+  * Graceful handling of malformed responses with detailed logging
+  * Invalid items are skipped instead of failing entire extraction
+- Files changed: backend/src/llm_client.rs
 - **Learnings for future iterations:**
-  - The existing `nodes` table is used as the `concepts` table in this codebase
-  - description and examples columns already existed in nodes table (as JSON arrays)
-  - SQLite ALTER TABLE ADD COLUMN IF NOT EXISTS handles migrations gracefully
+  - JSON Schema in prompts helps LLM produce valid structured output
+  - Validation logic should filter invalid items rather than fail entire batch
+  - page_number validation filters non-positive values (p > 0)
+  - Examples are filtered to remove empty strings
   - cargo check passes with all changes
 ---
 
