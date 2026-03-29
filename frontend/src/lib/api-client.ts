@@ -175,6 +175,8 @@ export async function getNode(nodeId: string): Promise<NodeDetails> {
   return apiGet<NodeDetails>(`/api/nodes/${nodeId}`)
 }
 
+export type BookLanguage = 'auto' | 'zh' | 'en'
+
 export interface UploadBookResponse {
   book_id: string
   title: string
@@ -184,6 +186,7 @@ export async function apiUploadBook(
   file: File,
   title: string,
   author?: string,
+  language: BookLanguage = 'auto',
   onProgress?: (progress: number) => void
 ): Promise<UploadBookResponse> {
   return new Promise((resolve, reject) => {
@@ -216,6 +219,7 @@ export async function apiUploadBook(
     const formData = new FormData()
     formData.append('file', file)
     formData.append('title', title)
+    formData.append('language', language)
     if (author) {
       formData.append('author', author)
     }

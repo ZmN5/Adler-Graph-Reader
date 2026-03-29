@@ -5,7 +5,20 @@ Started: 2026-03-29
 
 ---
 
-## Codebase Patterns
+## 2026-03-29 - US-005
+- Added language selection UI to book upload form with options: Auto, Chinese (中文), English
+- Updated backend upload_book API to accept and store language parameter
+- Modified apiUploadBook function to support language parameter with default 'auto'
+- Implemented two-step upload flow: file selection → language configuration → upload
+- Files changed: backend/src/main.rs, frontend/src/lib/api-client.ts, frontend/src/components/UploadButton.tsx
+- **Learnings for future iterations:**
+  - Multipart form fields are processed sequentially in axum's Multipart extractor
+  - Backend already has language column in books table with 'auto' default
+  - Two-step UI pattern (select file → configure → upload) provides better UX for optional parameters
+  - Both cargo check and tsc pass with all changes
+---
+
+
 - Chunk size constants are defined directly in pdf_parser.rs and epub_parser.rs (not centralized)
 - Approximate token-to-char ratio: ~4 characters per token (16000 chars ≈ 4000 tokens)
 - Overlap ratio: 10% of chunk size (400 char overlap for 4000 char chunks)

@@ -78,8 +78,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added language selection UI with two-step upload flow. Backend API updated to accept language parameter. Default 'auto' for backward compatibility."
     },
     {
       "id": "US-006",

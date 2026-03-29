@@ -1,24 +1,26 @@
 import { useState, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { apiUploadBook, UploadBookResponse } from '@/lib/api-client'
-import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react'
+import { apiUploadBook, UploadBookResponse, BookLanguage } from '@/lib/api-client'
+import { Upload, FileText, CheckCircle, AlertCircle, Languages } from 'lucide-react'
 
 interface UploadButtonProps {
   className?: string
   onUploadSuccess?: (response: UploadBookResponse) => void
 }
 
-type UploadState = 'idle' | 'dragging' | 'uploading' | 'success' | 'error'
+type UploadState = 'idle' | 'configuring' | 'dragging' | 'uploading' | 'success' | 'error'
 
 export function UploadButton({ className, onUploadSuccess }: UploadButtonProps) {
   const [state, setState] = useState<UploadState>('idle')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<UploadBookResponse | null>(null)
+  const [selectedLanguage, setSelectedLanguage] = useState<BookLanguage>('auto')
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragCounter = useRef(0)
 
-  const handleFile = useCallback(async (file: File) => {
+  const handleFile = useCallback((file: File) => {
     const validExtensions = ['.pdf', '.epub']
     const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
     if (!validExtensions.includes(extension)) {
@@ -27,21 +29,36 @@ export function UploadButton({ className, onUploadSuccess }: UploadButtonProps) 
       return
     }
 
+    setPendingFile(file)
+    setState('configuring')
+    setError(null)
+  }, [])
+
+  const handleUpload = useCallback(async () => {
+    if (!pendingFile) return
+
     setState('uploading')
     setProgress(0)
-    setError(null)
 
     try {
-      const title = file.name.replace(/\.(pdf|epub)$/i, '')
-      const response = await apiUploadBook(file, title, undefined, (p) => setProgress(p))
+      const title = pendingFile.name.replace(/\.(pdf|epub)$/i, '')
+      const response = await apiUploadBook(
+        pendingFile,
+        title,
+        undefined,
+        selectedLanguage,
+        (p) => setProgress(p)
+      )
       setSuccessData(response)
       setState('success')
+      setPendingFile(null)
       onUploadSuccess?.(response)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
       setState('error')
+      setPendingFile(null)
     }
-  }, [onUploadSuccess])
+  }, [pendingFile, selectedLanguage, onUploadSuccess])
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -56,10 +73,10 @@ export function UploadButton({ className, onUploadSuccess }: UploadButtonProps) 
     e.preventDefault()
     e.stopPropagation()
     dragCounter.current--
-    if (dragCounter.current === 0) {
+    if (dragCounter.current === 0 && state !== 'configuring') {
       setState('idle')
     }
-  }, [])
+  }, [state])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -92,6 +109,8 @@ export function UploadButton({ className, onUploadSuccess }: UploadButtonProps) 
     setProgress(0)
     setError(null)
     setSuccessData(null)
+    setPendingFile(null)
+    setSelectedLanguage('auto')
   }, [])
 
   return (
@@ -123,6 +142,42 @@ export function UploadButton({ className, onUploadSuccess }: UploadButtonProps) 
             Drop .pdf or .epub here, or click to upload
           </span>
         </button>
+      ) : state === 'configuring' ? (
+        <div className="flex flex-col items-center gap-4 rounded-lg border p-6">
+          <Languages className="h-8 w-8 text-primary" />
+          <span className="font-medium">{pendingFile?.name}</span>
+          <div className="w-full max-w-xs">
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              Extraction Language
+            </label>
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value as BookLanguage)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="auto">Auto-detect</option>
+              <option value="zh">Chinese (中文)</option>
+              <option value="en">English</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Select the language for concept extraction
+            </p>
+          </div>
+          <div className="flex gap-2 w-full max-w-xs">
+            <button
+              onClick={handleDismiss}
+              className="flex-1 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUpload}
+              className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Upload
+            </button>
+          </div>
+        </div>
       ) : state === 'uploading' ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
           <FileText className="h-8 w-8 text-primary animate-pulse" />
