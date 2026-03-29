@@ -5,16 +5,19 @@ import { BookList } from '@/components/BookList'
 import { PDFReader } from '@/components/PDFReader'
 import { EPUBReader } from '@/components/EPUBReader'
 import { GraphCanvas } from '@/components/GraphCanvas'
-import { SplitPane } from '@/components/SplitPane'
+import { ThreeColumnLayout } from '@/components/ThreeColumnLayout'
+import { NodeDetailPanel } from '@/components/NodeDetailPanel'
 import { useAppStore } from '@/stores/app-store'
 import { useState, useCallback } from 'react'
-import { UploadBookResponse, BookSummary } from '@/lib/api-client'
+import { UploadBookResponse, BookSummary, GraphNode } from '@/lib/api-client'
 import { X } from 'lucide-react'
 
 function App() {
   const { isLoading, error, clearError } = useAppStore()
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedBook, setSelectedBook] = useState<BookSummary | null>(null)
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
+  const [pdfPageNumber, setPdfPageNumber] = useState<number | undefined>(undefined)
 
   const handleUploadSuccess = useCallback((_response: UploadBookResponse) => {
     setRefreshKey((k) => k + 1)
@@ -22,10 +25,25 @@ function App() {
 
   const handleSelectBook = useCallback((book: BookSummary) => {
     setSelectedBook(book)
+    setSelectedNode(null)
   }, [])
 
   const handleCloseBook = useCallback(() => {
     setSelectedBook(null)
+    setSelectedNode(null)
+    setPdfPageNumber(undefined)
+  }, [])
+
+  const handleNodeClick = useCallback((node: GraphNode | null) => {
+    setSelectedNode(node)
+  }, [])
+
+  const handleViewInPDF = useCallback((pageNumber: number) => {
+    setPdfPageNumber(pageNumber)
+  }, [])
+
+  const handleCloseDetailPanel = useCallback(() => {
+    setSelectedNode(null)
   }, [])
 
   // Show book detail view when a book is selected
@@ -44,19 +62,36 @@ function App() {
           </button>
         </div>
         <div className="flex-1 overflow-hidden">
-          <SplitPane
-            leftPane={
+          <ThreeColumnLayout
+            leftPanel={
               isPdf ? (
-                <PDFReader bookId={selectedBook.id} className="h-full" />
+                <PDFReader
+                  bookId={selectedBook.id}
+                  className="h-full"
+                  pageNumber={pdfPageNumber}
+                />
               ) : (
                 <EPUBReader bookId={selectedBook.id} className="h-full" />
               )
             }
-            rightPane={
-              <GraphCanvas bookId={selectedBook.id} className="h-full" />
+            centerPanel={
+              <GraphCanvas
+                bookId={selectedBook.id}
+                className="h-full"
+                onNodeClick={handleNodeClick}
+                selectedNodeId={selectedNode?.id ?? null}
+              />
             }
-            defaultSplit={50}
-            storageKey="book-detail-layout"
+            rightPanel={
+              <NodeDetailPanel
+                node={selectedNode}
+                bookId={selectedBook.id}
+                onClose={handleCloseDetailPanel}
+                onViewInPDF={isPdf ? handleViewInPDF : undefined}
+                className="h-full"
+              />
+            }
+            showRightPanel={selectedNode !== null}
           />
         </div>
       </div>

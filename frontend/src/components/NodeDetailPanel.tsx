@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph } from '@/lib/api-client'
-import { X, ExternalLink, BookOpen } from 'lucide-react'
+import { X, ExternalLink, BookOpen, FileText } from 'lucide-react'
 
 interface NodeDetailPanelProps {
   node: GraphNode | null
@@ -9,6 +9,8 @@ interface NodeDetailPanelProps {
   className?: string
   onCitationClick?: (chunkId: string) => void
   onClose?: () => void
+  /** Called when user clicks "View in PDF" button */
+  onViewInPDF?: (pageNumber: number) => void
 }
 
 export function NodeDetailPanel({
@@ -17,11 +19,13 @@ export function NodeDetailPanel({
   className,
   onCitationClick,
   onClose,
+  onViewInPDF,
 }: NodeDetailPanelProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [nodeDetails, setNodeDetails] = useState<NodeDetails | null>(null)
   const [edges, setEdges] = useState<GraphEdge[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [pageNumber, setPageNumber] = useState<number | null>(null)
 
   useEffect(() => {
     if (!node) {
@@ -40,6 +44,7 @@ export function NodeDetailPanel({
         const details = await getNode(node.id)
         if (!cancelled) {
           setNodeDetails(details)
+          setPageNumber(details.page_number ?? null)
         }
 
         // If we have a bookId, fetch edges for this book
@@ -118,6 +123,31 @@ export function NodeDetailPanel({
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
                 <p className="text-sm">{node.description}</p>
+              </div>
+            )}
+
+            {/* Page Number & View in PDF */}
+            {(pageNumber || onViewInPDF) && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Location</h3>
+                <div className="flex items-center gap-3">
+                  {pageNumber && (
+                    <span className="text-sm">Page {pageNumber}</span>
+                  )}
+                  {onViewInPDF && pageNumber && (
+                    <button
+                      onClick={() => onViewInPDF(pageNumber)}
+                      className={cn(
+                        'flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md',
+                        'bg-primary text-primary-foreground hover:bg-primary/90',
+                        'transition-colors'
+                      )}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      View in PDF
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

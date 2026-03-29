@@ -10,12 +10,15 @@ interface PDFReaderProps {
   bookId: string
   className?: string
   highlightChunkId?: string | null
+  /** External page number to navigate to */
+  pageNumber?: number
 }
 
 export function PDFReader({
   bookId,
   className,
   highlightChunkId,
+  pageNumber,
 }: PDFReaderProps) {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -130,6 +133,13 @@ export function PDFReader({
       handlePageInputBlur()
     }
   }, [handlePageInputBlur])
+
+  // Handle external page number navigation
+  useEffect(() => {
+    if (pageNumber && pageNumber !== currentPage && totalPages > 0) {
+      goToPage(pageNumber)
+    }
+  }, [pageNumber, currentPage, totalPages, goToPage])
 
   // Keyboard navigation
   useEffect(() => {

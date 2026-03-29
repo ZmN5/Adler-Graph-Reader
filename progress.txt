@@ -100,3 +100,46 @@ Started: 2026-03-29
   - cargo check and all tests pass
 ---
 
+
+## 2026-03-29 - US-007
+- Added is_core field to GraphNode type in api-client.ts
+- Updated ExtendedNode interfaces in both GraphCanvas and GlobalGraphView to include is_core property
+- Modified node rendering to visually distinguish core concepts:
+  * Core concepts are 1.5x larger than regular concepts
+  * Core concepts use purple color (#8b5cf6) with violet border (#7c3aed)
+  * Core concept labels are bold
+  * Selected/hovered state takes precedence over core concept styling
+- Added legend component to both GraphCanvas and GlobalGraphView:
+  * Shows core concept count and regular concept count
+  * Positioned at top-right with backdrop blur effect
+  * Styled consistently with the app design system
+- Updated GlobalGraphView node rendering with same core concept styling
+- Files changed: frontend/src/lib/api-client.ts, frontend/src/components/GraphCanvas.tsx, frontend/src/components/GlobalGraphView.tsx
+- **Learnings for future iterations:**
+  - ExtendedNode interface must match GraphNode from api-client (including is_core)
+  - Canvas node rendering: node size can be adjusted based on is_core flag
+  - Force-graph canvas rendering uses globalScale for responsive sizing
+  - Legend positioning uses absolute positioning with backdrop-blur for modern glassmorphism effect
+  - Both graph views (book-specific and global) should have consistent styling
+  - TypeScript: when adding new fields to shared types, all consumers must be updated
+  - tsc passes with all changes
+---
+
+
+## 2026-03-29 - US-008
+- Implemented node detail panel with three-column layout (PDF | Graph | Detail Panel)
+- Updated backend `/api/nodes/{id}` endpoint to include page_number field
+- Updated frontend NodeDetails type to include page_number
+- Added "View in PDF" button that jumps to the concept's page number
+- Modified PDFReader to accept pageNumber prop for external navigation
+- NodeDetailPanel fetches full node details including examples and page_number
+- Three-column layout is responsive - right panel collapses when no node selected
+- Files changed: backend/src/main.rs, frontend/src/components/NodeDetailPanel.tsx, frontend/src/components/PDFReader.tsx, frontend/src/components/ThreeColumnLayout.tsx (new), frontend/src/App.tsx, frontend/src/lib/api-client.ts
+- **Learnings for future iterations:**
+  - When adding new fields to backend API, update both the SQL query and the response struct
+  - PDFReader can be controlled externally via pageNumber prop - triggers navigation via useEffect
+  - ThreeColumnLayout pattern: left/center panels flex, right panel fixed width (320px), collapsible
+  - NodeDetailPanel uses existing getNode API to fetch full details (examples, page_number) beyond what's in GraphNode
+  - Both cargo check and tsc pass with all changes
+---
+

@@ -170,6 +170,7 @@ export interface NodeDetails extends GraphNode {
   book_id?: string
   language?: string
   category?: string
+  page_number?: number
 }
 
 export async function getNode(nodeId: string): Promise<NodeDetails> {
