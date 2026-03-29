@@ -3,18 +3,41 @@
 Branch: ralph/bug-fixes-sprint
 Started: 2026-03-29
 
+## Codebase Patterns
+- Backend API returns should match frontend type expectations directly (e.g., `Vec<GraphNode>` instead of wrapper objects)
+- Always add defensive Array.isArray checks when consuming API responses in React components
+- SQL queries should filter by `is_core = TRUE` for core concepts and maintain consistent ordering
+
 ---
 
-## 2026-03-29 - US-001
-- Fixed Core Concepts API return format
-- Files changed:
-  - frontend/src/components/CoreConceptsList.tsx: Added Array.isArray defensive check
-- Backend API already returns correct array format `Json<Vec<GraphNode>>`
-- SQL query correctly filters nodes with `is_core = TRUE`
+## 2026-03-29 - New Sprint Focus: Display Bug Fixes
+
+Archive note: Previous prd.json (12 user stories including core concepts API, EPUB parser, etc.) archived to 2026-03-29-bug-fixes-display/
+
+### New Focus (5 User Stories):
+1. US-001: Fix EPUB Reader Rendering
+2. US-002: Fix PDF Container Overflow
+3. US-003: PDF Citation Navigation
+4. US-004: EPUB Citation Navigation
+5. US-005: Fix Graph Node Label Size
+
+---
+
+## Previous Sprint Learnings (2026-03-29)
+
+- When modifying API return types, ensure both backend struct and frontend type definitions stay in sync
+- The `core_concept::get_core_concepts` module function is no longer used by the API (kept for potential future use)
+- SQLx query_as with tuple types requires exact column ordering matching the type definition
+
+---
+
+## 2026-03-29 - US-001: Fix EPUB Reader Rendering
+- **Bug**: EPUBReader had a chicken-and-egg problem where the viewer div required `rendition` to be non-null to render, but `rendition` was only set inside an effect that required the viewer div to exist first.
+- **Fix**: Restructured EPUBReader so the viewer div renders whenever `book` is loaded (even if `rendition` hasn't been set yet). Added a spinner inside the viewer until rendition is initialized.
+- **Files changed**: `frontend/src/components/EPUBReader.tsx`
 - **Learnings for future iterations:**
-  - Frontend API client types in `frontend/src/lib/api-client.ts` define expected return types
-  - Backend uses `Json<Vec<T>>` for array returns in Axum
-  - Database column `is_core` is BOOLEAN type with DEFAULT FALSE
-  - Component already has defensive patterns for API response validation
+  - React effects run AFTER the DOM is painted, so refs should be available if the element is rendered
+  - When using refs with conditional rendering, ensure the element exists before the effect runs
+  - If an effect depends on a DOM element being rendered, that element must not depend on state set inside the effect
 ---
 

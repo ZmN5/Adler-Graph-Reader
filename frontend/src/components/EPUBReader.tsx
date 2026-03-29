@@ -133,10 +133,12 @@ export function EPUBReader({
       spread: 'auto',
     })
 
-    setRendition(rend)
+    // Display the book - must await to prevent cleanup destroying rendition mid-display
+    rend.display().catch((err) => {
+      console.log('EPUB display error:', err)
+    })
 
-    // Display the book
-    rend.display()
+    setRendition(rend)
 
     // Handle location changes
     const handleLocationChanged = (location: Location) => {
@@ -247,7 +249,25 @@ export function EPUBReader({
     )
   }
 
-  if (!book || !rendition) {
+  // Show loading or error states before book is loaded
+  if (!book) {
+    if (isLoading) {
+      return (
+        <div className={cn('flex items-center justify-center py-12', className)}>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <span className="ml-3 text-muted-foreground">Loading EPUB...</span>
+        </div>
+      )
+    }
+    if (error) {
+      return (
+        <div className={cn('flex flex-col items-center justify-center py-12 text-destructive', className)}>
+          <BookOpen className="h-12 w-12 opacity-50" />
+          <p className="mt-4">Failed to load EPUB</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )
+    }
     return (
       <div className={cn('flex flex-col items-center justify-center py-12 text-muted-foreground', className)}>
         <BookOpen className="h-12 w-12 opacity-50" />
@@ -256,6 +276,7 @@ export function EPUBReader({
     )
   }
 
+  // Book is loaded - render the viewer div so effect can initialize rendition
   return (
     <div className={cn('flex flex-col h-full', className)}>
       <div className="flex items-center justify-between gap-4 p-3 border-b bg-muted/50">
@@ -310,10 +331,17 @@ export function EPUBReader({
         </button>
       </div>
 
+      {/* Show spinner inside viewer until rendition is initialized */}
       <div
         ref={viewerRef}
-        className="flex-1 overflow-hidden"
-      />
+        className="flex-1 overflow-hidden relative"
+      >
+        {!rendition && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
