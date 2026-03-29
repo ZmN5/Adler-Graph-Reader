@@ -85,6 +85,16 @@
   - Use window.addEventListener for global keyboard shortcuts
 ---
 
+## 2026-03-29 22:05 - US-008
+- What was implemented
+  - US-008 was already implemented in prior session
+  - UploadButton.tsx already has: clear option labels (Auto-detect, Chinese (中文), English), help text "Select the language for concept extraction", and auto-detect is the default
+- Files changed
+  - prd.json (updated US-008 passes to true)
+- **Learnings for future iterations:**
+  - Always verify current state of implementation before assuming work is needed
+---
+
 ## 2026-03-29 20:45 - US-001
 - What was implemented
   - Created `ConfirmDialog.tsx` component with backdrop, close on Escape key, close on backdrop click, danger variant styling
