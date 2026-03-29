@@ -100,7 +100,9 @@ function App() {
                   className="h-full"
                   pageNumber={pdfPageNumber}
                   totalPages={selectedBook.total_pages ?? undefined}
-                  highlightAnchor={highlightChunkId}
+                  // Don't pass UUID as highlightAnchor for EPUB - epubjs can't navigate with UUIDs
+                  // EPUB uses percentage-based navigation via pageNumber prop instead
+                  highlightAnchor={null}
                 />
               )
             }

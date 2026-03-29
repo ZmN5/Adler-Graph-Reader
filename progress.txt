@@ -62,3 +62,15 @@ Archive note: Previous prd.json (12 user stories including core concepts API, EP
   - Use `overflow-hidden` instead of `overflow-auto` on canvas container to prevent scrollbars
 ---
 
+## 2026-03-29 - US-004: EPUB Citation Navigation
+- **Bug**: For EPUB books, citation clicks passed `highlightChunkId` (UUID) as `highlightAnchor`, but epubjs `rendition.display()` requires CFI or href strings - UUIDs cause silent failures
+- **Fix**: Pass `highlightAnchor={null}` for EPUB so citation navigation uses percentage-based navigation via `pageNumber` prop instead (which is the correct approach for EPUB)
+- **Files changed**: `frontend/src/App.tsx`
+- **Browser verification**: Basic EPUB navigation works (chapter dropdown, Next/Previous buttons). EPUB citation navigation requires concept extraction (LLM processing) which takes too long for automated testing.
+- **Learnings for future iterations:**
+  - For EPUB citation navigation, epubjs percentage-based navigation via `rendition.display(percentage)` is the correct approach (EPUBs don't have fixed pages)
+  - `highlightChunkId` is a database UUID - not usable by epubjs directly
+  - `pageNumber` prop in EPUBReader represents chapter number (page_start from chunks table) which is used to calculate percentage
+  - `totalPages` from `selectedBook.total_pages` is used to normalize chapter number to percentage
+---
+
