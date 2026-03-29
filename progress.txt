@@ -41,3 +41,14 @@ Archive note: Previous prd.json (12 user stories including core concepts API, EP
   - If an effect depends on a DOM element being rendered, that element must not depend on state set inside the effect
 ---
 
+## 2026-03-29 - US-002: Fix PDF Container Overflow
+- **Bug**: PDF canvas overflowed container horizontally and didn't fit vertically
+- **Fix**: Changed `overflow-auto` to `overflow-hidden` on canvas wrapper, added `max-w-full h-auto` to canvas. Captured container dimensions synchronously before async render to avoid TypeScript null errors, added height-based scale calculation.
+- **Files changed**: `frontend/src/components/PDFReader.tsx`
+- **Browser verification**: Confirmed no horizontal scrollbar, PDF fits within container bounds
+- **Learnings for future iterations:**
+  - Container ref dimensions should be captured synchronously before async operations (avoid TypeScript null check issues in effects)
+  - Canvas scaling should consider both width AND height constraints to prevent overflow
+  - Use `overflow-hidden` instead of `overflow-auto` on canvas container to prevent scrollbars
+---
+
