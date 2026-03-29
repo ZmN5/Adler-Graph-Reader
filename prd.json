@@ -143,8 +143,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "PDF page jump was implemented in US-008 with three-column layout. EPUBReader now also supports pageNumber prop for approximate page location based on percentage. Users can always see the graph in the center column while viewing PDF/EPUB in the left column."
     },
     {
       "id": "US-010",

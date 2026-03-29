@@ -143,3 +143,17 @@ Started: 2026-03-29
   - Both cargo check and tsc pass with all changes
 ---
 
+## 2026-03-29 - US-009
+- PDF page jump functionality was primarily implemented in US-008 with three-column layout
+- Enhanced EPUBReader to support pageNumber and totalPages props for approximate page navigation
+- EPUB uses percentage-based navigation since EPUB doesn't have fixed page numbers
+- Navigation formula: percentage = (pageNumber - 1) / totalPages
+- Three-column layout ensures users always see graph (center) while viewing document (left)
+- Files changed: frontend/src/components/EPUBReader.tsx, frontend/src/App.tsx
+- **Learnings for future iterations:**
+  - PDF page jump: PDFReader uses pageNumber prop with useEffect to trigger navigation via goToPage
+  - EPUB page approximation: Uses rendition.display(percentage) for location-based navigation
+  - Three-column layout provides seamless PDF-to-graph workflow without explicit "return" action needed
+  - Both cargo check and tsc pass with all changes
+---
+

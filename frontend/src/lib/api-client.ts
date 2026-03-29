@@ -177,6 +177,11 @@ export async function getNode(nodeId: string): Promise<NodeDetails> {
   return apiGet<NodeDetails>(`/api/nodes/${nodeId}`)
 }
 
+// Core concepts API
+export async function getCoreConcepts(bookId: string): Promise<GraphNode[]> {
+  return apiGet<GraphNode[]>(`/api/books/${bookId}/core-concepts`)
+}
+
 export type BookLanguage = 'auto' | 'zh' | 'en'
 
 export interface UploadBookResponse {

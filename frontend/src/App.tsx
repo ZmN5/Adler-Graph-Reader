@@ -7,10 +7,12 @@ import { EPUBReader } from '@/components/EPUBReader'
 import { GraphCanvas } from '@/components/GraphCanvas'
 import { ThreeColumnLayout } from '@/components/ThreeColumnLayout'
 import { NodeDetailPanel } from '@/components/NodeDetailPanel'
+import { CoreConceptsList } from '@/components/CoreConceptsList'
 import { useAppStore } from '@/stores/app-store'
+import { cn } from '@/lib/utils'
 import { useState, useCallback } from 'react'
 import { UploadBookResponse, BookSummary, GraphNode } from '@/lib/api-client'
-import { X } from 'lucide-react'
+import { X, Network, Star } from 'lucide-react'
 
 function App() {
   const { isLoading, error, clearError } = useAppStore()
@@ -18,6 +20,7 @@ function App() {
   const [selectedBook, setSelectedBook] = useState<BookSummary | null>(null)
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [pdfPageNumber, setPdfPageNumber] = useState<number | undefined>(undefined)
+  const [activeTab, setActiveTab] = useState<'graph' | 'core-concepts'>('graph')
 
   const handleUploadSuccess = useCallback((_response: UploadBookResponse) => {
     setRefreshKey((k) => k + 1)
@@ -80,12 +83,57 @@ function App() {
               )
             }
             centerPanel={
-              <GraphCanvas
-                bookId={selectedBook.id}
-                className="h-full"
-                onNodeClick={handleNodeClick}
-                selectedNodeId={selectedNode?.id ?? null}
-              />
+              <div className="h-full flex flex-col">
+                {/* Tab navigation */}
+                <div className="flex items-center border-b bg-muted/50">
+                  <button
+                    onClick={() => setActiveTab('graph')}
+                    className={cn(
+                      'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors',
+                      activeTab === 'graph'
+                        ? 'text-primary border-b-2 border-primary bg-background'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    )}
+                  >
+                    <Network className="h-4 w-4" />
+                    Concept Graph
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('core-concepts')}
+                    className={cn(
+                      'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors',
+                      activeTab === 'core-concepts'
+                        ? 'text-primary border-b-2 border-primary bg-background'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    )}
+                  >
+                    <Star className="h-4 w-4" />
+                    Core Concepts
+                  </button>
+                </div>
+
+                {/* Tab content */}
+                <div className="flex-1 overflow-hidden">
+                  {activeTab === 'graph' ? (
+                    <GraphCanvas
+                      bookId={selectedBook.id}
+                      className="h-full"
+                      onNodeClick={handleNodeClick}
+                      selectedNodeId={selectedNode?.id ?? null}
+                    />
+                  ) : (
+                    <CoreConceptsList
+                      bookId={selectedBook.id}
+                      className="h-full overflow-auto p-4"
+                      onNodeClick={(node) => {
+                        setSelectedNode(node)
+                        setActiveTab('graph')
+                      }}
+                      onViewInPDF={isPdf ? handleViewInPDF : undefined}
+                    />
+                  )}
+                </div>
+              </div>
             }
             rightPanel={
               <NodeDetailPanel
