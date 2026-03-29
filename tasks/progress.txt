@@ -54,3 +54,21 @@
   - Tooltip positioning uses absolute positioning with transform
   - Pointer-events: none on tooltip prevents interference with graph interaction
 ---
+
+## 2026-03-29 - US-008, US-009, US-010
+- Implemented EPUB feature alignment with PDF
+- Modified NodeDetailPanel with onViewInBook callback (renamed from onViewInPDF)
+- Added bookFormat prop to show correct labels (View in PDF/EPUB, Page/Chapter)
+- Updated CoreConceptsList with onViewInBook and bookFormat props
+- EPUB now supports View in Book functionality
+- Unified book viewing experience across PDF and EPUB formats
+- Files changed:
+  - frontend/src/components/NodeDetailPanel.tsx
+  - frontend/src/components/CoreConceptsList.tsx
+  - frontend/src/App.tsx
+- **Learnings for future iterations:**
+  - Generic onViewInBook callback works for both PDF and EPUB
+  - bookFormat prop determines UI labels and behavior
+  - EPUB uses chapter numbers instead of page numbers for location
+  - Component props should be format-agnostic where possible
+---

@@ -131,8 +131,8 @@
         "Verify in browser: EPUB 文件可正常阅读、翻页、跳转"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 c85b12d 提交中完成：EPUB 阅读器功能已完善，支持章节导航"
     },
     {
       "id": "US-009",
@@ -147,8 +147,8 @@
         "Verify: EPUB 上传后可成功抽取概念"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 c85b12d 提交中完成：EPUB 解析器正确提取文本并创建 chunks"
     },
     {
       "id": "US-010",
@@ -163,8 +163,8 @@
         "Verify in browser: EPUB 功能完整性与 PDF 相当"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 c85b12d 提交中完成：EPUB 和 PDF 功能对齐，支持 View in Book"
     }
   ]
 }
