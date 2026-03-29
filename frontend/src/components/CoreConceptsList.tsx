@@ -7,14 +7,16 @@ interface CoreConceptsListProps {
   bookId: string
   className?: string
   onNodeClick?: (node: GraphNode) => void
-  onViewInPDF?: (pageNumber: number) => void
+  onViewInBook?: (pageNumber: number) => void
+  bookFormat?: 'pdf' | 'epub'
 }
 
 export function CoreConceptsList({
   bookId,
   className,
   onNodeClick,
-  onViewInPDF,
+  onViewInBook,
+  bookFormat = 'pdf',
 }: CoreConceptsListProps) {
   const [coreConcepts, setCoreConcepts] = useState<GraphNode[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -76,15 +78,15 @@ export function CoreConceptsList({
     [onNodeClick]
   )
 
-  const handleViewInPDF = useCallback(
+  const handleViewInBook = useCallback(
     (e: React.MouseEvent, nodeId: string) => {
       e.stopPropagation()
       const details = nodeDetails[nodeId]
-      if (details?.page_number && onViewInPDF) {
-        onViewInPDF(details.page_number)
+      if (details?.page_number && onViewInBook) {
+        onViewInBook(details.page_number)
       }
     },
-    [nodeDetails, onViewInPDF]
+    [nodeDetails, onViewInBook]
   )
 
   if (isLoading) {
@@ -152,7 +154,7 @@ export function CoreConceptsList({
                   <div className="mt-3 flex items-center gap-3">
                     {hasPageNumber && (
                       <span className="text-xs text-muted-foreground">
-                        Page {details.page_number}
+                        {bookFormat === 'epub' ? `Chapter ${details.page_number}` : `Page ${details.page_number}`}
                       </span>
                     )}
 
@@ -162,15 +164,15 @@ export function CoreConceptsList({
                   </div>
                 </div>
 
-                {hasPageNumber && onViewInPDF && (
+                {hasPageNumber && onViewInBook && (
                   <button
-                    onClick={(e) => handleViewInPDF(e, concept.id)}
+                    onClick={(e) => handleViewInBook(e, concept.id)}
                     className={cn(
                       'flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md',
                       'bg-primary text-primary-foreground hover:bg-primary/90',
                       'transition-colors flex-shrink-0'
                     )}
-                    title={`View on page ${details.page_number}`}
+                    title={`View on ${bookFormat === 'epub' ? 'chapter' : 'page'} ${details.page_number}`}
                   >
                     <FileText className="h-3.5 w-3.5" />
                     View

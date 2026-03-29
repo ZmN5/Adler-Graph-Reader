@@ -151,7 +151,8 @@ function App() {
                         setSelectedNode(node)
                         setActiveTab('graph')
                       }}
-                      onViewInPDF={isPdf ? handleViewInPDF : undefined}
+                      onViewInBook={handleViewInPDF}
+                      bookFormat={isPdf ? 'pdf' : 'epub'}
                     />
                   )}
                 </div>
@@ -162,9 +163,10 @@ function App() {
                 node={selectedNode}
                 bookId={selectedBook.id}
                 onClose={handleCloseDetailPanel}
-                onViewInPDF={isPdf ? handleViewInPDF : undefined}
+                onViewInBook={handleViewInPDF}
                 onCitationClick={handleCitationClick}
                 onRelatedNodeClick={handleNodeClick}
+                bookFormat={isPdf ? 'pdf' : 'epub'}
                 className="h-full"
               />
             }

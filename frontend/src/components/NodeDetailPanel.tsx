@@ -9,10 +9,12 @@ interface NodeDetailPanelProps {
   className?: string
   onCitationClick?: (chunkId: string) => void
   onClose?: () => void
-  /** Called when user clicks "View in PDF" button */
-  onViewInPDF?: (pageNumber: number) => void
+  /** Called when user clicks "View in Book" button (works for both PDF and EPUB) */
+  onViewInBook?: (pageNumber: number) => void
   /** Called when user clicks on a related concept */
   onRelatedNodeClick?: (node: GraphNode) => void
+  /** Book format to determine button label */
+  bookFormat?: 'pdf' | 'epub'
 }
 
 export function NodeDetailPanel({
@@ -21,8 +23,9 @@ export function NodeDetailPanel({
   className,
   onCitationClick,
   onClose,
-  onViewInPDF,
+  onViewInBook,
   onRelatedNodeClick,
+  bookFormat = 'pdf',
 }: NodeDetailPanelProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [nodeDetails, setNodeDetails] = useState<NodeDetails | null>(null)
@@ -183,17 +186,19 @@ export function NodeDetailPanel({
               </div>
             )}
 
-            {/* Page Number & View in PDF */}
-            {(pageNumber || onViewInPDF) && (
+            {/* Location & View in Book */}
+            {(pageNumber || onViewInBook) && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Location</h3>
                 <div className="flex items-center gap-3">
                   {pageNumber && (
-                    <span className="text-sm">Page {pageNumber}</span>
+                    <span className="text-sm">
+                      {bookFormat === 'epub' ? `Chapter ${pageNumber}` : `Page ${pageNumber}`}
+                    </span>
                   )}
-                  {onViewInPDF && pageNumber && (
+                  {onViewInBook && pageNumber && (
                     <button
-                      onClick={() => onViewInPDF(pageNumber)}
+                      onClick={() => onViewInBook(pageNumber)}
                       className={cn(
                         'flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md',
                         'bg-primary text-primary-foreground hover:bg-primary/90',
@@ -201,7 +206,7 @@ export function NodeDetailPanel({
                       )}
                     >
                       <FileText className="h-3.5 w-3.5" />
-                      View in PDF
+                      {bookFormat === 'epub' ? 'View in EPUB' : 'View in PDF'}
                     </button>
                   )}
                 </div>
