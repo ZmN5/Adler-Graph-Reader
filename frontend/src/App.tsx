@@ -164,6 +164,7 @@ function App() {
                 onClose={handleCloseDetailPanel}
                 onViewInPDF={isPdf ? handleViewInPDF : undefined}
                 onCitationClick={handleCitationClick}
+                onRelatedNodeClick={handleNodeClick}
                 className="h-full"
               />
             }

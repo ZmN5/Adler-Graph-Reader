@@ -11,6 +11,8 @@ interface NodeDetailPanelProps {
   onClose?: () => void
   /** Called when user clicks "View in PDF" button */
   onViewInPDF?: (pageNumber: number) => void
+  /** Called when user clicks on a related concept */
+  onRelatedNodeClick?: (node: GraphNode) => void
 }
 
 export function NodeDetailPanel({
@@ -20,6 +22,7 @@ export function NodeDetailPanel({
   onCitationClick,
   onClose,
   onViewInPDF,
+  onRelatedNodeClick,
 }: NodeDetailPanelProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [nodeDetails, setNodeDetails] = useState<NodeDetails | null>(null)
@@ -28,12 +31,14 @@ export function NodeDetailPanel({
   const [pageNumber, setPageNumber] = useState<number | null>(null)
   const [chunkContents, setChunkContents] = useState<Map<string, ChunkDetails>>(new Map())
   const [loadingChunks, setLoadingChunks] = useState<Set<string>>(new Set())
+  const [relatedNodes, setRelatedNodes] = useState<Map<string, GraphNode>>(new Map())
 
   useEffect(() => {
     if (!node) {
       setNodeDetails(null)
       setEdges([])
       setChunkContents(new Map())
+      setRelatedNodes(new Map())
       return
     }
 
@@ -50,7 +55,7 @@ export function NodeDetailPanel({
           setPageNumber(details.page_number ?? null)
         }
 
-        // If we have a bookId, fetch edges for this book
+        // If we have a bookId, fetch edges and related nodes for this book
         if (bookId) {
           const graphData = await getBookGraph(bookId)
           if (!cancelled) {
@@ -59,6 +64,17 @@ export function NodeDetailPanel({
               (edge) => edge.source_node_id === node.id || edge.target_node_id === node.id
             )
             setEdges(nodeEdges)
+
+            // Build a map of related nodes (from graph data)
+            const relatedNodeMap = new Map<string, GraphNode>()
+            nodeEdges.forEach((edge) => {
+              const otherNodeId = edge.source_node_id === node.id ? edge.target_node_id : edge.source_node_id
+              const otherNode = graphData.nodes.find((n) => n.id === otherNodeId)
+              if (otherNode) {
+                relatedNodeMap.set(otherNodeId, otherNode)
+              }
+            })
+            setRelatedNodes(relatedNodeMap)
           }
         }
 
@@ -115,6 +131,13 @@ export function NodeDetailPanel({
       onCitationClick?.(chunkId)
     },
     [onCitationClick]
+  )
+
+  const handleRelatedNodeClick = useCallback(
+    (relatedNode: GraphNode) => {
+      onRelatedNodeClick?.(relatedNode)
+    },
+    [onRelatedNodeClick]
   )
 
   if (!node) {
@@ -251,18 +274,27 @@ export function NodeDetailPanel({
                   {edges.map((edge) => {
                     const isSource = edge.source_node_id === node.id
                     const otherNodeId = isSource ? edge.target_node_id : edge.source_node_id
+                    const otherNode = relatedNodes.get(otherNodeId)
+                    const otherNodeName = otherNode?.name || otherNodeId.substring(0, 8)
+
                     return (
-                      <div
+                      <button
                         key={edge.id}
-                        className="flex items-center gap-2 text-sm bg-muted/50 rounded-md p-2"
+                        onClick={() => otherNode && handleRelatedNodeClick(otherNode)}
+                        disabled={!otherNode}
+                        className={cn(
+                          'flex items-center gap-2 text-sm bg-muted/50 rounded-md p-2 w-full text-left',
+                          otherNode && 'hover:bg-muted cursor-pointer transition-colors',
+                          !otherNode && 'opacity-70 cursor-not-allowed'
+                        )}
                       >
                         <BookOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                         <span className="flex-1 truncate">
                           <span className="font-medium">{edge.relation_type}</span>
                           {' to '}
-                          <span className="text-primary">{otherNodeId.substring(0, 8)}...</span>
+                          <span className="text-primary">{otherNodeName}</span>
                         </span>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
