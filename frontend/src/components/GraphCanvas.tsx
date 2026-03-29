@@ -70,6 +70,7 @@ export function GraphCanvas({
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [showOnlyCore, setShowOnlyCore] = useState(false)
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; node: ExtendedNode } | null>(null)
   const graphRef = useRef<ForceGraphMethods<ExtendedNode, ExtendedLink> | undefined>()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -238,9 +239,20 @@ export function GraphCanvas({
   )
 
   const handleNodeHover = useCallback((node: NodeObject | null) => {
-    setHoveredNode(node as ExtendedNode | null)
+    const extNode = node as ExtendedNode | null
+    setHoveredNode(extNode)
     if (containerRef.current) {
       containerRef.current.style.cursor = node ? 'pointer' : 'grab'
+    }
+    // Update tooltip
+    if (extNode && extNode.x !== undefined && extNode.y !== undefined) {
+      setTooltip({
+        x: extNode.x,
+        y: extNode.y,
+        node: extNode,
+      })
+    } else {
+      setTooltip(null)
     }
   }, [])
 
@@ -248,48 +260,96 @@ export function GraphCanvas({
     (node: NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const extNode = node as ExtendedNode
       const label = extNode.name
-      const fontSize = Math.max(12 / globalScale, 4)
-      // Core concepts are larger (1.5x size multiplier)
-      const baseSize = Math.min(8 + extNode.source_chunk_ids.length, 16)
-      const nodeSize = extNode.is_core ? baseSize * 1.5 : baseSize
+      const shortLabel = label.length > 15 ? label.substring(0, 12) + '...' : label
 
-      // Draw node circle
+      // Minimum node size (increased for better clickability)
+      const MIN_NODE_SIZE = 6
+      const MAX_NODE_SIZE = 20
+
+      // Calculate node size based on source_chunk_ids count
+      const sizeMultiplier = extNode.is_core ? 1.8 : 1.2
+      const baseSize = Math.min(
+        MIN_NODE_SIZE + extNode.source_chunk_ids.length * 0.8,
+        MAX_NODE_SIZE
+      )
+      const nodeSize = baseSize * sizeMultiplier
+
+      // Hover effect: increase size when hovered
       const isSelected = extNode.id === selectedNodeId
       const isHovered = extNode.id === hoveredNode?.id
+      const displaySize = isHovered ? nodeSize * 1.2 : nodeSize
+
+      // Get node color
+      let nodeColor: string
+      if (isSelected) {
+        nodeColor = '#3b82f6' // primary
+      } else if (isHovered) {
+        nodeColor = '#60a5fa' // lighter primary
+      } else if (extNode.category) {
+        nodeColor = CATEGORY_COLORS[extNode.category] || DEFAULT_CATEGORY_COLOR
+      } else if (extNode.is_core) {
+        nodeColor = '#8b5cf6' // purple-500 for core concepts
+      } else {
+        nodeColor = '#94a3b8' // muted-foreground
+      }
+
+      // Draw glow effect for core concepts
+      if (extNode.is_core) {
+        const gradient = ctx.createRadialGradient(
+          node.x!, node.y!, 0,
+          node.x!, node.y!, displaySize * 2
+        )
+        gradient.addColorStop(0, nodeColor + '40') // 25% opacity
+        gradient.addColorStop(1, nodeColor + '00') // 0% opacity
+        ctx.fillStyle = gradient
+        ctx.beginPath()
+        ctx.arc(node.x!, node.y!, displaySize * 2, 0, 2 * Math.PI)
+        ctx.fill()
+      }
+
+      // Draw node circle with shadow for hovered nodes
+      if (isHovered) {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'
+        ctx.shadowBlur = 10
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 2
+      }
 
       ctx.beginPath()
-      ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI)
-
-      // Fill color based on state, core status, and category
-      if (isSelected) {
-        ctx.fillStyle = '#3b82f6' // primary
-      } else if (isHovered) {
-        ctx.fillStyle = '#60a5fa' // lighter primary
-      } else if (extNode.category) {
-        // Use category color if available
-        ctx.fillStyle = CATEGORY_COLORS[extNode.category] || DEFAULT_CATEGORY_COLOR
-      } else if (extNode.is_core) {
-        ctx.fillStyle = '#8b5cf6' // purple-500 for core concepts without category
-      } else {
-        ctx.fillStyle = '#94a3b8' // muted-foreground for regular concepts
-      }
+      ctx.arc(node.x!, node.y!, displaySize, 0, 2 * Math.PI)
+      ctx.fillStyle = nodeColor
       ctx.fill()
 
-      // Border for selected/hovered/core concepts
+      // Reset shadow
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+
+      // Draw border
       if (isSelected || isHovered || extNode.is_core) {
-        ctx.strokeStyle = isSelected ? '#2563eb' : isHovered ? '#93c5fd' : '#7c3aed'
+        ctx.strokeStyle = isSelected ? '#2563eb' : isHovered ? '#1d4ed8' : '#7c3aed'
         ctx.lineWidth = extNode.is_core ? 3 / globalScale : 2 / globalScale
         ctx.stroke()
       }
 
-      // Draw label with different style for core concepts
-      if (globalScale >= 0.5) {
-        ctx.font = extNode.is_core ? `bold ${fontSize}px sans-serif` : `${fontSize}px sans-serif`
+      // Draw label based on zoom level
+      if (globalScale >= 0.8) {
+        // Full label at higher zoom
+        ctx.font = extNode.is_core ? `bold ${Math.max(12 / globalScale, 10)}px sans-serif` : `${Math.max(10 / globalScale, 8)}px sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
-        ctx.fillStyle = '#1e293b' // foreground
-        ctx.fillText(label, node.x!, node.y! + nodeSize + 2 / globalScale)
+        ctx.fillStyle = '#1e293b'
+        ctx.fillText(label, node.x!, node.y! + displaySize + 4 / globalScale)
+      } else if (globalScale >= 0.4) {
+        // Shortened label at medium zoom
+        ctx.font = extNode.is_core ? `bold ${Math.max(10 / globalScale, 8)}px sans-serif` : `${Math.max(8 / globalScale, 6)}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = '#1e293b'
+        ctx.fillText(shortLabel, node.x!, node.y! + displaySize + 2 / globalScale)
       }
+      // No label at low zoom for performance
     },
     [selectedNodeId, hoveredNode]
   )
@@ -380,6 +440,28 @@ export function GraphCanvas({
         d3AlphaDecay={0.05}
         d3VelocityDecay={0.4}
       />
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="absolute pointer-events-none bg-background/95 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg z-10"
+          style={{
+            left: tooltip.x + 15,
+            top: tooltip.y - 10,
+            transform: 'translate(0, -100%)',
+          }}
+        >
+          <div className="font-medium text-sm">{tooltip.node.name}</div>
+          {tooltip.node.category && (
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Category: {tooltip.node.category}
+            </div>
+          )}
+          {tooltip.node.is_core && (
+            <div className="text-xs text-violet-500 mt-0.5">Core Concept</div>
+          )}
+        </div>
+      )}
       <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded flex flex-col gap-1">
         <span>{visibleNodes.length} / {graphData.nodes.length} nodes visible</span>
         <span>{visibleLinks.length} edges visible</span>
