@@ -74,3 +74,14 @@ Archive note: Previous prd.json (12 user stories including core concepts API, EP
   - `totalPages` from `selectedBook.total_pages` is used to normalize chapter number to percentage
 ---
 
+## 2026-03-29 - US-005: Fix Graph Node Label Size
+- **Bug**: At low zoom, labels became excessively large (e.g., 12/0.4 = 30px font size)
+- **Fix**: Added `MAX_FONT_SIZE = 14` cap and changed conditions to show labels when `globalScale >= 0.3` (hidden below 0.3)
+- **Files changed**: `frontend/src/components/GraphCanvas.tsx`
+- **Browser verification**: Graph renders with 10 nodes. Label sizing at various zoom levels cannot be visually verified due to CLI limitations.
+- **Learnings for future iterations:**
+  - Canvas font sizing: when using `fontSize / globalScale` formula, always cap the result to prevent huge labels at low zoom
+  - GraphCanvas uses 0.3, 0.4, 0.8 as zoom thresholds for label visibility and style
+  - Canvas element can be inspected via `document.querySelector('canvas')?.toDataURL()` to verify rendering
+---
+

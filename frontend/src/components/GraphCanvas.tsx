@@ -334,22 +334,36 @@ export function GraphCanvas({
       }
 
       // Draw label based on zoom level
-      if (globalScale >= 0.8) {
-        // Full label at higher zoom
-        ctx.font = extNode.is_core ? `bold ${Math.max(12 / globalScale, 10)}px sans-serif` : `${Math.max(10 / globalScale, 8)}px sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'top'
-        ctx.fillStyle = '#1e293b'
-        ctx.fillText(label, node.x!, node.y! + displaySize + 4 / globalScale)
-      } else if (globalScale >= 0.4) {
-        // Shortened label at medium zoom
-        ctx.font = extNode.is_core ? `bold ${Math.max(10 / globalScale, 8)}px sans-serif` : `${Math.max(8 / globalScale, 6)}px sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'top'
-        ctx.fillStyle = '#1e293b'
-        ctx.fillText(shortLabel, node.x!, node.y! + displaySize + 2 / globalScale)
+      if (globalScale >= 0.3) {
+        // Cap font size at 14px to prevent excessively large labels at low zoom
+        const MAX_FONT_SIZE = 14
+        if (globalScale >= 0.8) {
+          // Full label at higher zoom
+          const fontSize = Math.min(12 / globalScale, MAX_FONT_SIZE)
+          ctx.font = extNode.is_core ? `bold ${fontSize}px sans-serif` : `${fontSize}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          ctx.fillStyle = '#1e293b'
+          ctx.fillText(label, node.x!, node.y! + displaySize + 4 / globalScale)
+        } else if (globalScale >= 0.4) {
+          // Shortened label at medium zoom
+          const fontSize = Math.min(10 / globalScale, MAX_FONT_SIZE)
+          ctx.font = extNode.is_core ? `bold ${fontSize}px sans-serif` : `${fontSize}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          ctx.fillStyle = '#1e293b'
+          ctx.fillText(shortLabel, node.x!, node.y! + displaySize + 2 / globalScale)
+        } else {
+          // globalScale >= 0.3 and < 0.4: short label, capped font size
+          const fontSize = Math.min(10 / globalScale, MAX_FONT_SIZE)
+          ctx.font = extNode.is_core ? `bold ${fontSize}px sans-serif` : `${fontSize}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          ctx.fillStyle = '#1e293b'
+          ctx.fillText(shortLabel, node.x!, node.y! + displaySize + 2 / globalScale)
+        }
       }
-      // No label at low zoom for performance
+      // No label at very low zoom (< 0.3) for performance
     },
     [selectedNodeId, hoveredNode]
   )
