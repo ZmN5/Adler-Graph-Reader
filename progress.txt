@@ -22,6 +22,19 @@
   - Custom dropdowns need `onClick` handlers on chapter items to close after selection
 ---
 
+## 2026-03-29 21:25 - US-003
+- What was implemented
+  - Fixed chapter title matching: changed from `startsWith` to `endsWith` for href comparison
+  - Fixed prev/next button enabling: now uses flattened chapter list index instead of epubjs spine index
+  - Chapter titles now display correctly (e.g., "1. Introduction to DeepSeek")
+- Files changed
+  - frontend/src/components/EPUBReader.tsx (modified)
+  - prd.json (updated US-003 passes to true)
+- **Learnings for future iterations:**
+  - epubjs `location.start.href` is a full URL, but chapter.href is relative - use `endsWith` for matching
+  - epubjs `location.start.index` is the spine index, not the flattened TOC index - use the chapter list's own index
+---
+
 ## 2026-03-29 20:45 - US-001
 - What was implemented
   - Created `ConfirmDialog.tsx` component with backdrop, close on Escape key, close on backdrop click, danger variant styling

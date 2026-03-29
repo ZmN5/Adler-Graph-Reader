@@ -160,14 +160,16 @@ export function EPUBReader({
       // Update current chapter
       if (location.start && location.start.href) {
         const currentHref = location.start.href.split('#')[0]
-        const chapter = chapters.find((c) => c.href.startsWith(currentHref))
-        if (chapter) {
+        // Match by href - currentHref is full URL, chapter.href is relative
+        // Use endsWith since the relative href is appended to the base URL
+        const currentChapterIndex = chapters.findIndex((c) => currentHref.endsWith(c.href))
+        if (currentChapterIndex !== -1) {
+          const chapter = chapters[currentChapterIndex]
           setCurrentChapter(chapter.title)
+          // Update prev/next availability based on flattened chapter list
+          setCanPrev(currentChapterIndex > 0)
+          setCanNext(currentChapterIndex < chapters.length - 1)
         }
-
-        // Update prev/next availability
-        setCanPrev(location.start.index > 0)
-        setCanNext(location.start.index < chapters.length - 1)
       }
     }
 
