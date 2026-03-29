@@ -73,6 +73,18 @@
   - Use `extractionError` state with bookId to show inline errors specific to each book
 ---
 
+## 2026-03-29 22:00 - US-007
+- What was implemented
+  - Added Escape key listener to switch from Core Concepts tab back to Graph view
+  - Pressing Escape while on Core Concepts tab now navigates to Graph tab
+- Files changed
+  - frontend/src/App.tsx (modified)
+  - prd.json (updated US-007 passes to true)
+- **Learnings for future iterations:**
+  - Escape key can be used to navigate back from secondary views
+  - Use window.addEventListener for global keyboard shortcuts
+---
+
 ## 2026-03-29 20:45 - US-001
 - What was implemented
   - Created `ConfirmDialog.tsx` component with backdrop, close on Escape key, close on backdrop click, danger variant styling

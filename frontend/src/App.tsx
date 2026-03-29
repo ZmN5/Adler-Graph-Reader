@@ -10,7 +10,7 @@ import { NodeDetailPanel } from '@/components/NodeDetailPanel'
 import { CoreConceptsList } from '@/components/CoreConceptsList'
 import { useAppStore } from '@/stores/app-store'
 import { cn } from '@/lib/utils'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { UploadBookResponse, BookSummary, GraphNode, getChunk } from '@/lib/api-client'
 import { X, Network, Star } from 'lucide-react'
 
@@ -23,6 +23,17 @@ function App() {
   const [epubChapterHref, setEpubChapterHref] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'graph' | 'core-concepts'>('graph')
   const [highlightChunkId, setHighlightChunkId] = useState<string | null>(null)
+
+  // Handle Escape key to switch from Core Concepts back to Graph view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeTab === 'core-concepts') {
+        setActiveTab('graph')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeTab])
 
   const handleUploadSuccess = useCallback((_response: UploadBookResponse) => {
     setRefreshKey((k) => k + 1)
