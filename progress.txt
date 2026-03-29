@@ -60,6 +60,19 @@
   - Active tabs should use `font-semibold` in addition to border for better visibility
 ---
 
+## 2026-03-29 21:50 - US-006
+- What was implemented
+  - Added "Extracting concepts..." status text with spinner when extraction is in progress
+  - Added inline error message display when extraction fails
+  - Error displays below the book entry with destructive color
+- Files changed
+  - frontend/src/components/BookList.tsx (modified)
+  - prd.json (updated US-006 passes to true)
+- **Learnings for future iterations:**
+  - Spinner alone is not sufficient feedback - always add status text
+  - Use `extractionError` state with bookId to show inline errors specific to each book
+---
+
 ## 2026-03-29 20:45 - US-001
 - What was implemented
   - Created `ConfirmDialog.tsx` component with backdrop, close on Escape key, close on backdrop click, danger variant styling

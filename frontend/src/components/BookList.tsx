@@ -24,6 +24,7 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
   const [extractingBookId, setExtractingBookId] = useState<string | null>(null)
   const [parsingBookId, setParsingBookId] = useState<string | null>(null)
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null)
+  const [extractionError, setExtractionError] = useState<{ bookId: string; message: string } | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<{ id: string; name: string } | null>(null)
 
@@ -64,6 +65,7 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
     e.stopPropagation()
     setExtractingBookId(book.id)
     setExtractionResult(null)
+    setExtractionError(null)
     try {
       const result = await extractBook(book.id)
       const extractionRes: ExtractionResult = {
@@ -82,7 +84,7 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
         )
       }, 5000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to extract concepts')
+      setExtractionError({ bookId: book.id, message: err instanceof Error ? err.message : 'Failed to extract concepts' })
     } finally {
       setExtractingBookId(null)
     }
@@ -161,6 +163,12 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
             <div className="flex items-center gap-2">
               <h3 className="font-medium truncate">{book.title}</h3>
               {formatBadge(book.format)}
+              {extractingBookId === book.id && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="h-3 w-3 animate-spin rounded-full border border-primary border-t-transparent" />
+                  Extracting concepts...
+                </span>
+              )}
               {extractionResult?.bookId === book.id && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                   <CheckCircle className="h-3 w-3" />
@@ -172,6 +180,9 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
               {book.author && <span>{book.author}</span>}
               {book.total_pages && <span>{book.total_pages} pages</span>}
             </div>
+            {extractionError?.bookId === book.id && (
+              <p className="mt-1 text-xs text-destructive">{extractionError.message}</p>
+            )}
           </div>
 
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
