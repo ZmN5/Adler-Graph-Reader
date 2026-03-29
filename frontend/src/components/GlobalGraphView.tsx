@@ -26,6 +26,7 @@ interface ExtendedNode extends NodeObject {
   examples: string[]
   source_chunk_ids: string[]
   sourceCount: number
+  is_core: boolean
 }
 
 interface ExtendedLink extends LinkObject {
@@ -116,6 +117,7 @@ export function GlobalGraphView({
         description: extNode.description,
         examples: extNode.examples,
         source_chunk_ids: extNode.source_chunk_ids,
+        is_core: extNode.is_core,
       }
       onNodeClick?.(graphNode)
     },
@@ -136,7 +138,9 @@ export function GlobalGraphView({
       const fontSize = Math.max(12 / globalScale, 4)
       const baseNodeSize = 6
       const sourceCount = extNode.source_chunk_ids.length
-      const nodeSize = Math.min(baseNodeSize + sourceCount * 0.5, 14)
+      // Core concepts are larger (1.5x size multiplier)
+      const regularNodeSize = Math.min(baseNodeSize + sourceCount * 0.5, 14)
+      const nodeSize = extNode.is_core ? regularNodeSize * 1.5 : regularNodeSize
 
       // Draw node circle
       const isSelected = extNode.id === selectedNodeId
@@ -145,11 +149,13 @@ export function GlobalGraphView({
       ctx.beginPath()
       ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI)
 
-      // Fill color based on state
+      // Fill color based on state and core status
       if (isSelected) {
         ctx.fillStyle = '#3b82f6' // primary
       } else if (isHovered) {
         ctx.fillStyle = '#60a5fa' // lighter primary
+      } else if (extNode.is_core) {
+        ctx.fillStyle = '#8b5cf6' // purple-500 for core concepts
       } else {
         // Color based on source count (more sources = more saturated)
         const saturation = Math.min(40 + sourceCount * 5, 80)
@@ -157,10 +163,10 @@ export function GlobalGraphView({
       }
       ctx.fill()
 
-      // Border for selected/hovered
-      if (isSelected || isHovered) {
-        ctx.strokeStyle = isSelected ? '#2563eb' : '#93c5fd'
-        ctx.lineWidth = 2 / globalScale
+      // Border for selected/hovered/core concepts
+      if (isSelected || isHovered || extNode.is_core) {
+        ctx.strokeStyle = isSelected ? '#2563eb' : isHovered ? '#93c5fd' : '#7c3aed'
+        ctx.lineWidth = extNode.is_core ? 3 / globalScale : 2 / globalScale
         ctx.stroke()
       }
 
@@ -184,9 +190,9 @@ export function GlobalGraphView({
         }
       }
 
-      // Draw label
+      // Draw label with different style for core concepts
       if (globalScale >= 0.5) {
-        ctx.font = `${fontSize}px sans-serif`
+        ctx.font = extNode.is_core ? `bold ${fontSize}px sans-serif` : `${fontSize}px sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         ctx.fillStyle = '#1e293b' // foreground
@@ -246,6 +252,9 @@ export function GlobalGraphView({
     )
   }
 
+  const coreConceptCount = graphData.nodes.filter((n) => n.is_core).length
+  const regularConceptCount = graphData.nodes.length - coreConceptCount
+
   return (
     <div ref={containerRef} className={cn('relative h-full w-full', className)}>
       <ForceGraph2D
@@ -267,6 +276,24 @@ export function GlobalGraphView({
       />
       <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
         {graphData.nodes.length} nodes, {graphData.links.length} edges (global)
+      </div>
+      {/* Legend */}
+      <div className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-sm">
+        <div className="text-xs font-medium text-foreground mb-1.5">Legend</div>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-violet-500 border-2 border-violet-600" />
+            <span className="text-xs text-muted-foreground">
+              Core Concept ({coreConceptCount})
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+            <span className="text-xs text-muted-foreground">
+              Regular Concept ({regularConceptCount})
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   )
