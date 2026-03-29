@@ -1,7 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { getBookGraph, GraphNode } from '@/lib/api-client'
 import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d'
+
+const INITIAL_NODE_LIMIT = 50
+const NODE_INCREMENT = 50
 
 interface GraphCanvasProps {
   bookId: string
@@ -46,6 +49,7 @@ export function GraphCanvas({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredNode, setHoveredNode] = useState<ExtendedNode | null>(null)
+  const [visibleNodeCount, setVisibleNodeCount] = useState(INITIAL_NODE_LIMIT)
   const graphRef = useRef<ForceGraphMethods<ExtendedNode, ExtendedLink> | undefined>()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -55,14 +59,21 @@ export function GraphCanvas({
     let cancelled = false
     setIsLoading(true)
     setError(null)
+    setVisibleNodeCount(INITIAL_NODE_LIMIT)
 
     const loadGraph = async () => {
       try {
         const data = await getBookGraph(bookId)
         if (!cancelled) {
+          // Sort nodes by importance (core first, then by source_chunk_ids count)
+          const sortedNodes = [...data.nodes].sort((a, b) => {
+            if (a.is_core !== b.is_core) return b.is_core ? 1 : -1
+            return b.source_chunk_ids.length - a.source_chunk_ids.length
+          })
+
           // Transform edges to links format expected by force-graph
           setGraphData({
-            nodes: data.nodes,
+            nodes: sortedNodes,
             links: data.edges.map((edge) => ({
               id: edge.id,
               source: edge.source_node_id,
@@ -104,6 +115,33 @@ export function GraphCanvas({
     window.addEventListener('resize', updateDimensions)
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
+
+  // Memoized visible nodes and links for performance
+  const visibleNodes = useMemo(() => {
+    return graphData.nodes.slice(0, visibleNodeCount)
+  }, [graphData.nodes, visibleNodeCount])
+
+  const visibleNodeIds = useMemo(() => {
+    return new Set(visibleNodes.map((n) => n.id))
+  }, [visibleNodes])
+
+  const visibleLinks = useMemo(() => {
+    // Only show links where both source and target are visible
+    return graphData.links.filter(
+      (link) => visibleNodeIds.has(link.source as string) && visibleNodeIds.has(link.target as string)
+    )
+  }, [graphData.links, visibleNodeIds])
+
+  const visibleGraphData = useMemo(() => ({
+    nodes: visibleNodes,
+    links: visibleLinks,
+  }), [visibleNodes, visibleLinks])
+
+  const hasMoreNodes = graphData.nodes.length > visibleNodeCount
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleNodeCount((prev) => Math.min(prev + NODE_INCREMENT, graphData.nodes.length))
+  }, [graphData.nodes.length])
 
   // Center on selected node
   useEffect(() => {
@@ -249,14 +287,14 @@ export function GraphCanvas({
     )
   }
 
-  const coreConceptCount = graphData.nodes.filter((n) => n.is_core).length
-  const regularConceptCount = graphData.nodes.length - coreConceptCount
+  const coreConceptCount = visibleNodes.filter((n) => n.is_core).length
+  const regularConceptCount = visibleNodes.length - coreConceptCount
 
   return (
     <div ref={containerRef} className={cn('relative h-full w-full', className)}>
       <ForceGraph2D
         ref={graphRef}
-        graphData={graphData as { nodes: ExtendedNode[]; links: ExtendedLink[] }}
+        graphData={visibleGraphData as { nodes: ExtendedNode[]; links: ExtendedLink[] }}
         width={dimensions.width}
         height={dimensions.height}
         nodeCanvasObject={nodeCanvasObject}
@@ -267,12 +305,21 @@ export function GraphCanvas({
         enablePanInteraction={true}
         backgroundColor="#fafafa"
         linkDirectionalArrowLength={0}
-        cooldownTicks={100}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
+        cooldownTicks={50}
+        d3AlphaDecay={0.05}
+        d3VelocityDecay={0.4}
       />
-      <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-        {graphData.nodes.length} nodes, {graphData.links.length} edges
+      <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded flex flex-col gap-1">
+        <span>{visibleNodes.length} / {graphData.nodes.length} nodes visible</span>
+        <span>{visibleLinks.length} edges visible</span>
+        {hasMoreNodes && (
+          <button
+            onClick={handleLoadMore}
+            className="mt-1 px-2 py-1 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 transition-colors"
+          >
+            Load More (+{Math.min(NODE_INCREMENT, graphData.nodes.length - visibleNodeCount)})
+          </button>
+        )}
       </div>
       {/* Legend */}
       <div className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-sm">
@@ -291,6 +338,11 @@ export function GraphCanvas({
             </span>
           </div>
         </div>
+        {visibleNodes.length < graphData.nodes.length && (
+          <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
+            Showing {visibleNodes.length} of {graphData.nodes.length} nodes
+          </div>
+        )}
       </div>
     </div>
   )
