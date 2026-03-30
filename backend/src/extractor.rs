@@ -376,11 +376,15 @@ pub async fn extract_concepts_from_book(
     let semaphore = Arc::new(Semaphore::new(4));
     let pool = pool.clone();
 
+    // Get LLM API base URL from environment variable with default
+    let llm_api_url = std::env::var("LLM_API_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
+
     let mut handles = Vec::new();
 
     for (chunk_id, content) in chunks {
         let pool = pool.clone();
-        let llm = LlmClient::new("http://localhost:1234/v1");
+        let llm = LlmClient::new(&llm_api_url);
         let semaphore = semaphore.clone();
         let book_id = book_id.to_string();
         let language = language.clone();
