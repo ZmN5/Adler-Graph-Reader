@@ -98,3 +98,22 @@ Started: 2026-03-30
   - Chapter selection modal works via "Select chapter" button
   - Upload dialog has language selection (Auto-detect, Chinese, English)
   - browser-use python command persists variables between calls
+
+
+## 2026-03-30 - US-004
+- Completed US-004: PDF Reading and Navigation Testing
+- Tested PDF reader with designing-machine-learning-systems.pdf (389 pages)
+- Verified page navigation (prev/next) works correctly
+- Verified page number input navigation works correctly
+- PDF renders properly on canvas
+- **BUG FOUND**: No zoom controls exist in PDF reader (P2 issue)
+- Found duplicate "designing-machine-learning-systems" book entry
+- All screenshots saved to tasks/screenshots/round4/
+- Report saved to tasks/reports/round4-report.md
+- Typecheck passed
+- Files changed: prd.json (US-004 marked as passes: true)
+- **Learnings for future iterations:**
+  - PDF auto-scales to fit container but has no user-controlled zoom
+  - Second duplicate of designing-machine-learning-systems has concepts extracted (opens graph view)
+  - First copy shows "No concepts extracted yet" (opens PDF reader)
+  - browser-use eval doesn't work well for DOM manipulation, use get html instead
