@@ -46,8 +46,8 @@
         "Verify in browser: click concept node jumps to correct chapter"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "EPUBReader already supports highlightAnchor (CFI) and chapterHref navigation props. Navigation triggers smooth scroll via setLocation."
     },
     {
       "id": "US-004",

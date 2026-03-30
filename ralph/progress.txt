@@ -8,7 +8,7 @@ Started: 2026-03-30
 |----|-------|--------|
 | US-001 | Install react-reader dependency for EPUB | ✅ completed |
 | US-002 | Migrate EPUB reader to react-reader with continuous scroll | ✅ completed |
-| US-003 | EPUB support chapter/CFI navigation from graph | pending |
+| US-003 | EPUB support chapter/CFI navigation from graph | ✅ completed |
 | US-004 | Fix PDF high-DPI blur with devicePixelRatio | pending |
 | US-005 | Fix PDF content rotation issue | pending |
 | US-006 | Implement PDF virtual scrolling base | pending |
@@ -34,5 +34,18 @@ Started: 2026-03-30
   - To hide navigation buttons in react-reader, pass readerStyles prop with prev/next set to display: 'none'
   - epubOptions config: { flow: 'scrolled', manager: 'continuous', spread: 'none' } enables continuous scroll mode
   - Current location is tracked via epubcfi string and converted to chapter name using rendition.currentLocation()
+---
+
+## 2026-03-30 23:55 - US-003
+- Verified EPUBReader already supports chapter/CFI navigation from graph
+- highlightAnchor prop accepts epubcfi strings for precise location navigation
+- chapterHref prop accepts chapter URLs for chapter-level navigation
+- Navigation triggers smooth scroll via react-reader's setLocation
+- Chapter display updates automatically via locationChanged callback
+- No code changes needed - functionality was already implemented
+- **Learnings for future iterations:**
+  - EPUB navigation uses priority: highlightAnchor (CFI) > chapterHref > pageNumber
+  - Navigation is triggered via setLocation state update, which react-reader handles
+  - The locationChanged callback receives the new epubcfi and updates chapter display
 ---
 
