@@ -1,58 +1,134 @@
 {
-  "project": "Intelligent-Reading-Concept-Graph",
-  "branchName": "ralph/backend-configuration-fix",
-  "description": "后端配置问题修复 - 改进错误提示、URL配置化、chunk大小优化、并发配置化",
+  "project": "Intelligent Reading Concept Graph",
+  "branchName": "ralph/pdf-epub-reader-refactor",
+  "description": "PDF/EPUB Reader Refactor - Fix blur/rotation issues, implement continuous scroll with mouse wheel navigation",
   "userStories": [
     {
       "id": "US-001",
-      "title": "改进 extract 接口错误提示",
-      "description": "作为用户，我在调用 extract 接口时如果书籍未解析，能看到清晰的错误提示，而不是模糊的 400 Bad Request。",
+      "title": "Install react-reader dependency for EPUB",
+      "description": "As a developer, I need to install react-reader so we can use it for EPUB continuous scroll support.",
       "acceptanceCriteria": [
-        "错误消息改为：'Book has no chunks. Please parse the book first via POST /api/books/{id}/parse.'",
-        "错误消息包含需要先调用哪个接口的信息",
+        "Install react-reader npm package",
+        "Install @types/epubjs if needed for TypeScript",
+        "Verify package.json includes react-reader dependency",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "Installed react-reader@^2.0.15. Package includes built-in TypeScript types, no @types/epubjs needed."
     },
     {
       "id": "US-002",
-      "title": "LM Studio API URL 配置化",
-      "description": "作为运维人员，我需要通过环境变量配置 LM Studio 的 API 地址，而不是修改代码。",
+      "title": "Migrate EPUB reader to react-reader with continuous scroll",
+      "description": "As a user, I want to read EPUBs with smooth scrolling and complete chapter content.",
       "acceptanceCriteria": [
-        "支持 LLM_API_BASE_URL 环境变量，默认 http://localhost:1234/v1",
-        "extractor.rs 中读取环境变量传入 LlmClient",
-        "Typecheck passes"
+        "Replace custom epubjs with ReactReader component",
+        "Configure flow: 'scrolled', manager: 'continuous', spread: 'none'",
+        "Display current chapter name in header",
+        "Remove previous/next navigation buttons",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: EPUB content displays fully and scrolls smoothly"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "提取并发数配置化",
-      "description": "作为运维人员，我需要根据服务器性能调整 extract 操作的并发数。",
+      "title": "EPUB support chapter/CFI navigation from graph",
+      "description": "As a user, I want to click a concept in the graph and jump to the corresponding chapter.",
       "acceptanceCriteria": [
-        "支持 EXTRACT_CONCURRENCY 环境变量，默认 4",
-        "Semaphore::new() 从环境变量读取并发数",
-        "Typecheck passes"
+        "ReactReader accepts highlightAnchor (CFI) prop for navigation",
+        "ReactReader accepts chapterHref prop for chapter navigation",
+        "Smooth scroll to target position when navigating",
+        "Update current chapter display in header",
+        "Typecheck passes",
+        "Verify in browser: click concept node jumps to correct chapter"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "修复 Context Length 错误",
-      "description": "作为用户，我希望能成功提取书籍概念，不再出现上下文超限错误。模型上下文为 6000 tokens，当前 chunk_size 16000 chars 过大。",
+      "title": "Fix PDF high-DPI blur with devicePixelRatio",
+      "description": "As a user on Retina/4K displays, I want PDF text to be crisp and clear.",
       "acceptanceCriteria": [
-        "pdf_parser.rs:53 chunk_size 从 16000 改为 8000",
-        "pdf_parser.rs:70 overlap 从 400 改为 200",
-        "Typecheck passes"
+        "Detect window.devicePixelRatio in PDFReader",
+        "Set canvas.width = CSS width * devicePixelRatio",
+        "Set canvas.height = CSS height * devicePixelRatio",
+        "Call context.scale(dpr, dpr) before render",
+        "Text renders sharply on high-DPI screens",
+        "Typecheck passes",
+        "Verify in browser on Retina display: text is sharp"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Fix PDF content rotation issue",
+      "description": "As a user, I want PDFs with rotated pages to display correctly.",
+      "acceptanceCriteria": [
+        "Get viewport.rotation from page.getViewport({scale: 1})",
+        "Pass rotation to getViewport({ scale, rotation }) when rendering",
+        "Pages with rotation metadata display correctly oriented",
+        "Typecheck passes",
+        "Verify with rotated PDF: content displays correctly"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Implement PDF virtual scrolling base",
+      "description": "As a developer, I need the foundation for PDF continuous scroll with Intersection Observer.",
+      "acceptanceCriteria": [
+        "Create scroll container with overflow-y: scroll",
+        "Use IntersectionObserver to track visible pages",
+        "Maintain pool of 3-5 canvas elements for visible pages",
+        "Calculate page positions and total scroll height",
+        "Render pages only when they enter viewport",
+        "Typecheck passes",
+        "Verify in browser: scroll through PDF, pages load on demand"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Complete PDF virtual scrolling with page tracking",
+      "description": "As a user, I want to scroll through PDF smoothly and see current page in header.",
+      "acceptanceCriteria": [
+        "Track current visible page during scroll",
+        "Update page number display in header in real-time",
+        "Support scroll-to-page via pageNumber prop",
+        "Support mouse wheel, touchpad, scrollbar navigation",
+        "Add smooth scroll animation for programmatic navigation",
+        "Typecheck passes",
+        "Verify in browser: scroll smoothly, header shows correct page"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Unify reader interface and remove navigation buttons",
+      "description": "As a user, I want a consistent reading interface for both PDF and EPUB.",
+      "acceptanceCriteria": [
+        "Remove previous/next page buttons from PDF reader",
+        "Unify header styling between PDF and EPUB readers",
+        "Both show current position (page number or chapter name)",
+        "Consistent loading states",
+        "Typecheck passes",
+        "Verify in browser: UI is clean and consistent for both formats"
+      ],
+      "priority": 8,
+      "passes": false,
       "notes": ""
     }
   ]
