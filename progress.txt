@@ -163,6 +163,22 @@ Started: 2026-03-30
   - "Show Core Only" shows 0 nodes if no core concepts extracted (expected behavior)
   - Graph legend shows Core Concept (count) and Regular Concept (count)
 
+## 2026-03-30 - US-008
+- Completed US-008: Error Handling and Edge Cases Testing
+- **BUGS FOUND**:
+  - P2: Duplicate book upload creates duplicate entries (no validation)
+  - P3: Invalid page numbers silently clamp to valid range (no user notification)
+- **WORKING**: Invalid file type shows proper error, delete confirmation dialog works, cancel button works correctly
+- Typecheck passed
+- Files changed: prd.json (US-008 marked as passes: true), tasks/reports/round8-report.md (new file)
+- **Learnings for future iterations:**
+  - Duplicate books allowed - app doesn't check for existing book before upload
+  - Page number input clamps to valid range silently (no toast/notification)
+  - Delete confirmation dialog works well with Cancel/Delete buttons
+  - browser-use upload command works with file input index 7
+
+---
+
 ## 2026-03-30 - US-007
 - Completed US-007: UI/UX and Language Toggle Testing
 - Tested language toggle - button works correctly (EN/中文)
@@ -181,3 +197,19 @@ Started: 2026-03-30
   - Parse shows no progress text but Extract does ("Extracting concepts...")
   - browser-use click on compound file input doesn't open dialog - need upload command
   - browser-use state shows disabled=true for buttons in progress
+
+## 2026-03-30 - US-009
+- Completed US-009: Regression and Integration Testing
+- Verified extraction now completes successfully (was hanging in US-002) - shows 15 nodes, 10 edges
+- Verified book switching preserves state correctly
+- **PERSISTENT BUG**: Escape key does NOT close modals (US-007 P2) - still present
+- **PERSISTENT BUG**: Duplicate book entries still created (US-008 P2) - "you-dont-know-js-yet" appears twice
+- Screenshot captured showing duplicate books and working concept graph
+- Typecheck passed
+- Files changed: prd.json (US-009 marked as passes: true), tasks/reports/round9-report.md (new file)
+- **Learnings for future iterations:**
+  - Extraction fix verified - semaphore count increase (1 to 4) and LLM timeout reduction (120s to 60s) works
+  - Book switching correctly preserves extraction state across different books
+  - browser-use python command supports time.sleep() for waiting
+  - Modal elements like Close button show with shadow DOM markers in state output (*[585]<button />)
+

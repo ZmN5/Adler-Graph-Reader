@@ -136,8 +136,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Duplicate book upload creates duplicate entries (P2). Invalid file type shows proper error message. Invalid page numbers silently clamp to valid range (P3)."
     },
     {
       "id": "US-009",
@@ -152,8 +152,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Extraction hangs issue (US-002) is FIXED. Extraction completes successfully. Remaining P2 bugs: Escape key modal issue (US-007) and duplicate book entries (US-008) still present."
     },
     {
       "id": "US-010",
