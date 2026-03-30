@@ -30,8 +30,8 @@
         "Verify in browser using dev-browser skill: EPUB content displays fully and scrolls smoothly"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "ReactReader configured with continuous scroll, chapter display in header, navigation buttons hidden via readerStyles"
     },
     {
       "id": "US-003",

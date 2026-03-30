@@ -7,7 +7,7 @@ Started: 2026-03-30
 | ID | Title | Status |
 |----|-------|--------|
 | US-001 | Install react-reader dependency for EPUB | ✅ completed |
-| US-002 | Migrate EPUB reader to react-reader with continuous scroll | pending |
+| US-002 | Migrate EPUB reader to react-reader with continuous scroll | ✅ completed |
 | US-003 | EPUB support chapter/CFI navigation from graph | pending |
 | US-004 | Fix PDF high-DPI blur with devicePixelRatio | pending |
 | US-005 | Fix PDF content rotation issue | pending |
@@ -24,5 +24,15 @@ Started: 2026-03-30
   - react-reader package is located in the frontend directory
   - The package already includes TypeScript definitions at dist/index.d.ts
   - Use `npm run typecheck` in the frontend directory to verify TypeScript
+## 2026-03-30 23:40 - US-002
+- Migrated EPUB reader to use react-reader with continuous scroll configuration
+- Added custom readerStyles to hide prev/next navigation buttons (prev: { display: 'none' }, next: { display: 'none' })
+- EPUBReader displays current chapter name in header and chapter progress (e.g., "1 / 16 chapters")
+- Files changed: frontend/src/components/EPUBReader.tsx
+- **Learnings for future iterations:**
+  - react-reader uses IReactReaderStyle interface for styling, with `prev` and `next` properties for navigation buttons
+  - To hide navigation buttons in react-reader, pass readerStyles prop with prev/next set to display: 'none'
+  - epubOptions config: { flow: 'scrolled', manager: 'continuous', spread: 'none' } enables continuous scroll mode
+  - Current location is tracked via epubcfi string and converted to chapter name using rendition.currentLocation()
 ---
 
