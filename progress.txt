@@ -1,0 +1,80 @@
+## Iterative Testing Sprint - Ralph Progress
+
+Branch: ralph/iterative-testing-browser-use
+Started: 2026-03-30
+
+## Testing Workflow
+- Use browser-use to automate testing of the product
+- Test sample books from sample_books/ directory
+- Each round: test -> document issues -> fix issues -> verify
+- Terminate after 10 rounds OR 3 consecutive rounds with no new issues
+
+## Sample Books for Testing
+| File | Format |
+|------|--------|
+| designing-machine-learning-systems.pdf | PDF |
+| delta-lake-the-definitive-guide-modern-data-lakehouse.pdf | PDF |
+| domain-specific-slm.epub | EPUB |
+| you-dont-know-js-yet.epub | EPUB |
+
+## Codebase Patterns
+- New books show "Parse" button, parsed books show "Extract" button
+- Parse/Extract buttons disable when work is in progress (shows as disabled=true in browser-use state)
+- API `/api/books` returns `total_pages: 1` even when UI shows correct page count - this is a known bug
+- browser-use CLI persists between commands - no need to reopen browser
+- For browser-use python: use simple expressions, avoid chaining with semicolons
+
+## Issue Severity Definitions
+- P0: Core functionality completely broken
+- P1: Core functionality severely impaired
+- P2: Feature broken but has workaround
+- P3: UI/UX issue
+
+---
+
+## 2026-03-30 - US-001
+- Completed US-001: Upload and Parse Testing
+- Tested upload flow with designing-machine-learning-systems.pdf
+- Verified Parse button works and shows disabled state during parsing
+- All screenshots saved to tasks/screenshots/round1/
+- Report saved to tasks/reports/round1-report.md
+- Typecheck passed
+- Files changed: prd.json (US-001 marked as passes: true)
+- **Learnings for future iterations:**
+  - New books show "Parse" button, parsed books show "Extract" button
+  - Parse button disables when parsing is in progress
+  - Upload dialog has language selection (Auto-detect, Chinese, English)
+  - browser-use CLI persists between commands for efficient testing
+- **Useful context:**
+  - Screenshots directory already exists at tasks/screenshots/round1/
+  - Reports directory exists at tasks/reports/
+  - Frontend typecheck: `cd frontend && npm run typecheck`
+
+---
+
+## 2026-03-30 - US-002 (INCOMPLETE - Bug Found)
+- Tested US-002: Extract and Core Concepts functionality
+- Extraction button click works and shows "Extracting concepts..." progress
+- **BUG FOUND**: Extraction never completes - hangs indefinitely (8+ minutes tested)
+- Reader opens successfully but shows "No concepts extracted yet"
+- Core Concepts button shows empty state as expected
+- Cannot test concept graph - requires successful extraction
+- Report saved to tasks/reports/round2-report.md
+- Screenshots saved to tasks/screenshots/round2/
+- Typecheck passed
+- Files changed: tasks/reports/round2-report.md (new file)
+- **Learnings for future iterations:**
+  - Extraction hangs indefinitely - likely backend LLM integration issue
+  - API shows `total_pages: 1` for all books despite UI showing 389 pages
+  - "designing-machine-learning-systems" book appears TWICE in library (duplicate)
+  - browser-use python command has issues with complex expressions - use simple print statements
+  - extraction stuck? click on book title to open reader and check if concepts exist
+- **Root cause hypothesis:**
+  - Backend extraction process fails silently
+  - PDF parsing issue (pages showing 1 instead of 389)
+  - Need to check backend logs and LM Studio connection
+- **Next steps:**
+  - Fix extraction bug before US-002 can pass
+  - Consider using smaller book for faster testing
+  - Backend architect should investigate extraction endpoint
+
