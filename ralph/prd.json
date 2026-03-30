@@ -63,8 +63,8 @@
         "Verify in browser on Retina display: text is sharp"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Canvas dimensions now multiplied by window.devicePixelRatio. Context scaled by DPR before render."
     },
     {
       "id": "US-005",

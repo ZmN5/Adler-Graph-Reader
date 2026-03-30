@@ -9,7 +9,7 @@ Started: 2026-03-30
 | US-001 | Install react-reader dependency for EPUB | ✅ completed |
 | US-002 | Migrate EPUB reader to react-reader with continuous scroll | ✅ completed |
 | US-003 | EPUB support chapter/CFI navigation from graph | ✅ completed |
-| US-004 | Fix PDF high-DPI blur with devicePixelRatio | pending |
+| US-004 | Fix PDF high-DPI blur with devicePixelRatio | ✅ completed |
 | US-005 | Fix PDF content rotation issue | pending |
 | US-006 | Implement PDF virtual scrolling base | pending |
 | US-007 | Complete PDF virtual scrolling with page tracking | pending |
@@ -47,5 +47,18 @@ Started: 2026-03-30
   - EPUB navigation uses priority: highlightAnchor (CFI) > chapterHref > pageNumber
   - Navigation is triggered via setLocation state update, which react-reader handles
   - The locationChanged callback receives the new epubcfi and updates chapter display
+---
+
+## 2026-03-30 16:00 - US-004
+- Fixed PDF high-DPI blur by implementing devicePixelRatio support
+- Canvas width/height now set to scaledViewport dimensions * DPR
+- CSS style width/height set to scaledViewport dimensions (logical pixels)
+- Context scaled by DPR before rendering: context.scale(dpr, dpr)
+- Files changed: frontend/src/components/PDFReader.tsx
+- **Learnings for future iterations:**
+  - Always multiply canvas.width/height by devicePixelRatio for sharp rendering
+  - Set canvas.style.width/height to logical dimensions (without DPR)
+  - Call context.scale(dpr, dpr) before pdfPage.render() to scale drawing operations
+  - This pattern ensures crisp text on Retina/4K displays
 ---
 
