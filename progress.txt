@@ -52,6 +52,29 @@ Started: 2026-03-30
 
 ---
 
+## 2026-03-30 - US-006
+- Completed US-006: Multiple Book Upload Testing
+- Uploaded delta-lake-the-definitive-guide-modern-data-lakehouse.pdf successfully
+- Uploaded you-dont-know-js-yet.epub successfully
+- Verified all books appear in library (6 books before deletion)
+- Tested deletion with confirmation dialog - works correctly
+- Verified book count after deletion (5 books remaining)
+- **BUGS FOUND**:
+  - P3: Duplicate book entry for "designing-machine-learning-systems"
+  - P3: No visible upload progress indicator
+- Screenshots saved to tasks/screenshots/round6/
+- Report saved to tasks/reports/round6-report.md
+- Typecheck passed
+- Files changed: prd.json (US-006 marked as passes: true), tasks/reports/round6-report.md (new file)
+- **Learnings for future iterations:**
+  - Upload dialog requires clicking Upload button to complete
+  - Delete requires confirmation - shows "Confirm delete" dialog
+  - Library persists books across page refreshes
+  - "Upload successful!" message appears after each upload with "Upload another" button
+
+
+---
+
 ## 2026-03-30 - US-002 (INCOMPLETE - Bug Found)
 - Tested US-002: Extract and Core Concepts functionality
 - Extraction button click works and shows "Extracting concepts..." progress
@@ -117,3 +140,25 @@ Started: 2026-03-30
   - Second duplicate of designing-machine-learning-systems has concepts extracted (opens graph view)
   - First copy shows "No concepts extracted yet" (opens PDF reader)
   - browser-use eval doesn't work well for DOM manipulation, use get html instead
+
+## 2026-03-30 - US-005
+- Completed US-005: Concept Graph Interaction Testing
+- Verified concept graph displays with 15 nodes and 10 edges
+- Tested filter by category - works correctly
+- Tested search nodes - works correctly
+- Tested "Show Core Only" - works (shows 0 nodes since no core concepts exist)
+- Core Concepts modal works but shows "no core concepts yet"
+- **BUGS FOUND**:
+  - P2: No NodeDetailPanel when clicking nodes (canvas-based graph shows tooltip only)
+  - P2: No zoom controls in UI (only mouse wheel available)
+  - P2: No Previous/Next concept navigation buttons in graph
+- Screenshots saved to tasks/screenshots/round5/
+- Report saved to tasks/reports/round5-report.md
+- Typecheck passed
+- Files changed: prd.json (US-005 marked as passes: true), tasks/reports/round5-report.md (new file)
+- **Learnings for future iterations:**
+  - Concept graph is canvas-based (force-graph), making node-level automation difficult
+  - Node clicks show floating tooltip but no persistent detail panel
+  - Graph uses "float-tooltip-kap" class for hover tooltips
+  - "Show Core Only" shows 0 nodes if no core concepts extracted (expected behavior)
+  - Graph legend shows Core Concept (count) and Regular Concept (count)

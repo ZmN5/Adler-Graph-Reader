@@ -85,8 +85,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Graph displays 15 nodes/10 edges. Filter/search work. P2 issues: no NodeDetailPanel, no zoom controls, no Prev/Next nav."
     },
     {
       "id": "US-006",
@@ -102,8 +102,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "All acceptance criteria passed. Upload, deletion, and book count all work correctly."
     },
     {
       "id": "US-007",
