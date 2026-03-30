@@ -213,3 +213,21 @@ Started: 2026-03-30
   - browser-use python command supports time.sleep() for waiting
   - Modal elements like Close button show with shadow DOM markers in state output (*[585]<button />)
 
+
+## 2026-03-30 - US-010
+- Completed US-010: Final Verification and Summary
+- Tested full workflow with designing-machine-learning-systems.pdf
+- Verified concept graph displays 15 nodes, 10 edges
+- Tested filter by Category - works correctly
+- Verified Close button returns to library correctly
+- No new issues found during testing
+- Created summary report at tasks/reports/summary.md
+- Screenshots saved to tasks/screenshots/round10/
+- Typecheck passed
+- Files changed: prd.json (US-010 marked as passes: true), tasks/reports/summary.md (new file), tasks/screenshots/round10/ (new screenshots)
+- **Learnings for future iterations:**
+  - All 10 rounds of testing completed
+  - Persistent P2 bugs: Escape key modal issue (US-007), duplicate book entries (US-008)
+  - Product is stable for core functionality
+  - browser-use CLI screenshot command takes path as positional argument
+  - Filter buttons in concept graph show "Clear filter" button when active
