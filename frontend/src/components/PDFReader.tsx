@@ -84,13 +84,14 @@ export function PDFReader({
         const context = canvas.getContext('2d')!
 
         // Calculate scale to fit container width with padding
-        const viewport = page.getViewport({ scale: 1 })
-        const scaleFactor = (containerWidth - 40) / viewport.width
-        const heightScaleFactor = (containerHeight - 40) / viewport.height
+        const baseViewport = page.getViewport({ scale: 1 })
+        const scaleFactor = (containerWidth - 40) / baseViewport.width
+        const heightScaleFactor = (containerHeight - 40) / baseViewport.height
 
         // Use the smaller scale to ensure both width and height fit
         const scale = Math.min(scaleFactor, heightScaleFactor)
-        const scaledViewport = page.getViewport({ scale })
+        // Pass rotation to handle rotated pages correctly
+        const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
 
         // Apply devicePixelRatio for sharp rendering on high-DPI displays
         const dpr = window.devicePixelRatio || 1
