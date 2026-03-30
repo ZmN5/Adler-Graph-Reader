@@ -1,50 +1,37 @@
-## Bug Fixes Sprint - Ralph Progress
+## Iterative Testing Sprint - Ralph Progress
 
-Branch: ralph/bug-fixes-sprint
-Started: 2026-03-29
+Branch: ralph/iterative-testing-browser-use
+Started: 2026-03-30
 
-## Codebase Patterns
-- Backend API returns should match frontend type expectations directly (e.g., `Vec<GraphNode>` instead of wrapper objects)
-- Always add defensive Array.isArray checks when consuming API responses in React components
-- SQL queries should filter by `is_core = TRUE` for core concepts and maintain consistent ordering
+## Testing Workflow
+- Use browser-use to automate testing of the product
+- Test sample books from sample_books/ directory
+- Each round: test -> document issues -> fix issues -> verify
+- Terminate after 10 rounds OR 3 consecutive rounds with no new issues
 
----
+## Sample Books for Testing
+| File | Format |
+|------|--------|
+| designing-machine-learning-systems.pdf | PDF |
+| delta-lake-the-definitive-guide-modern-data-lakehouse.pdf | PDF |
+| domain-specific-slm.epub | EPUB |
+| you-dont-know-js-yet.epub | EPUB |
 
-## 2026-03-29 - New Sprint Focus: Display Bug Fixes
-
-Archive note: Previous prd.json (12 user stories including core concepts API, EPUB parser, etc.) archived to 2026-03-29-bug-fixes-display/
-
-### New Focus (5 User Stories):
-1. US-001: Fix EPUB Reader Rendering
-2. US-002: Fix PDF Container Overflow
-3. US-003: PDF Citation Navigation
-4. US-004: EPUB Citation Navigation
-5. US-005: Fix Graph Node Label Size
-
----
-
-## Previous Sprint Learnings (2026-03-29)
-
-- When modifying API return types, ensure both backend struct and frontend type definitions stay in sync
-- The `core_concept::get_core_concepts` module function is no longer used by the API (kept for potential future use)
-- SQLx query_as with tuple types requires exact column ordering matching the type definition
+## Issue Severity Definitions
+- P0: Core functionality completely broken
+- P1: Core functionality severely impaired
+- P2: Feature broken but has workaround
+- P3: UI/UX issue
 
 ---
 
-## 2026-03-29 - US-001 Completed: Fix EPUB Reader Rendering
-
-### What was implemented
-- Removed dead/unreachable code path that showed "No EPUB document" error (was contradictory to error handling above)
-- Added `isRendering` state to properly track epub.js rendition initialization
-- Fixed `rend.display()` error handling: now sets error state so user sees the failure instead of silent console.log
-- Added `min-h-0` to viewerRef div to ensure proper flex layout behavior
-- Spinner now shows during rendition initialization (not just when rendition object is null)
-
-### Files changed
-- `frontend/src/components/EPUBReader.tsx`
-
-### **Learnings for future iterations:**
-- epub.js `renderTo()` creates an iframe, but `display()` must succeed for content to actually render
-- Dead code in React components can cause confusing behavior - always ensure error/loading states are handled consistently
-- When using flex layout with `flex-direction: column`, child `flex-1` elements may need `min-h-0` to properly shrink/grow
-- The initial `isRendering` state should be `true` since rendition initialization begins immediately on mount
+## 2026-03-30 - US-002
+- Fixed extraction hang issue: increased semaphore count from 1 to 4 in extractor.rs and reduced LLM timeout from 120s to 60s in llm_client.rs
+- Also fixed pre-existing tracing_subscriber issue in main.rs (with_level_filter -> with_max_level)
+- Files changed: backend/src/extractor.rs, backend/src/llm_client.rs, backend/src/main.rs
+- **Learnings for future iterations:**
+  - Extraction uses semaphore(1) for serial processing - with 55 chunks and 120s timeout, worst case was ~110 minutes
+  - LM Studio runs on localhost:1234 with qwen3.5-9b model
+  - Database shows total_pages:1 but chunks actually exist (55 chunks for designing-machine-learning-systems) - metadata mismatch but functionality works
+  - tracing_subscriber::fmt() API changed - use with_max_level() not with_level_filter()
+---

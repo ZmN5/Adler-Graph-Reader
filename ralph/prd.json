@@ -1,87 +1,175 @@
 {
   "project": "Intelligent-Reading-Concept-Graph",
-  "branchName": "ralph/bug-fixes-sprint",
-  "description": "Bug Fixes Sprint - Fix EPUB rendering, PDF overflow, citation navigation, and graph label sizing",
+  "branchName": "ralph/iterative-testing-browser-use",
+  "description": "Iterative Testing with browser-use - Complete 10 rounds of end-to-end testing: upload books, read, concept graph, extract, fix issues found",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Fix EPUB Reader Rendering",
-      "description": "As a user, I want to view EPUB format books so that I can read EPUB files.",
+      "title": "Round 1: Upload and Parse Testing",
+      "description": "As a tester, I want to use browser-use to upload sample books and test the upload/parse flow so that I can identify issues.",
       "acceptanceCriteria": [
-        "EPUB file loads without 'No EPUB document' error",
-        "Book content is visible in the reader area",
-        "Chapter navigation sidebar shows all chapters",
-        "Previous/Next buttons work to navigate chapters",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "browser-use opens http://localhost:3000 successfully",
+        "Upload designing-machine-learning-systems.pdf and verify success",
+        "Click Parse button and verify extraction begins",
+        "Document any issues found in tasks/reports/round1-report.md",
+        "Take screenshots and save to tasks/screenshots/round1/",
+        "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Frontend fix - EPUB display issue"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Fix PDF Container Overflow",
-      "description": "As a user, I want PDF pages to fit within the display area so that I can read without scrolling horizontally.",
+      "title": "Round 2: Extract and Core Concepts Testing",
+      "description": "As a tester, I want to verify the Extract concepts functionality so that I can identify issues with the extraction flow.",
       "acceptanceCriteria": [
-        "PDF page width fits within container bounds",
-        "PDF page height fits within container bounds",
-        "No horizontal scrollbar appears",
-        "Canvas is centered when smaller than container",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "After parsing completes, click Extract button",
+        "Verify extraction progress shows correctly",
+        "Wait for extraction to complete",
+        "Verify concept graph displays correctly",
+        "Click Core Concepts button and verify modal works",
+        "Document issues in tasks/reports/round2-report.md",
+        "Typecheck passes"
       ],
       "priority": 2,
       "passes": false,
-      "notes": "Frontend fix - PDF overflow issue"
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "PDF Citation Navigation",
-      "description": "As a user, I want to click on a source citation and jump to the exact PDF page so that I can verify the context.",
+      "title": "Round 3: EPUB Upload and Reading Testing",
+      "description": "As a tester, I want to upload and read an EPUB book so that I can identify EPUB-specific issues.",
       "acceptanceCriteria": [
-        "Click citation in NodeDetailPanel triggers page navigation",
-        "PDF reader jumps to the page number stored in chunk.page_start",
-        "Page number input field updates to show current page",
-        "Works for both direct citation click and 'View in PDF' button",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Upload domain-specific-slm.epub",
+        "Verify EPUB upload success",
+        "Click on EPUB book to open reader",
+        "Verify EPUB content displays correctly",
+        "Test Previous/Next chapter navigation",
+        "Document issues in tasks/reports/round3-report.md",
+        "Typecheck passes"
       ],
       "priority": 3,
       "passes": false,
-      "notes": "Frontend fix - citation click to PDF page"
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "EPUB Citation Navigation",
-      "description": "As a user, I want to click on a source citation and jump to the correct EPUB location so that I can verify the context.",
+      "title": "Round 4: PDF Reading and Navigation Testing",
+      "description": "As a tester, I want to verify PDF reading functionality so that I can identify PDF display issues.",
       "acceptanceCriteria": [
-        "Click citation triggers navigation to approximate chapter location",
-        "EPUB reader uses percentage-based navigation",
-        "Chapter dropdown updates to show current chapter",
-        "Works for both direct citation click and 'View in EPUB' button",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Open designing-machine-learning-systems.pdf in reader",
+        "Verify PDF pages display correctly",
+        "Test page navigation (prev/next)",
+        "Verify zoom in/out works",
+        "Test page number input navigation",
+        "Document issues in tasks/reports/round4-report.md",
+        "Typecheck passes"
       ],
       "priority": 4,
       "passes": false,
-      "notes": "Frontend fix - citation click to EPUB location"
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Fix Graph Node Label Size",
-      "description": "As a user, I want readable node labels at all zoom levels so that I can understand the concept graph.",
+      "title": "Round 5: Concept Graph Interaction Testing",
+      "description": "As a tester, I want to verify concept graph interactions so that I can identify graph-related issues.",
       "acceptanceCriteria": [
-        "Labels don't become excessively large at low zoom (cap at 14px)",
-        "Labels still visible at medium zoom (0.4 globalScale)",
-        "Labels hidden at very low zoom (< 0.3) for performance",
-        "Labels use bold for core concepts",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Verify concept graph nodes display",
+        "Test node click to show details",
+        "Verify zoom in/out on graph",
+        "Test pan/drag on graph",
+        "Verify NodeDetailPanel shows correct info",
+        "Test Previous/Next concept navigation",
+        "Document issues in tasks/reports/round5-report.md",
+        "Typecheck passes"
       ],
       "priority": 5,
       "passes": false,
-      "notes": "Frontend fix - graph label sizing"
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Round 6: Multiple Book Upload Testing",
+      "description": "As a tester, I want to upload multiple books so that I can identify issues with book management.",
+      "acceptanceCriteria": [
+        "Upload delta-lake-the-definitive-guide-modern-data-lakehouse.pdf",
+        "Upload you-dont-know-js-yet.epub",
+        "Verify all books appear in library",
+        "Test book deletion functionality",
+        "Verify book count is correct",
+        "Document issues in tasks/reports/round6-report.md",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Round 7: UI/UX and Language Toggle Testing",
+      "description": "As a tester, I want to verify UI elements and language toggle so that I can identify UI/UX issues.",
+      "acceptanceCriteria": [
+        "Test language toggle (中文/English)",
+        "Verify all text updates correctly on language switch",
+        "Test Escape key closes modals",
+        "Verify upload progress indicator",
+        "Verify Extract progress indicator",
+        "Document issues in tasks/reports/round7-report.md",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Round 8: Error Handling and Edge Cases",
+      "description": "As a tester, I want to test error handling so that I can identify how the app handles edge cases.",
+      "acceptanceCriteria": [
+        "Test uploading same book twice",
+        "Test clicking Parse on already parsed book",
+        "Test network error handling",
+        "Verify error messages are user-friendly",
+        "Verify app recovers gracefully from errors",
+        "Document issues in tasks/reports/round8-report.md",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Round 9: Regression and Integration Testing",
+      "description": "As a tester, I want to verify previously found issues are fixed so that I can ensure no regressions.",
+      "acceptanceCriteria": [
+        "Review issues from rounds 1-8",
+        "Verify fixes from earlier rounds still work",
+        "Test full workflow: upload -> parse -> extract -> view graph",
+        "Test book switching preserves state correctly",
+        "Document remaining issues in tasks/reports/round9-report.md",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Round 10: Final Verification and Summary",
+      "description": "As a tester, I want to complete the final round of testing so that I can verify the product is stable.",
+      "acceptanceCriteria": [
+        "Upload final test book",
+        "Complete full workflow test",
+        "Verify no new issues found",
+        "Update tasks/reports/summary.md with final report",
+        "Confirm if termination criteria met (3 consecutive rounds no new issues)",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
