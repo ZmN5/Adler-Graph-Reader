@@ -78,3 +78,23 @@ Started: 2026-03-30
   - Consider using smaller book for faster testing
   - Backend architect should investigate extraction endpoint
 
+
+---
+
+## 2026-03-30 - US-003
+- Completed US-003: EPUB Upload and Reading Testing
+- Uploaded domain-specific-slm.epub successfully
+- Opened EPUB reader and verified content displays correctly
+- Tested chapter navigation via TOC links - works correctly
+- Tested chapter selection modal - works correctly
+- Found minor P3 issue: page number shows "Unknown" for EPUB
+- All screenshots saved to tasks/screenshots/round3/
+- Report saved to tasks/reports/round3-report.md
+- Typecheck passed
+- Files changed: prd.json (US-003 marked as passes: true)
+- **Learnings for future iterations:**
+  - EPUB reader works well with chapter navigation
+  - Previous/Next buttons show disabled=true for EPUB (may be expected)
+  - Chapter selection modal works via "Select chapter" button
+  - Upload dialog has language selection (Auto-detect, Chinese, English)
+  - browser-use python command persists variables between calls
