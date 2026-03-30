@@ -1,37 +1,24 @@
-## Iterative Testing Sprint - Ralph Progress
+## Backend Configuration Fix - Ralph Progress
 
-Branch: ralph/iterative-testing-browser-use
+Branch: ralph/backend-configuration-fix
 Started: 2026-03-30
 
-## Testing Workflow
-- Use browser-use to automate testing of the product
-- Test sample books from sample_books/ directory
-- Each round: test -> document issues -> fix issues -> verify
-- Terminate after 10 rounds OR 3 consecutive rounds with no new issues
-
-## Sample Books for Testing
-| File | Format |
-|------|--------|
-| designing-machine-learning-systems.pdf | PDF |
-| delta-lake-the-definitive-guide-modern-data-lakehouse.pdf | PDF |
-| domain-specific-slm.epub | EPUB |
-| you-dont-know-js-yet.epub | EPUB |
-
-## Issue Severity Definitions
-- P0: Core functionality completely broken
-- P1: Core functionality severely impaired
-- P2: Feature broken but has workaround
-- P3: UI/UX issue
+## User Stories
+| ID | Title | Status |
+|----|-------|--------|
+| US-001 | 改进 extract 接口错误提示 | pending |
+| US-002 | LM Studio API URL 配置化 | pending |
+| US-003 | 提取并发数配置化 | pending |
+| US-004 | 修复 Context Length 错误 | pending |
 
 ---
 
-## 2026-03-30 - US-002
-- Fixed extraction hang issue: increased semaphore count from 1 to 4 in extractor.rs and reduced LLM timeout from 120s to 60s in llm_client.rs
-- Also fixed pre-existing tracing_subscriber issue in main.rs (with_level_filter -> with_max_level)
-- Files changed: backend/src/extractor.rs, backend/src/llm_client.rs, backend/src/main.rs
+## 2026-03-30 - US-001
+- Implemented improved error message for extract interface when book has no chunks
+- Changed error from "Book has no chunks to extract. Parse the book first." to "Book has no chunks. Please parse the book first via POST /api/books/{id}/parse."
+- Files changed: backend/src/main.rs
 - **Learnings for future iterations:**
-  - Extraction uses semaphore(1) for serial processing - with 55 chunks and 120s timeout, worst case was ~110 minutes
-  - LM Studio runs on localhost:1234 with qwen3.5-9b model
-  - Database shows total_pages:1 but chunks actually exist (55 chunks for designing-machine-learning-systems) - metadata mismatch but functionality works
-  - tracing_subscriber::fmt() API changed - use with_max_level() not with_level_filter()
+  - The extract_book handler in main.rs performs a check for chunk_count before calling extractor::extract_concepts_from_book
+  - Error messages use AppError::BadRequest which returns HTTP 400 with JSON error body
+  - When using format! with string interpolation, pass the book_id variable to include the actual book ID in the error message
 ---
