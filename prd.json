@@ -119,8 +119,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Language toggle works. Extract shows progress indicator. Escape key does NOT close modals (P2 bug). Parse shows no visible progress text (P3)."
     },
     {
       "id": "US-008",

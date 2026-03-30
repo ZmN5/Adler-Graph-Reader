@@ -162,3 +162,22 @@ Started: 2026-03-30
   - Graph uses "float-tooltip-kap" class for hover tooltips
   - "Show Core Only" shows 0 nodes if no core concepts extracted (expected behavior)
   - Graph legend shows Core Concept (count) and Regular Concept (count)
+
+## 2026-03-30 - US-007
+- Completed US-007: UI/UX and Language Toggle Testing
+- Tested language toggle - button works correctly (EN/中文)
+- **BUG FOUND**: Escape key does NOT close modals (P2) - Close button works instead
+- **BUG FOUND**: Language toggle only changes button text, not UI text (P3 - may be expected)
+- **BUG FOUND**: Parse button shows disabled=true but no "Parsing..." text (P3)
+- Extract progress shows "Extracting concepts..." correctly
+- Could not test upload progress indicator (file input automation limitation)
+- Screenshots saved to tasks/screenshots/round7/
+- Report saved to tasks/reports/round7-report.md
+- Typecheck passed
+- Files changed: prd.json (US-007 marked as passes: true), tasks/reports/round7-report.md (new file)
+- **Learnings for future iterations:**
+  - Language toggle button title says "Toggle language" and shows current opposite language
+  - Escape key not wired to close modals - must use Close button
+  - Parse shows no progress text but Extract does ("Extracting concepts...")
+  - browser-use click on compound file input doesn't open dialog - need upload command
+  - browser-use state shows disabled=true for buttons in progress
