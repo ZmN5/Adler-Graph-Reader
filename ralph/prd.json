@@ -95,8 +95,8 @@
         "Verify in browser: scroll through PDF, pages load on demand"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Virtual scrolling implemented with scroll container, page position calculation, and on-demand rendering."
     },
     {
       "id": "US-007",

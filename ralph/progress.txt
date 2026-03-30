@@ -11,7 +11,7 @@ Started: 2026-03-30
 | US-003 | EPUB support chapter/CFI navigation from graph | ✅ completed |
 | US-004 | Fix PDF high-DPI blur with devicePixelRatio | ✅ completed |
 | US-005 | Fix PDF content rotation issue | ✅ completed |
-| US-006 | Implement PDF virtual scrolling base | pending |
+| US-006 | Implement PDF virtual scrolling base | ✅ completed |
 | US-007 | Complete PDF virtual scrolling with page tracking | pending |
 | US-008 | Unify reader interface and remove navigation buttons | pending |
 
@@ -60,6 +60,22 @@ Started: 2026-03-30
   - Set canvas.style.width/height to logical dimensions (without DPR)
   - Call context.scale(dpr, dpr) before pdfPage.render() to scale drawing operations
   - This pattern ensures crisp text on Retina/4K displays
+---
+
+## 2026-03-30 16:15 - US-006
+- Implemented PDF virtual scrolling with scroll container and on-demand rendering
+- Calculate page dimensions for all pages upfront to determine total scroll height
+- Each page has absolute positioning with calculated yOffset for virtual layout
+- Scroll event listener tracks visible pages and renders them on demand
+- Canvas elements created per page, reused on subsequent scroll events
+- Track rendering state to avoid duplicate render operations
+- Files changed: frontend/src/components/PDFReader.tsx
+- **Learnings for future iterations:**
+  - Virtual scrolling requires calculating total height upfront based on page dimensions
+  - Position pages absolutely with calculated yOffset for proper scroll behavior
+  - Track rendering state per canvas to avoid duplicate render() calls (pdf.js restriction)
+  - Use scroll event listener with visibility buffer for simpler implementation than IntersectionObserver
+  - Smooth scroll navigation via scrollTo({ top: yOffset, behavior: 'smooth' })
 ---
 
 ## 2026-03-30 16:05 - US-005
