@@ -10,7 +10,7 @@ Started: 2026-03-30
 | US-002 | Migrate EPUB reader to react-reader with continuous scroll | ✅ completed |
 | US-003 | EPUB support chapter/CFI navigation from graph | ✅ completed |
 | US-004 | Fix PDF high-DPI blur with devicePixelRatio | ✅ completed |
-| US-005 | Fix PDF content rotation issue | pending |
+| US-005 | Fix PDF content rotation issue | ✅ completed |
 | US-006 | Implement PDF virtual scrolling base | pending |
 | US-007 | Complete PDF virtual scrolling with page tracking | pending |
 | US-008 | Unify reader interface and remove navigation buttons | pending |
@@ -60,5 +60,16 @@ Started: 2026-03-30
   - Set canvas.style.width/height to logical dimensions (without DPR)
   - Call context.scale(dpr, dpr) before pdfPage.render() to scale drawing operations
   - This pattern ensures crisp text on Retina/4K displays
+---
+
+## 2026-03-30 16:05 - US-005
+- Fixed PDF content rotation issue by passing rotation to getViewport
+- Get baseViewport with scale: 1 to read rotation property
+- Pass baseViewport.rotation when creating scaled viewport
+- Files changed: frontend/src/components/PDFReader.tsx
+- **Learnings for future iterations:**
+  - Always get viewport with scale: 1 first to read rotation metadata
+  - Pass rotation property when creating scaled viewport: page.getViewport({ scale, rotation: baseViewport.rotation })
+  - PDF.js automatically handles rotation transformation during render
 ---
 

@@ -78,8 +78,8 @@
         "Verify with rotated PDF: content displays correctly"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Rotation from baseViewport passed to scaled viewport. Handles rotated PDF pages correctly."
     },
     {
       "id": "US-006",
