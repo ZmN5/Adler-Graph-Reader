@@ -13,7 +13,7 @@ Started: 2026-03-30
 | US-005 | Fix PDF content rotation issue | ✅ completed |
 | US-006 | Implement PDF virtual scrolling base | ✅ completed |
 | US-007 | Complete PDF virtual scrolling with page tracking | ✅ completed |
-| US-008 | Unify reader interface and remove navigation buttons | pending |
+| US-008 | Unify reader interface and remove navigation buttons | ✅ completed |
 
 ## 2026-03-30 23:26 - US-001
 - Installed react-reader@^2.0.15 npm package
@@ -101,5 +101,20 @@ Started: 2026-03-30
   - Smooth scroll via scrollTo({ top: yOffset, behavior: 'smooth' }) works for programmatic navigation
   - All scroll input methods (wheel, touchpad, scrollbar) trigger the same scroll event
   - Visibility buffer provides better UX by preloading pages slightly before they're visible
+---
+
+## 2026-03-30 16:25 - US-008
+- Verified both EPUB and PDF readers have unified interface
+- Both use consistent header styling: border-b bg-muted/50 with centered text
+- EPUB header shows current chapter name and chapter progress
+- PDF header shows current page number and total pages
+- Navigation buttons removed from both readers
+- Loading states use consistent spinner and styling
+- No code changes needed - UI already consistent
+- **Learnings for future iterations:**
+  - Both readers follow same flex flex-col h-full layout pattern
+  - Header uses consistent p-3 border-b bg-muted/50 styling
+  - EPUB uses react-reader loadingView prop for custom loading state
+  - PDF uses conditional rendering with same spinner style
 ---
 
