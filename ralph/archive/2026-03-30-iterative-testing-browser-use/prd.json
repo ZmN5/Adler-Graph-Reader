@@ -1,0 +1,87 @@
+{
+  "project": "Intelligent-Reading-Concept-Graph",
+  "branchName": "ralph/bug-fixes-sprint",
+  "description": "Bug Fixes Sprint - Fix EPUB rendering, PDF overflow, citation navigation, and graph label sizing",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix EPUB Reader Rendering",
+      "description": "As a user, I want to view EPUB format books so that I can read EPUB files.",
+      "acceptanceCriteria": [
+        "EPUB file loads without 'No EPUB document' error",
+        "Book content is visible in the reader area",
+        "Chapter navigation sidebar shows all chapters",
+        "Previous/Next buttons work to navigate chapters",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Frontend fix - EPUB display issue"
+    },
+    {
+      "id": "US-002",
+      "title": "Fix PDF Container Overflow",
+      "description": "As a user, I want PDF pages to fit within the display area so that I can read without scrolling horizontally.",
+      "acceptanceCriteria": [
+        "PDF page width fits within container bounds",
+        "PDF page height fits within container bounds",
+        "No horizontal scrollbar appears",
+        "Canvas is centered when smaller than container",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Frontend fix - PDF overflow issue"
+    },
+    {
+      "id": "US-003",
+      "title": "PDF Citation Navigation",
+      "description": "As a user, I want to click on a source citation and jump to the exact PDF page so that I can verify the context.",
+      "acceptanceCriteria": [
+        "Click citation in NodeDetailPanel triggers page navigation",
+        "PDF reader jumps to the page number stored in chunk.page_start",
+        "Page number input field updates to show current page",
+        "Works for both direct citation click and 'View in PDF' button",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Frontend fix - citation click to PDF page"
+    },
+    {
+      "id": "US-004",
+      "title": "EPUB Citation Navigation",
+      "description": "As a user, I want to click on a source citation and jump to the correct EPUB location so that I can verify the context.",
+      "acceptanceCriteria": [
+        "Click citation triggers navigation to approximate chapter location",
+        "EPUB reader uses percentage-based navigation",
+        "Chapter dropdown updates to show current chapter",
+        "Works for both direct citation click and 'View in EPUB' button",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Frontend fix - citation click to EPUB location"
+    },
+    {
+      "id": "US-005",
+      "title": "Fix Graph Node Label Size",
+      "description": "As a user, I want readable node labels at all zoom levels so that I can understand the concept graph.",
+      "acceptanceCriteria": [
+        "Labels don't become excessively large at low zoom (cap at 14px)",
+        "Labels still visible at medium zoom (0.4 globalScale)",
+        "Labels hidden at very low zoom (< 0.3) for performance",
+        "Labels use bold for core concepts",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Frontend fix - graph label sizing"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+## Bug Fixes Sprint - Ralph Progress
+
+Branch: ralph/bug-fixes-sprint
+Started: 2026-03-29
+
+## Codebase Patterns
+- Backend API returns should match frontend type expectations directly (e.g., `Vec<GraphNode>` instead of wrapper objects)
+- Always add defensive Array.isArray checks when consuming API responses in React components
+- SQL queries should filter by `is_core = TRUE` for core concepts and maintain consistent ordering
+
+---
+
+## 2026-03-29 - New Sprint Focus: Display Bug Fixes
+
+Archive note: Previous prd.json (12 user stories including core concepts API, EPUB parser, etc.) archived to 2026-03-29-bug-fixes-display/
+
+### New Focus (5 User Stories):
+1. US-001: Fix EPUB Reader Rendering
+2. US-002: Fix PDF Container Overflow
+3. US-003: PDF Citation Navigation
+4. US-004: EPUB Citation Navigation
+5. US-005: Fix Graph Node Label Size
+
+---
+
+## Previous Sprint Learnings (2026-03-29)
+
+- When modifying API return types, ensure both backend struct and frontend type definitions stay in sync
+- The `core_concept::get_core_concepts` module function is no longer used by the API (kept for potential future use)
+- SQLx query_as with tuple types requires exact column ordering matching the type definition
+
+---
+
+## 2026-03-29 - US-001 Completed: Fix EPUB Reader Rendering
+
+### What was implemented
+- Removed dead/unreachable code path that showed "No EPUB document" error (was contradictory to error handling above)
+- Added `isRendering` state to properly track epub.js rendition initialization
+- Fixed `rend.display()` error handling: now sets error state so user sees the failure instead of silent console.log
+- Added `min-h-0` to viewerRef div to ensure proper flex layout behavior
+- Spinner now shows during rendition initialization (not just when rendition object is null)
+
+### Files changed
+- `frontend/src/components/EPUBReader.tsx`
+
+### **Learnings for future iterations:**
+- epub.js `renderTo()` creates an iframe, but `display()` must succeed for content to actually render
+- Dead code in React components can cause confusing behavior - always ensure error/loading states are handled consistently
+- When using flex layout with `flex-direction: column`, child `flex-1` elements may need `min-h-0` to properly shrink/grow
+- The initial `isRendering` state should be `true` since rendition initialization begins immediately on mount
