@@ -720,7 +720,10 @@ async fn extract_book(
     .await?;
 
     if chunk_count.unwrap_or(0) == 0 {
-        return Err(AppError::BadRequest("Book has no chunks to extract. Parse the book first.".to_string()));
+        return Err(AppError::BadRequest(format!(
+            "Book has no chunks. Please parse the book first via POST /api/books/{}/parse.",
+            book_id
+        )));
     }
 
     // Run extraction

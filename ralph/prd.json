@@ -1,174 +1,58 @@
 {
   "project": "Intelligent-Reading-Concept-Graph",
-  "branchName": "ralph/iterative-testing-browser-use",
-  "description": "Iterative Testing with browser-use - Complete 10 rounds of end-to-end testing: upload books, read, concept graph, extract, fix issues found",
+  "branchName": "ralph/backend-configuration-fix",
+  "description": "后端配置问题修复 - 改进错误提示、URL配置化、chunk大小优化、并发配置化",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Round 1: Upload and Parse Testing",
-      "description": "As a tester, I want to use browser-use to upload sample books and test the upload/parse flow so that I can identify issues.",
+      "title": "改进 extract 接口错误提示",
+      "description": "作为用户，我在调用 extract 接口时如果书籍未解析，能看到清晰的错误提示，而不是模糊的 400 Bad Request。",
       "acceptanceCriteria": [
-        "browser-use opens http://localhost:3000 successfully",
-        "Upload designing-machine-learning-systems.pdf and verify success",
-        "Click Parse button and verify extraction begins",
-        "Document any issues found in tasks/reports/round1-report.md",
-        "Take screenshots and save to tasks/screenshots/round1/",
+        "错误消息改为：'Book has no chunks. Please parse the book first via POST /api/books/{id}/parse.'",
+        "错误消息包含需要先调用哪个接口的信息",
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Round 2: Extract and Core Concepts Testing",
-      "description": "As a tester, I want to verify the Extract concepts functionality so that I can identify issues with the extraction flow.",
+      "title": "LM Studio API URL 配置化",
+      "description": "作为运维人员，我需要通过环境变量配置 LM Studio 的 API 地址，而不是修改代码。",
       "acceptanceCriteria": [
-        "After parsing completes, click Extract button",
-        "Verify extraction progress shows correctly",
-        "Wait for extraction to complete",
-        "Verify concept graph displays correctly",
-        "Click Core Concepts button and verify modal works",
-        "Document issues in tasks/reports/round2-report.md",
+        "支持 LLM_API_BASE_URL 环境变量，默认 http://localhost:1234/v1",
+        "extractor.rs 中读取环境变量传入 LlmClient",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Fixed: Increased semaphore count from 1 to 4 and reduced LLM timeout from 120s to 60s to allow parallel extraction."
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Round 3: EPUB Upload and Reading Testing",
-      "description": "As a tester, I want to upload and read an EPUB book so that I can identify EPUB-specific issues.",
+      "title": "提取并发数配置化",
+      "description": "作为运维人员，我需要根据服务器性能调整 extract 操作的并发数。",
       "acceptanceCriteria": [
-        "Upload domain-specific-slm.epub",
-        "Verify EPUB upload success",
-        "Click on EPUB book to open reader",
-        "Verify EPUB content displays correctly",
-        "Test Previous/Next chapter navigation",
-        "Document issues in tasks/reports/round3-report.md",
+        "支持 EXTRACT_CONCURRENCY 环境变量，默认 4",
+        "Semaphore::new() 从环境变量读取并发数",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Round 4: PDF Reading and Navigation Testing",
-      "description": "As a tester, I want to verify PDF reading functionality so that I can identify PDF display issues.",
+      "title": "修复 Context Length 错误",
+      "description": "作为用户，我希望能成功提取书籍概念，不再出现上下文超限错误。模型上下文为 6000 tokens，当前 chunk_size 16000 chars 过大。",
       "acceptanceCriteria": [
-        "Open designing-machine-learning-systems.pdf in reader",
-        "Verify PDF pages display correctly",
-        "Test page navigation (prev/next)",
-        "Verify zoom in/out works",
-        "Test page number input navigation",
-        "Document issues in tasks/reports/round4-report.md",
+        "pdf_parser.rs:53 chunk_size 从 16000 改为 8000",
+        "pdf_parser.rs:70 overlap 从 400 改为 200",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-005",
-      "title": "Round 5: Concept Graph Interaction Testing",
-      "description": "As a tester, I want to verify concept graph interactions so that I can identify graph-related issues.",
-      "acceptanceCriteria": [
-        "Verify concept graph nodes display",
-        "Test node click to show details",
-        "Verify zoom in/out on graph",
-        "Test pan/drag on graph",
-        "Verify NodeDetailPanel shows correct info",
-        "Test Previous/Next concept navigation",
-        "Document issues in tasks/reports/round5-report.md",
-        "Typecheck passes"
-      ],
-      "priority": 5,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-006",
-      "title": "Round 6: Multiple Book Upload Testing",
-      "description": "As a tester, I want to upload multiple books so that I can identify issues with book management.",
-      "acceptanceCriteria": [
-        "Upload delta-lake-the-definitive-guide-modern-data-lakehouse.pdf",
-        "Upload you-dont-know-js-yet.epub",
-        "Verify all books appear in library",
-        "Test book deletion functionality",
-        "Verify book count is correct",
-        "Document issues in tasks/reports/round6-report.md",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-007",
-      "title": "Round 7: UI/UX and Language Toggle Testing",
-      "description": "As a tester, I want to verify UI elements and language toggle so that I can identify UI/UX issues.",
-      "acceptanceCriteria": [
-        "Test language toggle (中文/English)",
-        "Verify all text updates correctly on language switch",
-        "Test Escape key closes modals",
-        "Verify upload progress indicator",
-        "Verify Extract progress indicator",
-        "Document issues in tasks/reports/round7-report.md",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-008",
-      "title": "Round 8: Error Handling and Edge Cases",
-      "description": "As a tester, I want to test error handling so that I can identify how the app handles edge cases.",
-      "acceptanceCriteria": [
-        "Test uploading same book twice",
-        "Test clicking Parse on already parsed book",
-        "Test network error handling",
-        "Verify error messages are user-friendly",
-        "Verify app recovers gracefully from errors",
-        "Document issues in tasks/reports/round8-report.md",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-009",
-      "title": "Round 9: Regression and Integration Testing",
-      "description": "As a tester, I want to verify previously found issues are fixed so that I can ensure no regressions.",
-      "acceptanceCriteria": [
-        "Review issues from rounds 1-8",
-        "Verify fixes from earlier rounds still work",
-        "Test full workflow: upload -> parse -> extract -> view graph",
-        "Test book switching preserves state correctly",
-        "Document remaining issues in tasks/reports/round9-report.md",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-010",
-      "title": "Round 10: Final Verification and Summary",
-      "description": "As a tester, I want to complete the final round of testing so that I can verify the product is stable.",
-      "acceptanceCriteria": [
-        "Upload final test book",
-        "Complete full workflow test",
-        "Verify no new issues found",
-        "Update tasks/reports/summary.md with final report",
-        "Confirm if termination criteria met (3 consecutive rounds no new issues)",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": ""
     }
   ]

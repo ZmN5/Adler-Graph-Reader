@@ -1,0 +1,37 @@
+## Iterative Testing Sprint - Ralph Progress
+
+Branch: ralph/iterative-testing-browser-use
+Started: 2026-03-30
+
+## Testing Workflow
+- Use browser-use to automate testing of the product
+- Test sample books from sample_books/ directory
+- Each round: test -> document issues -> fix issues -> verify
+- Terminate after 10 rounds OR 3 consecutive rounds with no new issues
+
+## Sample Books for Testing
+| File | Format |
+|------|--------|
+| designing-machine-learning-systems.pdf | PDF |
+| delta-lake-the-definitive-guide-modern-data-lakehouse.pdf | PDF |
+| domain-specific-slm.epub | EPUB |
+| you-dont-know-js-yet.epub | EPUB |
+
+## Issue Severity Definitions
+- P0: Core functionality completely broken
+- P1: Core functionality severely impaired
+- P2: Feature broken but has workaround
+- P3: UI/UX issue
+
+---
+
+## 2026-03-30 - US-002
+- Fixed extraction hang issue: increased semaphore count from 1 to 4 in extractor.rs and reduced LLM timeout from 120s to 60s in llm_client.rs
+- Also fixed pre-existing tracing_subscriber issue in main.rs (with_level_filter -> with_max_level)
+- Files changed: backend/src/extractor.rs, backend/src/llm_client.rs, backend/src/main.rs
+- **Learnings for future iterations:**
+  - Extraction uses semaphore(1) for serial processing - with 55 chunks and 120s timeout, worst case was ~110 minutes
+  - LM Studio runs on localhost:1234 with qwen3.5-9b model
+  - Database shows total_pages:1 but chunks actually exist (55 chunks for designing-machine-learning-systems) - metadata mismatch but functionality works
+  - tracing_subscriber::fmt() API changed - use with_max_level() not with_level_filter()
+---

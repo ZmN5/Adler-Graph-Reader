@@ -49,8 +49,8 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
             continue;
         }
 
-        // If page is under 16000 chars (~4000 tokens), create single chunk
-        if page_text.chars().count() <= 16000 {
+        // If page is under 8000 chars (~2000 tokens), create single chunk
+        if page_text.chars().count() <= 8000 {
             let chunk_id = Uuid::new_v4().to_string();
             sqlx::query(
                 "INSERT INTO chunks (id, book_id, page_start, page_end, content, created_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -66,8 +66,8 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
             .map_err(|e| format!("Failed to insert chunk: {}", e))?;
             chunks_created += 1;
         } else {
-            // Split page into ~16000 char chunks (~4000 tokens) with overlap
-            let chunks = split_text_with_overlap(page_text, 16000, 400);
+            // Split page into ~8000 char chunks (~2000 tokens) with overlap
+            let chunks = split_text_with_overlap(page_text, 8000, 200);
             for chunk_content in chunks.iter() {
                 let chunk_id = Uuid::new_v4().to_string();
                 let chunk_start = page_num;
