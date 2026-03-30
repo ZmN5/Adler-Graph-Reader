@@ -33,3 +33,14 @@ Started: 2026-03-30
   - extractor.rs spawns multiple async tasks in a loop, so env var should be read before the loop
   - Using std::env::var() with unwrap_or_else for default values works well
 ---
+
+## 2026-03-30 - US-003
+- Implemented EXTRACT_CONCURRENCY environment variable support
+- Default value: 4
+- Uses parse().unwrap_or(4) to handle invalid env var values safely
+- Files changed: backend/src/extractor.rs
+- **Learnings for future iterations:**
+  - Semaphore::new() takes usize directly
+  - When parsing env vars to usize, use parse().unwrap_or(default) pattern for safety
+  - The pool.clone() should be called before spawning tasks to avoid issues
+---
