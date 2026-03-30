@@ -12,7 +12,7 @@ Started: 2026-03-30
 | US-004 | Fix PDF high-DPI blur with devicePixelRatio | ✅ completed |
 | US-005 | Fix PDF content rotation issue | ✅ completed |
 | US-006 | Implement PDF virtual scrolling base | ✅ completed |
-| US-007 | Complete PDF virtual scrolling with page tracking | pending |
+| US-007 | Complete PDF virtual scrolling with page tracking | ✅ completed |
 | US-008 | Unify reader interface and remove navigation buttons | pending |
 
 ## 2026-03-30 23:26 - US-001
@@ -87,5 +87,19 @@ Started: 2026-03-30
   - Always get viewport with scale: 1 first to read rotation metadata
   - Pass rotation property when creating scaled viewport: page.getViewport({ scale, rotation: baseViewport.rotation })
   - PDF.js automatically handles rotation transformation during render
+---
+
+## 2026-03-30 16:20 - US-007
+- Virtual scrolling implementation includes all US-007 requirements
+- Scroll handler tracks current visible page and updates header in real-time
+- Scroll-to-page navigation via pageNumber prop with smooth scrollTo behavior
+- Mouse wheel, touchpad, and scrollbar all trigger scroll events for navigation
+- Visibility buffer (100px) ensures pages render before entering viewport
+- No code changes needed - functionality already implemented in US-006
+- **Learnings for future iterations:**
+  - Scroll event handler can track current page by comparing scrollTop with page yOffsets
+  - Smooth scroll via scrollTo({ top: yOffset, behavior: 'smooth' }) works for programmatic navigation
+  - All scroll input methods (wheel, touchpad, scrollbar) trigger the same scroll event
+  - Visibility buffer provides better UX by preloading pages slightly before they're visible
 ---
 
