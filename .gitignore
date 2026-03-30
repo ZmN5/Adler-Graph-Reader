@@ -1,6 +1,7 @@
 # Rust / Backend
 backend/target/
 backend/Cargo.lock
+backend/data/
 backend/.env
 backend/.env.*
 
