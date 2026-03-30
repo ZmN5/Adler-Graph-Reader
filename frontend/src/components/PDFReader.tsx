@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { FileText } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -14,6 +14,13 @@ interface PDFReaderProps {
   pageNumber?: number
 }
 
+interface PageInfo {
+  pageNumber: number
+  width: number
+  height: number
+  yOffset: number
+}
+
 export function PDFReader({
   bookId,
   className,
@@ -21,22 +28,28 @@ export function PDFReader({
   pageNumber,
 }: PDFReaderProps) {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
+  const [pageInfos, setPageInfos] = useState<PageInfo[]>([])
+  const [totalHeight, setTotalHeight] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [currentVisiblePage, setCurrentVisiblePage] = useState(1)
 
-  // Load PDF document
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map())
+  const renderingRef = useRef<Set<number>>(new Set())
+  const scaleRef = useRef(1)
+
+  // Load PDF document and calculate page dimensions
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
     setError(null)
+    setPageInfos([])
+    setTotalHeight(0)
+    renderingRef.current.clear()
 
     const loadPdf = async () => {
       try {
-        // Use the API endpoint to get the file
         const fullUrl = `/api/books/${bookId}/file`
         const loadingTask = pdfjsLib.getDocument({
           url: fullUrl,
@@ -45,10 +58,44 @@ export function PDFReader({
         })
 
         const pdf = await loadingTask.promise
+        if (cancelled) return
+
+        setPdfDoc(pdf)
+
+        // Get container width for scaling calculation
+        const containerWidth = scrollContainerRef.current?.clientWidth || 800
+
+        // Calculate page dimensions for all pages
+        const infos: PageInfo[] = []
+        let totalH = 0
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i)
+          const baseViewport = page.getViewport({ scale: 1 })
+
+          // Calculate scale to fit container width with padding
+          const scale = (containerWidth - 40) / baseViewport.width
+          const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
+
+          const info: PageInfo = {
+            pageNumber: i,
+            width: scaledViewport.width,
+            height: scaledViewport.height,
+            yOffset: totalH,
+          }
+          infos.push(info)
+          totalH += scaledViewport.height + 20 // 20px gap between pages
+
+          // Store scale for rendering
+          if (i === 1) {
+            scaleRef.current = scale
+          }
+        }
+
         if (!cancelled) {
-          setPdfDoc(pdf)
-          setTotalPages(pdf.numPages)
-          setCurrentPage(1)
+          setPageInfos(infos)
+          setTotalHeight(totalH)
+          setCurrentVisiblePage(1)
         }
       } catch (err) {
         if (!cancelled) {
@@ -68,66 +115,113 @@ export function PDFReader({
     }
   }, [bookId])
 
-  // Render current page
+  // Render a specific page to a canvas
+  const renderPage = useCallback(async (pageNumber: number) => {
+    if (!pdfDoc || renderingRef.current.has(pageNumber)) return
+
+    const canvas = canvasRefs.current.get(pageNumber)
+    if (!canvas) return
+
+    // Check if already rendered
+    const pageInfo = pageInfos[pageNumber - 1]
+    if (!pageInfo) return
+
+    // Check if canvas already has content by checking if dimensions match
+    const expectedWidth = Math.floor(pageInfo.width * (window.devicePixelRatio || 1))
+    if (canvas.width === expectedWidth && canvas.dataset.rendered === 'true') {
+      return // Already rendered
+    }
+
+    renderingRef.current.add(pageNumber)
+
+    try {
+      const page = await pdfDoc.getPage(pageNumber)
+      const baseViewport = page.getViewport({ scale: 1 })
+      const scale = scaleRef.current
+      const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
+
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = scaledViewport.width * dpr
+      canvas.height = scaledViewport.height * dpr
+      canvas.style.width = `${scaledViewport.width}px`
+      canvas.style.height = `${scaledViewport.height}px`
+
+      const context = canvas.getContext('2d')!
+      context.scale(dpr, dpr)
+
+      await page.render({
+        canvasContext: context,
+        viewport: scaledViewport,
+      }).promise
+
+      canvas.dataset.rendered = 'true'
+    } catch (err) {
+      console.error(`Failed to render page ${pageNumber}:`, err)
+    } finally {
+      renderingRef.current.delete(pageNumber)
+    }
+  }, [pdfDoc, pageInfos])
+
+  // Handle scroll events for virtual scrolling
   useEffect(() => {
-    if (!pdfDoc || !canvasRef.current || !containerRef.current) return
+    if (!scrollContainerRef.current || pageInfos.length === 0) return
 
-    // Capture container dimensions synchronously (refs are available after render)
-    const container = containerRef.current
-    const containerWidth = container.clientWidth
-    const containerHeight = container.clientHeight - 60 // Account for header height (approx 60px)
+    const container = scrollContainerRef.current
+    const containerHeight = container.clientHeight
 
-    const renderPage = async () => {
-      try {
-        const page = await pdfDoc.getPage(currentPage)
-        const canvas = canvasRef.current!
-        const context = canvas.getContext('2d')!
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop
 
-        // Calculate scale to fit container width with padding
-        const baseViewport = page.getViewport({ scale: 1 })
-        const scaleFactor = (containerWidth - 40) / baseViewport.width
-        const heightScaleFactor = (containerHeight - 40) / baseViewport.height
+      // Find visible pages based on scroll position
+      const visibleRange = {
+        start: scrollTop - 100,
+        end: scrollTop + containerHeight + 100,
+      }
 
-        // Use the smaller scale to ensure both width and height fit
-        const scale = Math.min(scaleFactor, heightScaleFactor)
-        // Pass rotation to handle rotated pages correctly
-        const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
+      // Find current page for header
+      for (const info of pageInfos) {
+        if (scrollTop >= info.yOffset && scrollTop < info.yOffset + info.height + 20) {
+          setCurrentVisiblePage(info.pageNumber)
+          break
+        }
+      }
 
-        // Apply devicePixelRatio for sharp rendering on high-DPI displays
-        const dpr = window.devicePixelRatio || 1
-        canvas.width = scaledViewport.width * dpr
-        canvas.height = scaledViewport.height * dpr
-        canvas.style.width = `${scaledViewport.width}px`
-        canvas.style.height = `${scaledViewport.height}px`
+      // Render visible pages
+      for (const info of pageInfos) {
+        const pageTop = info.yOffset
+        const pageBottom = info.yOffset + info.height
 
-        // Scale context to match DPR
-        context.scale(dpr, dpr)
-
-        await page.render({
-          canvasContext: context,
-          viewport: scaledViewport,
-        }).promise
-      } catch (err) {
-        console.error('Failed to render page:', err)
+        // Check if page is in visible range
+        if (pageBottom >= visibleRange.start && pageTop <= visibleRange.end) {
+          renderPage(info.pageNumber)
+        }
       }
     }
 
-    renderPage()
-  }, [pdfDoc, currentPage])
+    // Initial render
+    handleScroll()
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [pageInfos, renderPage])
 
   // Handle external page number navigation
   useEffect(() => {
-    if (pageNumber && pageNumber !== currentPage && totalPages > 0) {
-      const validPage = Math.max(1, Math.min(pageNumber, totalPages))
-      setCurrentPage(validPage)
+    if (pageNumber && scrollContainerRef.current && pageInfos.length > 0) {
+      const validPage = Math.max(1, Math.min(pageNumber, pageInfos.length))
+      const pageInfo = pageInfos[validPage - 1]
+      if (pageInfo) {
+        scrollContainerRef.current.scrollTo({
+          top: pageInfo.yOffset,
+          behavior: 'smooth',
+        })
+      }
     }
-  }, [pageNumber, currentPage, totalPages])
+  }, [pageNumber, pageInfos])
 
-  // Highlight handling - for now just a placeholder since we'd need chunk data
+  // Highlight handling
   useEffect(() => {
     if (highlightChunkId) {
-      // TODO: Find and highlight the chunk in the PDF
-      // This requires getting chunk info from the API and finding the text in the PDF
       console.log('Highlight chunk:', highlightChunkId)
     }
   }, [highlightChunkId])
@@ -151,7 +245,7 @@ export function PDFReader({
     )
   }
 
-  if (!pdfDoc) {
+  if (!pdfDoc || pageInfos.length === 0) {
     return (
       <div className={cn('flex flex-col items-center justify-center py-12 text-muted-foreground', className)}>
         <FileText className="h-12 w-12 opacity-50" />
@@ -161,19 +255,48 @@ export function PDFReader({
   }
 
   return (
-    <div ref={containerRef} className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full', className)}>
       {/* Header showing current page */}
       <div className="flex items-center justify-center p-3 border-b bg-muted/50">
         <div className="text-sm">
-          Page {currentPage} of {totalPages}
+          Page {currentVisiblePage} of {pageInfos.length}
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden p-5 flex justify-center items-start">
-        <canvas
-          ref={canvasRef}
-          className="shadow-lg max-w-full h-auto"
-        />
+      {/* Scroll container with virtual pages */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+      >
+        <div style={{ height: totalHeight, position: 'relative' }}>
+          {pageInfos.map((pageInfo) => (
+            <div
+              key={pageInfo.pageNumber}
+              style={{
+                position: 'absolute',
+                top: pageInfo.yOffset,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: pageInfo.width,
+                height: pageInfo.height,
+                backgroundColor: '#f5f5f5',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <canvas
+                ref={(el) => {
+                  if (el) {
+                    canvasRefs.current.set(pageInfo.pageNumber, el)
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
