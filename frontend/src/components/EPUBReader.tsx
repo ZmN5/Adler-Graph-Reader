@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { ReactReader } from 'react-reader'
 import type { Rendition, Book } from 'epubjs'
+import type { IReactReaderStyle } from 'react-reader'
 
 interface EPUBReaderProps {
   bookId: string
@@ -19,6 +20,31 @@ interface Chapter {
   id: string
   href: string
   label: string
+}
+
+// Custom styles to hide prev/next navigation buttons
+const readerStyles: IReactReaderStyle = {
+  container: {},
+  readerArea: {},
+  containerExpanded: {},
+  titleArea: {},
+  reader: {},
+  swipeWrapper: {},
+  prev: { display: 'none' },
+  next: { display: 'none' },
+  arrow: {},
+  arrowHover: {},
+  tocBackground: {},
+  toc: {},
+  tocArea: {},
+  tocAreaButton: {},
+  tocButton: {},
+  tocButtonExpanded: {},
+  tocButtonBar: {},
+  tocButtonBarTop: {},
+  loadingView: {},
+  errorView: {},
+  tocButtonBottom: {},
 }
 
 export function EPUBReader({
@@ -145,6 +171,7 @@ export function EPUBReader({
           location={location}
           locationChanged={locationChanged}
           getRendition={getRendition}
+          readerStyles={readerStyles}
           epubOptions={{
             flow: 'scrolled',
             manager: 'continuous',
