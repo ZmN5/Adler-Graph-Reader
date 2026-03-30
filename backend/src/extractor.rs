@@ -372,9 +372,14 @@ pub async fn extract_concepts_from_book(
     }
 
     // Use semaphore to limit concurrent requests (avoid LM Studio overload)
-    // Using 4 permits to allow parallel processing of chunks
-    let semaphore = Arc::new(Semaphore::new(4));
     let pool = pool.clone();
+
+    // Get extract concurrency from environment variable with default
+    let extract_concurrency: usize = std::env::var("EXTRACT_CONCURRENCY")
+        .unwrap_or_else(|_| "4".to_string())
+        .parse()
+        .unwrap_or(4);
+    let semaphore = Arc::new(Semaphore::new(extract_concurrency));
 
     // Get LLM API base URL from environment variable with default
     let llm_api_url = std::env::var("LLM_API_BASE_URL")
