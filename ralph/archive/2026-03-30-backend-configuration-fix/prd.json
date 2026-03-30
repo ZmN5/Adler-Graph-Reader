@@ -16,7 +16,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -34,7 +34,7 @@
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Fixed: Increased semaphore count from 1 to 4 and reduced LLM timeout from 120s to 60s to allow parallel extraction. Issue was that sequential processing with long timeouts caused extraction to appear stuck."
+      "notes": "Fixed: Increased semaphore count from 1 to 4 and reduced LLM timeout from 120s to 60s to allow parallel extraction."
     },
     {
       "id": "US-003",
@@ -50,8 +50,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "All acceptance criteria passed. Minor P3 issue: page number shows 'Unknown' for EPUB."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
@@ -67,8 +67,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Page navigation and page input work correctly. PDF renders properly. Zoom controls are not implemented (P2 issue documented)."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
@@ -85,8 +85,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Graph displays 15 nodes/10 edges. Filter/search work. P2 issues: no NodeDetailPanel, no zoom controls, no Prev/Next nav."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-006",
@@ -102,8 +102,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "All acceptance criteria passed. Upload, deletion, and book count all work correctly."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-007",
@@ -119,8 +119,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Language toggle works. Extract shows progress indicator. Escape key does NOT close modals (P2 bug). Parse shows no visible progress text (P3)."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-008",
@@ -136,8 +136,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Duplicate book upload creates duplicate entries (P2). Invalid file type shows proper error message. Invalid page numbers silently clamp to valid range (P3)."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-009",
@@ -152,8 +152,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Extraction hangs issue (US-002) is FIXED. Extraction completes successfully. Remaining P2 bugs: Escape key modal issue (US-007) and duplicate book entries (US-008) still present."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-010",
@@ -168,8 +168,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "All acceptance criteria passed. Full workflow tested successfully. No new issues found. Summary report created."
+      "passes": false,
+      "notes": ""
     }
   ]
 }

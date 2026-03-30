@@ -44,3 +44,14 @@ Started: 2026-03-30
   - When parsing env vars to usize, use parse().unwrap_or(default) pattern for safety
   - The pool.clone() should be called before spawning tasks to avoid issues
 ---
+
+## 2026-03-30 - US-004
+- Fixed context length error by reducing chunk_size from 16000 to 8000 chars
+- Reduced overlap from 400 to 200 chars
+- This ensures chunks fit within 6000 token context limit (~24000 chars with safety margin)
+- Files changed: backend/src/pdf_parser.rs
+- **Learnings for future iterations:**
+  - pdf_parser.rs uses split_text_with_overlap() function for chunking
+  - 6000 token context / 4 chars per token ≈ 24000 max, using 8000 with overlap for safety margin
+  - split_text_with_overlap takes (text, chunk_size, overlap) parameters
+---
