@@ -22,3 +22,14 @@ Started: 2026-03-30
   - Error messages use AppError::BadRequest which returns HTTP 400 with JSON error body
   - When using format! with string interpolation, pass the book_id variable to include the actual book ID in the error message
 ---
+
+## 2026-03-30 - US-002
+- Implemented LLM_API_BASE_URL environment variable support
+- Default value: http://localhost:1234/v1
+- extractor.rs reads env var once before spawning chunk tasks
+- Files changed: backend/src/extractor.rs
+- **Learnings for future iterations:**
+  - LlmClient::new() takes a &str base_url
+  - extractor.rs spawns multiple async tasks in a loop, so env var should be read before the loop
+  - Using std::env::var() with unwrap_or_else for default values works well
+---
