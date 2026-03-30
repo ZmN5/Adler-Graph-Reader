@@ -2,8 +2,26 @@
 - Chunk API endpoint: GET /api/chunks/{id} returns ChunkDetails with content and page_start/page_end
 - PDFReader uses highlightChunkId prop to highlight content
 - EPUBReader uses highlightAnchor prop for navigation
+- ReactReader from 'react-reader' provides EPUB rendering with continuous scroll support
+- Use epubOptions: { flow: 'scrolled', manager: 'continuous', spread: 'none' } for continuous scroll
+- Location in ReactReader can be CFI string, chapter href, or percentage (0-1)
 
 ## Progress Log
+
+## 2026-03-30 - US-001, US-007
+- Migrated EPUBReader to use react-reader library
+- Configured EPUB with flow: 'scrolled', manager: 'continuous', spread: 'none' for continuous scroll
+- Removed previous/next navigation buttons from both EPUBReader and PDFReader
+- Updated header to show current chapter (EPUB) or page info (PDF)
+- Files changed:
+  - frontend/src/components/EPUBReader.tsx (rewritten with react-reader)
+  - frontend/src/components/PDFReader.tsx (removed navigation buttons)
+- **Learnings for future iterations:**
+  - ReactReader handles continuous scrolling via epubOptions configuration
+  - Current location tracking uses rendition.currentLocation() which returns { start: { href, cfi }, end: { href, cfi } }
+  - Type definitions for epubjs may need casting for location objects
+  - Removing navigation buttons simplifies the UI while maintaining scroll-based navigation
+---
 
 ## 2026-03-29 - US-005
 - Implemented Graph node grouping and clustering by category

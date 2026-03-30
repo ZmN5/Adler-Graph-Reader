@@ -1,0 +1,59 @@
+{
+  "project": "Intelligent-Reading-Concept-Graph",
+  "branchName": "ralph/backend-configuration-fix",
+  "description": "后端配置问题修复 - 改进错误提示、URL配置化、chunk大小优化、并发配置化",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "改进 extract 接口错误提示",
+      "description": "作为用户，我在调用 extract 接口时如果书籍未解析，能看到清晰的错误提示，而不是模糊的 400 Bad Request。",
+      "acceptanceCriteria": [
+        "错误消息改为：'Book has no chunks. Please parse the book first via POST /api/books/{id}/parse.'",
+        "错误消息包含需要先调用哪个接口的信息",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "LM Studio API URL 配置化",
+      "description": "作为运维人员，我需要通过环境变量配置 LM Studio 的 API 地址，而不是修改代码。",
+      "acceptanceCriteria": [
+        "支持 LLM_API_BASE_URL 环境变量，默认 http://localhost:1234/v1",
+        "extractor.rs 中读取环境变量传入 LlmClient",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "提取并发数配置化",
+      "description": "作为运维人员，我需要根据服务器性能调整 extract 操作的并发数。",
+      "acceptanceCriteria": [
+        "支持 EXTRACT_CONCURRENCY 环境变量，默认 4",
+        "Semaphore::new() 从环境变量读取并发数",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "修复 Context Length 错误",
+      "description": "作为用户，我希望能成功提取书籍概念，不再出现上下文超限错误。模型上下文为 6000 tokens，当前 chunk_size 16000 chars 过大。",
+      "acceptanceCriteria": [
+        "pdf_parser.rs:53 chunk_size 从 16000 改为 8000",
+        "pdf_parser.rs:70 overlap 从 400 改为 200",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}
