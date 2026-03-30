@@ -92,8 +92,15 @@ export function PDFReader({
         const scale = Math.min(scaleFactor, heightScaleFactor)
         const scaledViewport = page.getViewport({ scale })
 
-        canvas.height = scaledViewport.height
-        canvas.width = scaledViewport.width
+        // Apply devicePixelRatio for sharp rendering on high-DPI displays
+        const dpr = window.devicePixelRatio || 1
+        canvas.width = scaledViewport.width * dpr
+        canvas.height = scaledViewport.height * dpr
+        canvas.style.width = `${scaledViewport.width}px`
+        canvas.style.height = `${scaledViewport.height}px`
+
+        // Scale context to match DPR
+        context.scale(dpr, dpr)
 
         await page.render({
           canvasContext: context,
