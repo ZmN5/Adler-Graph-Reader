@@ -30,10 +30,18 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .await?;
 
     // Migration: Add language column to existing books table (for backward compatibility)
-    sqlx::query("ALTER TABLE books ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'auto'")
-        .execute(pool)
-        .await
-        .ok(); // Ignore error if column already exists
+    // SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we check pragma_table_info first
+    let language_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('books') WHERE name = 'language'"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !language_exists {
+        sqlx::query("ALTER TABLE books ADD COLUMN language TEXT NOT NULL DEFAULT 'auto'")
+            .execute(pool)
+            .await?;
+    }
 
     // Create chunks table
     sqlx::query(
@@ -53,10 +61,18 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .await?;
 
     // Migration: Add chapter_href column to chunks table (for EPUB navigation)
-    sqlx::query("ALTER TABLE chunks ADD COLUMN IF NOT EXISTS chapter_href TEXT")
-        .execute(pool)
-        .await
-        .ok(); // Ignore error if column already exists
+    // SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we check pragma_table_info first
+    let chapter_href_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('chunks') WHERE name = 'chapter_href'"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !chapter_href_exists {
+        sqlx::query("ALTER TABLE chunks ADD COLUMN chapter_href TEXT")
+            .execute(pool)
+            .await?;
+    }
 
     // Create nodes table
     sqlx::query(
@@ -81,14 +97,30 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .await?;
 
     // Migration: Add is_core and page_number columns to existing nodes table
-    sqlx::query("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS is_core BOOLEAN NOT NULL DEFAULT FALSE")
-        .execute(pool)
-        .await
-        .ok();
-    sqlx::query("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS page_number INTEGER")
-        .execute(pool)
-        .await
-        .ok();
+    // SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we check pragma_table_info first
+    let is_core_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('nodes') WHERE name = 'is_core'"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !is_core_exists {
+        sqlx::query("ALTER TABLE nodes ADD COLUMN is_core BOOLEAN NOT NULL DEFAULT FALSE")
+            .execute(pool)
+            .await?;
+    }
+
+    let page_number_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('nodes') WHERE name = 'page_number'"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !page_number_exists {
+        sqlx::query("ALTER TABLE nodes ADD COLUMN page_number INTEGER")
+            .execute(pool)
+            .await?;
+    }
 
     // Create edges table
     sqlx::query(
