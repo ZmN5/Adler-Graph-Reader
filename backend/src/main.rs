@@ -1,5 +1,6 @@
 mod core_concept;
 mod db;
+mod embedding;
 mod epub_parser;
 mod extractor;
 mod llm_client;
