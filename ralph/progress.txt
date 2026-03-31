@@ -18,6 +18,22 @@ Started: 2026-03-31 23:12
   - chunk_embeddings.embedding 使用 BLOB 存储 f32 数组的二进制数据
 ---
 
+## 2026-04-01 00:15 - US-002
+- 实现了Embedding模块基础功能
+- 文件变更: `backend/src/embedding.rs` (新建), `backend/src/main.rs` (添加模块声明)
+- 实现内容:
+  - `call_embedding_api`: 调用 LM Studio embedding API，使用 Qwen3-Embedding-0.6B-4bit-DWQ 模型
+  - `generate_chunk_embeddings`: 为整本书的chunks生成embeddings
+  - `generate_embeddings_for_chunks`: 为指定chunk IDs生成embeddings
+  - 批处理支持: BATCH_SIZE=32，提高效率
+  - Embedding存储: f32数组转换为二进制blob存储
+- **Learnings for future iterations:**
+  - 使用原始SQL查询而非sqlx宏，避免DATABASE_URL环境变量依赖
+  - f32 to bytes: 使用 `f.to_le_bytes()`，每个f32占4字节
+  - 类型注解很重要：`|f: &f32|` 帮助编译器推断类型
+  - 使用 `sqlx::query_as` 配合元组类型 `(String, String)` 可以简化行映射
+---
+
 ## US-001: 分片Embedding向量化
 Status: pending
 

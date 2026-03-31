@@ -4,6 +4,8 @@ use std::path::Path;
 use std::io::{Read, BufReader};
 use zip::ZipArchive;
 
+use crate::embedding;
+
 /// Parse an EPUB file and create chunks in the database
 /// Chapters are treated as units, with ~16000 char segments (~4000 tokens) with overlap
 pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Result<usize, String> {
@@ -171,6 +173,28 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
             }
         }
     }
+
+    // Spawn async task for embedding generation (non-blocking)
+    let pool_clone = pool.clone();
+    let book_id_clone = book_id.to_string();
+    tokio::spawn(async move {
+        match embedding::generate_chunk_embeddings(&pool_clone, &book_id_clone).await {
+            Ok(count) => {
+                tracing::info!(
+                    "[EPUB Parser] Embedding generation completed for book {}: {} chunks processed",
+                    book_id_clone,
+                    count
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    "[EPUB Parser] Embedding generation failed for book {}: {}",
+                    book_id_clone,
+                    e
+                );
+            }
+        }
+    });
 
     Ok(chunks_created)
 }

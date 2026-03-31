@@ -3,6 +3,8 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 use std::path::Path;
 
+use crate::embedding;
+
 /// Parse a PDF file and create chunks in the database
 /// Each page becomes a chunk, or pages are split into ~16000 char segments (~4000 tokens) with overlap
 pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Result<usize, String> {
@@ -88,6 +90,28 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
             }
         }
     }
+
+    // Spawn async task for embedding generation (non-blocking)
+    let pool_clone = pool.clone();
+    let book_id_clone = book_id.to_string();
+    tokio::spawn(async move {
+        match embedding::generate_chunk_embeddings(&pool_clone, &book_id_clone).await {
+            Ok(count) => {
+                tracing::info!(
+                    "[PDF Parser] Embedding generation completed for book {}: {} chunks processed",
+                    book_id_clone,
+                    count
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    "[PDF Parser] Embedding generation failed for book {}: {}",
+                    book_id_clone,
+                    e
+                );
+            }
+        }
+    });
 
     Ok(chunks_created)
 }
