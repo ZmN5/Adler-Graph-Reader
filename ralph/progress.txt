@@ -18,3 +18,21 @@
   - Use `PRAGMA table_info('table')` to introspect schema
   - The `.ok()` pattern on migrations was hiding errors - use proper error handling
 ---
+
+## 2025-03-31 - US-002
+- Enhanced database migration in `backend/src/db.rs`
+- Updated CREATE TABLE statements to include all current columns for new databases:
+  - chunks table now includes chapter_href in initial schema definition
+  - nodes table already had all columns (is_core, page_number)
+- Migration logic ensures backward compatibility for existing databases:
+  - Checks column existence via pragma_table_info before attempting ALTER TABLE
+  - Automatically adds missing columns on startup
+  - Existing data remains intact
+- Verified migration works on existing database: chapter_href column was successfully added
+- Files changed: `backend/src/db.rs`
+- **Learnings for future iterations:**
+  - CREATE TABLE should include all current columns for new databases
+  - Migration logic (ALTER TABLE) handles existing databases
+  - This dual approach ensures both new and existing databases have correct schema
+  - Testing migrations requires checking on actual existing database, not just new ones
+---
