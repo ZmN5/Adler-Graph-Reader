@@ -33,17 +33,31 @@ export function PDFReader({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentVisiblePage, setCurrentVisiblePage] = useState(1)
+  const [containerReady, setContainerReady] = useState(false)
+  // Trigger to force re-render of visible pages after dimension recalculation
+  const [recalcTrigger, setRecalcTrigger] = useState(0)
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null)
+  // Keep ref in sync with state
+  useEffect(() => {
+    if (containerElement) {
+      scrollContainerRef.current = containerElement
+    }
+  }, [containerElement])
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map())
   const renderingRef = useRef<Set<number>>(new Set())
   const scaleRef = useRef(1)
+  const containerWidthRef = useRef(0)
+  const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null)
 
-  // Load PDF document and calculate page dimensions
+  // Load PDF document only (dimension calculation happens in recalculate effect)
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
     setError(null)
+    setPdfDoc(null)
+    pdfDocRef.current = null
     setPageInfos([])
     setTotalHeight(0)
     renderingRef.current.clear()
@@ -61,48 +75,10 @@ export function PDFReader({
         if (cancelled) return
 
         setPdfDoc(pdf)
-
-        // Get container width for scaling calculation
-        const containerWidth = scrollContainerRef.current?.clientWidth || 800
-
-        // Calculate page dimensions for all pages
-        const infos: PageInfo[] = []
-        let totalH = 0
-
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i)
-          const baseViewport = page.getViewport({ scale: 1 })
-
-          // Calculate scale to fit container width with less padding (20px instead of 40px)
-          const scale = (containerWidth - 20) / baseViewport.width
-          const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
-
-          const info: PageInfo = {
-            pageNumber: i,
-            width: scaledViewport.width,
-            height: scaledViewport.height,
-            yOffset: totalH,
-          }
-          infos.push(info)
-          totalH += scaledViewport.height + 20 // 20px gap between pages
-
-          // Store scale for rendering
-          if (i === 1) {
-            scaleRef.current = scale
-          }
-        }
-
-        if (!cancelled) {
-          setPageInfos(infos)
-          setTotalHeight(totalH)
-          setCurrentVisiblePage(1)
-        }
+        pdfDocRef.current = pdf
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load PDF')
-        }
-      } finally {
-        if (!cancelled) {
           setIsLoading(false)
         }
       }
@@ -115,6 +91,107 @@ export function PDFReader({
     }
   }, [bookId])
 
+  // Mark container as ready after mount
+  useEffect(() => {
+    setContainerReady(true)
+  }, [])
+
+  // Re-calculate page dimensions when container resizes
+  useEffect(() => {
+    if (!containerElement || !pdfDoc || !containerReady) return
+
+    let rafId: number | null = null
+
+    const recalculate = () => {
+      // Cancel any pending recalculation
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
+
+      rafId = requestAnimationFrame(async () => {
+        rafId = null
+        const containerWidth = containerElement?.clientWidth
+        const pdf = pdfDocRef.current
+        if (!containerWidth || containerWidth < 100 || !pdf) return
+
+        try {
+          // Calculate new page dimensions
+          const infos: PageInfo[] = []
+          let totalH = 0
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i)
+            const baseViewport = page.getViewport({ scale: 1 })
+
+            // Calculate scale to fit container width with 20px padding
+            // Multiply by devicePixelRatio and a clarity factor (2x) for high resolution rendering
+            const dpr = window.devicePixelRatio || 1
+            const clarityFactor = 2 // Additional clarity multiplier
+            const scale = ((containerWidth - 20) / baseViewport.width) * dpr * clarityFactor
+            const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
+
+            infos.push({
+              pageNumber: i,
+              width: scaledViewport.width / (dpr * clarityFactor), // Display size remains same
+              height: scaledViewport.height / (dpr * clarityFactor),
+              yOffset: totalH,
+            })
+            totalH += (scaledViewport.height / (dpr * clarityFactor)) + 10
+
+            if (i === 1) {
+              scaleRef.current = scale
+              containerWidthRef.current = containerWidth
+            }
+          }
+
+          setPageInfos(infos)
+          setTotalHeight(totalH)
+          setIsLoading(false) // Mark loading as complete after dimensions are calculated
+          // Increment trigger to force scroll effect to re-run and re-render pages
+          setRecalcTrigger(t => t + 1)
+
+          // Clear rendered flag so pages re-render at new scale
+          canvasRefs.current.forEach((canvas) => {
+            canvas.dataset.rendered = 'false'
+          })
+
+          // Directly trigger scroll to re-render visible pages at new scale
+          // This is necessary because React useEffect may not call handleScroll immediately
+          const container = scrollContainerRef.current
+          if (container) {
+            requestAnimationFrame(() => {
+              container.dispatchEvent(new Event('scroll'))
+            })
+          }
+        } catch (err) {
+          console.error('Failed to recalculate PDF dimensions:', err)
+        }
+      })
+    }
+
+    // Initial recalculation after a short delay to ensure layout is complete
+    const initialTimeout = setTimeout(recalculate, 100)
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          recalculate()
+          break
+        }
+      }
+    })
+
+    resizeObserver.observe(containerElement)
+
+    return () => {
+      clearTimeout(initialTimeout)
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
+      resizeObserver.disconnect()
+    }
+  }, [pdfDoc, containerReady, containerElement])
+
   // Render a specific page to a canvas
   const renderPage = useCallback(async (pageNumber: number) => {
     if (!pdfDoc || renderingRef.current.has(pageNumber)) return
@@ -126,28 +203,32 @@ export function PDFReader({
     const pageInfo = pageInfos[pageNumber - 1]
     if (!pageInfo) return
 
-    // Check if canvas already has content by checking if dimensions match
-    const expectedWidth = Math.floor(pageInfo.width * (window.devicePixelRatio || 1))
+    // Get current container width for scale calculation
+    const containerWidth = containerWidthRef.current || scrollContainerRef.current?.clientWidth || 800
+    const padding = 20
+    const page = await pdfDoc.getPage(pageNumber)
+    const baseViewport = page.getViewport({ scale: 1 })
+    const dpr = window.devicePixelRatio || 1
+    const clarityFactor = 2 // Additional clarity multiplier for high resolution rendering
+    const scale = ((containerWidth - padding) / baseViewport.width) * dpr * clarityFactor
+    const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
+
+    // Check if canvas already has correct content by comparing with expected dimensions
+    const expectedWidth = Math.floor(scaledViewport.width)
     if (canvas.width === expectedWidth && canvas.dataset.rendered === 'true') {
-      return // Already rendered
+      return // Already rendered at this scale
     }
 
     renderingRef.current.add(pageNumber)
 
     try {
-      const page = await pdfDoc.getPage(pageNumber)
-      const baseViewport = page.getViewport({ scale: 1 })
-      const scale = scaleRef.current
-      const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
-
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = scaledViewport.width * dpr
-      canvas.height = scaledViewport.height * dpr
-      canvas.style.width = `${scaledViewport.width}px`
-      canvas.style.height = `${scaledViewport.height}px`
+      canvas.width = scaledViewport.width
+      canvas.height = scaledViewport.height
+      canvas.style.width = `${scaledViewport.width / (dpr * clarityFactor)}px`
+      canvas.style.height = `${scaledViewport.height / (dpr * clarityFactor)}px`
 
       const context = canvas.getContext('2d')!
-      context.scale(dpr, dpr)
+      // No need to scale context since we're already at high resolution
 
       await page.render({
         canvasContext: context,
@@ -203,7 +284,7 @@ export function PDFReader({
 
     container.addEventListener('scroll', handleScroll)
     return () => container.removeEventListener('scroll', handleScroll)
-  }, [pageInfos, renderPage])
+  }, [pageInfos, renderPage, recalcTrigger])
 
   // Handle external page number navigation
   useEffect(() => {
@@ -226,48 +307,42 @@ export function PDFReader({
     }
   }, [highlightChunkId])
 
-  if (isLoading) {
-    return (
-      <div className={cn('flex items-center justify-center py-12', className)}>
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <span className="ml-3 text-muted-foreground">Loading PDF...</span>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-destructive', className)}>
-        <FileText className="h-12 w-12 opacity-50" />
-        <p className="mt-4">Failed to load PDF</p>
-        <p className="text-sm">{error}</p>
-      </div>
-    )
-  }
-
-  if (!pdfDoc || pageInfos.length === 0) {
-    return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-muted-foreground', className)}>
-        <FileText className="h-12 w-12 opacity-50" />
-        <p className="mt-4">No PDF document</p>
-      </div>
-    )
-  }
-
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header showing current page */}
-      <div className="flex items-center justify-center p-3 border-b bg-muted/50">
+      <div className="flex items-center justify-center p-3 border-b bg-muted/50 flex-shrink-0">
         <div className="text-sm">
-          Page {currentVisiblePage} of {pageInfos.length}
+          {isLoading ? 'Loading...' : error ? 'Error' : `Page ${currentVisiblePage} of ${pageInfos.length || '?'}`}
         </div>
       </div>
 
-      {/* Scroll container with virtual pages */}
+      {/* Scroll container with virtual pages - always rendered so ref callback fires */}
       <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto"
+        ref={(el) => {
+          scrollContainerRef.current = el
+          setContainerElement(el)
+        }}
+        className="flex-1 min-h-0 overflow-y-auto"
       >
+        {isLoading && (
+          <div className="flex items-center justify-center h-full">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <span className="ml-3 text-muted-foreground">Loading PDF...</span>
+          </div>
+        )}
+        {error && (
+          <div className="flex flex-col items-center justify-center h-full text-destructive">
+            <FileText className="h-12 w-12 opacity-50" />
+            <p className="mt-4">Failed to load PDF</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+        {!isLoading && !error && pageInfos.length === 0 && pdfDoc && (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <FileText className="h-12 w-12 opacity-50" />
+            <p className="mt-4">No PDF document</p>
+          </div>
+        )}
         <div style={{ height: totalHeight, position: 'relative' }}>
           {pageInfos.map((pageInfo) => (
             <div

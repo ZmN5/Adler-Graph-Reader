@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { ReactReader } from 'react-reader'
-import type { Rendition, Book } from 'epubjs'
+import type { Rendition, Book, Contents } from 'epubjs'
 import type { IReactReaderStyle } from 'react-reader'
 
 interface EPUBReaderProps {
@@ -90,6 +90,17 @@ export function EPUBReader({
   const getRendition = useCallback((rendition: Rendition) => {
     renditionRef.current = rendition
 
+    // Inject CSS to fix scrolling in scrolled mode
+    rendition.hooks.content.register((contents: Contents) => {
+      contents.addStylesheetCss(`
+        body, html {
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          height: auto !important;
+        }
+      `, 'scroll-fix')
+    })
+
     // Extract TOC from book
     const book = (rendition as unknown as { book?: Book }).book
     if (book) {
@@ -165,28 +176,43 @@ export function EPUBReader({
       </div>
 
       {/* EPUB Viewer */}
-      <div className="flex-1 min-h-0 relative">
-        <ReactReader
-          url={bookUrl}
-          location={location}
-          locationChanged={locationChanged}
-          getRendition={getRendition}
-          readerStyles={readerStyles}
-          epubOptions={{
-            flow: 'scrolled',
-            manager: 'continuous',
-            spread: 'none',
-          }}
-          epubInitOptions={{
-            openAs: 'epub',
-          }}
-          loadingView={
-            <div className="flex items-center justify-center h-full">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              <span className="ml-3 text-muted-foreground">Loading EPUB...</span>
-            </div>
-          }
-        />
+      <div className="flex-1 min-h-0 relative overflow-hidden">
+        <div style={{ height: "100%", overflow: "auto" }}>
+          <ReactReader
+            url={bookUrl}
+            location={location}
+            locationChanged={locationChanged}
+            getRendition={getRendition}
+            readerStyles={readerStyles}
+            epubViewStyles={{
+              viewHolder: {
+                position: "relative",
+                height: "100%",
+                width: "100%",
+                overflow: "auto",
+              },
+              view: {
+                height: "100%",
+                overflow: "visible",
+              }
+            }}
+            epubOptions={{
+              flow: 'scrolled',
+              manager: 'continuous',
+              spread: 'none',
+            }}
+            pageTurnOnScroll={false}
+            epubInitOptions={{
+              openAs: 'epub',
+            }}
+            loadingView={
+              <div className="flex items-center justify-center h-full">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <span className="ml-3 text-muted-foreground">Loading EPUB...</span>
+              </div>
+            }
+          />
+        </div>
       </div>
     </div>
   )
