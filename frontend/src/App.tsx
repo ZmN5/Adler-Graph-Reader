@@ -23,6 +23,7 @@ function App() {
   const [epubChapterHref, setEpubChapterHref] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'graph' | 'core-concepts'>('graph')
   const [highlightChunkId, setHighlightChunkId] = useState<string | null>(null)
+  const [isReaderCollapsed, setIsReaderCollapsed] = useState(false)
 
   // Handle Escape key to switch from Core Concepts back to Graph view
   useEffect(() => {
@@ -107,6 +108,9 @@ function App() {
         </div>
         <div className="flex-1 overflow-hidden">
           <ThreeColumnLayout
+            isLeftPanelCollapsed={isReaderCollapsed}
+            onLeftPanelCollapseChange={setIsReaderCollapsed}
+            leftPanelTitle={selectedBook.title}
             leftPanel={
               isPdf ? (
                 <PDFReader

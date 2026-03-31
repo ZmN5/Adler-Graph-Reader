@@ -1,67 +1,57 @@
 {
   "project": "Intelligent Reading Concept Graph",
-  "branchName": "ralph/reader-bug-fixes",
-  "description": "Fix critical bugs: database migration causing 404 errors, layout proportions, and scroll synchronization issues",
+  "branchName": "ralph/reader-experience-optimization",
+  "description": "Optimize PDF/EPUB reader experience: fix EPUB scrolling, improve PDF width, add collapsible reader panel",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Fix database migration for chapter_href column",
-      "description": "As a developer, I need to fix the database migration that fails silently due to SQLite not supporting ALTER TABLE ... ADD COLUMN IF NOT EXISTS syntax, causing chunk API to return 404 errors.",
+      "title": "Fix EPUB scrolling issue",
+      "description": "As a user, I want EPUB reader to scroll smoothly so I can read long chapters without interruption.",
       "acceptanceCriteria": [
-        "Replace non-standard SQL with SQLite-compatible column existence check using pragma_table_info",
-        "Add chapter_href column only if it doesn't already exist",
-        "Migration runs successfully on new databases",
-        "Typecheck passes"
+        "EPUB content area supports vertical scrolling",
+        "Scrolling is smooth without noticeable lag",
+        "Chapter title bar remains fixed during scroll",
+        "Chapter navigation updates scroll position correctly",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Handle existing database with missing column",
-      "description": "As a user with existing books and data, I want the application to automatically detect and fix the missing chapter_href column without losing my existing books and concept graphs.",
+      "title": "Optimize PDF display width",
+      "description": "As a user, I want PDF pages to use available width fully so content is not truncated or overly scaled.",
       "acceptanceCriteria": [
-        "Application detects missing column on startup",
-        "Automatically adds column if missing (backward compatible)",
-        "Existing data remains intact",
-        "No manual database reset required",
-        "Typecheck passes"
+        "Change width calculation from containerWidth - 40px to containerWidth - 20px",
+        "PDF content displays fully without horizontal truncation",
+        "Page shadows and margins remain visually appealing",
+        "Text remains readable at new scale",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Optimize three-column layout proportions",
-      "description": "As a user, I want the ConceptGraph to have more space so I can better visualize the concept relationships, while the PDF/EPUB reader and detail panel take appropriate amounts of space.",
+      "title": "Add collapsible reader panel",
+      "description": "As a user, I want to collapse the left reader panel to give more space to the concept graph, and expand it when needed.",
       "acceptanceCriteria": [
-        "Adjust layout ratios: Left 40% / Center 50% / Right 280px (was 320px)",
-        "When right panel is hidden, center panel expands appropriately",
-        "All panels remain usable and content doesn't overflow",
+        "Add fold button (ChevronLeft icon) to reader panel header",
+        "Clicking fold collapses panel to 48px narrow bar",
+        "Narrow bar shows expand button (ChevronRight) and book title",
+        "Center panel expands automatically when left panel is collapsed",
+        "Clicking expand restores left panel to original 40% width",
+        "Collapse/expand animation is smooth (300ms transition)",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-004",
-      "title": "Fix page-level scroll synchronization",
-      "description": "As a user, I want to scroll the PDF/EPUB reader independently without the ConceptGraph panel following the scroll, so I can focus on reading while keeping the graph view stable.",
-      "acceptanceCriteria": [
-        "Each panel has its own scroll container with overflow-auto",
-        "Scrolling in left panel doesn't affect center/right panels",
-        "No page-level scrollbars appear (only panel-level scrollbars)",
-        "Header and book title bar remain fixed during panel scrolling",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented with smooth CSS transitions, vertical text for book title in collapsed state"
     }
   ]
 }
