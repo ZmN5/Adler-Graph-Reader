@@ -85,3 +85,21 @@ Started: 2026-03-31 23:12
   - 余弦相似度计算时注意处理零向量情况
 ---
 
+## 2026-04-01 08:30 - US-006
+- 实现了RRF融合算法
+- 文件变更: `backend/src/retrieval.rs` (已存在)
+- 实现内容:
+  - `reciprocal_rank_fusion`: RRF融合核心算法，k=60默认参数
+  - RRF公式: score = sum(1/(k + rank))，合并vector和BM25结果
+  - 处理只在单个结果列表中出现的chunk
+  - 按RRF分数降序排序
+  - `FusedResult`结构包含chunk_id、rrf_score、vector_score、bm25_score
+  - `fused_to_retrieval_results`: 转换为RetrievalResult
+  - 单元测试`test_rrf_fusion`验证算法正确性
+- **Learnings for future iterations:**
+  - RRF算法简单但有效，不需要调参，k=60是业界常用值
+  - 使用HashMap构建rank查找表，时间复杂度O(n)
+  - 注意chunk_id使用&str作为key避免clone开销
+  - 结果同时保留原始分数(vector_score/bm25_score)便于调试和后续rerank
+---
+
