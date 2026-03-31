@@ -1,57 +1,263 @@
 {
   "project": "Intelligent Reading Concept Graph",
-  "branchName": "ralph/reader-experience-optimization",
-  "description": "Optimize PDF/EPUB reader experience: fix EPUB scrolling, improve PDF width, add collapsible reader panel",
+  "branchName": "ralph/intelligent-retrieval-v2",
+  "description": "V2 智能检索与核心概念优化: Embedding向量化、混合检索(向量+BM25+RRF+Reranker)、Source-Grounded总结、Louvain社区发现改进Core Concepts",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Fix EPUB scrolling issue",
-      "description": "As a user, I want EPUB reader to scroll smoothly so I can read long chapters without interruption.",
+      "title": "数据库迁移 - chunk_embeddings和FTS5表",
+      "description": "As a developer, I need database tables to store chunk embeddings and support full-text search.",
       "acceptanceCriteria": [
-        "EPUB content area supports vertical scrolling",
-        "Scrolling is smooth without noticeable lag",
-        "Chapter title bar remains fixed during scroll",
-        "Chapter navigation updates scroll position correctly",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create chunk_embeddings table with columns: chunk_id (PK), embedding BLOB, model_name, dimensions, created_at",
+        "Add FTS5 virtual table chunks_fts with content_rowid mapping and porter tokenizer",
+        "Create triggers to sync chunks table inserts/deletes to chunks_fts",
+        "Add paragraph_start and paragraph_end columns to chunks table",
+        "Create node_chunk_ranks table for storing node-chunk relevance scores",
+        "Run migration successfully and verify tables exist",
+        "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Added flex-shrink-0 to header to keep chapter title bar fixed during scroll. Verified with dev-browser: header stays at y=49 during scroll."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Optimize PDF display width",
-      "description": "As a user, I want PDF pages to use available width fully so content is not truncated or overly scaled.",
+      "title": "Embedding模块基础实现",
+      "description": "As a developer, I need a module to generate embeddings for chunks using LM Studio.",
       "acceptanceCriteria": [
-        "Change width calculation from containerWidth - 40px to containerWidth - 20px",
-        "PDF content displays fully without horizontal truncation",
-        "Page shadows and margins remain visually appealing",
-        "Text remains readable at new scale",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create backend/src/embedding.rs module",
+        "Implement call_embedding_api function that POSTs to http://localhost:1234/v1/embeddings",
+        "Use model mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ with 1024 dimensions",
+        "Implement generate_chunk_embeddings function that fetches chunks and generates embeddings",
+        "Support batch processing (batch_size=32) for efficiency",
+        "Store embeddings as f32 array binary blob",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Changed scale calculation from (containerWidth - 40) to (containerWidth - 20). Verified with dev-browser: code logic is correct."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Add collapsible reader panel",
-      "description": "As a user, I want to collapse the left reader panel to give more space to the concept graph, and expand it when needed.",
+      "title": "解析器集成异步Embedding生成",
+      "description": "As a system, I want embeddings to be generated automatically after parsing completes.",
       "acceptanceCriteria": [
-        "Add fold button (ChevronLeft icon) to reader panel header",
-        "Clicking fold collapses panel to 48px narrow bar",
-        "Narrow bar shows expand button (ChevronRight) and book title",
-        "Center panel expands automatically when left panel is collapsed",
-        "Clicking expand restores left panel to original 40% width",
-        "Collapse/expand animation is smooth (300ms transition)",
+        "Modify pdf_parser.rs to spawn tokio task for embedding generation after chunks are created",
+        "Modify epub_parser.rs similarly for EPUB files",
+        "Use tokio::spawn for async execution to avoid blocking upload response",
+        "Add error logging if embedding generation fails",
+        "Verify new uploads trigger embedding generation (check logs)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "BM25搜索实现",
+      "description": "As a system, I need BM25 full-text search capability for keyword retrieval.",
+      "acceptanceCriteria": [
+        "Create backend/src/retrieval.rs module",
+        "Implement bm25_search function using SQLite FTS5 BM25 ranking",
+        "Query format: SELECT chunk_id, bm25(chunks_fts) as score FROM chunks_fts WHERE content MATCH ?",
+        "Accept node name and description as query parameters",
+        "Return SearchResult with chunk_id and BM25 score",
+        "Default top_k=50 for BM25 results",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "向量相似度搜索实现",
+      "description": "As a system, I need vector similarity search to find semantically similar chunks.",
+      "acceptanceCriteria": [
+        "Implement vector_search function in retrieval.rs",
+        "Generate query embedding using same model as chunks",
+        "Load all embeddings for book from database",
+        "Calculate cosine similarity between query and each chunk embedding in Rust",
+        "Sort by similarity descending and return Top K",
+        "Return chunk_id and similarity score",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "RRF融合算法实现",
+      "description": "As a system, I need RRF to combine vector and BM25 retrieval results.",
+      "acceptanceCriteria": [
+        "Implement reciprocal_rank_fusion function with k=60 parameter",
+        "RRF score = sum of 1/(k + rank) across all result lists",
+        "Merge results from vector_search and bm25_search",
+        "Handle cases where chunk appears in only one result list",
+        "Sort fused results by final RRF score descending",
+        "Return FusedResult with chunk_id and fused score",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Reranker重排序实现",
+      "description": "As a system, I need a reranker to improve the ordering of retrieved chunks.",
+      "acceptanceCriteria": [
+        "Implement rerank function in retrieval.rs",
+        "Build prompt for LM Studio: Given query and passages, rank by relevance",
+        "Call LM Studio completions API for reranking",
+        "Process top 20 candidates from RRF results",
+        "Parse response to extract ranked order with scores",
+        "Return reranked results with final scores",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "HybridRetriever主流程",
+      "description": "As a system, I need a unified retrieval interface that orchestrates the full pipeline.",
+      "acceptanceCriteria": [
+        "Create HybridRetriever struct with pool and llm_api_url",
+        "Implement retrieve_for_node method that runs full pipeline",
+        "Pipeline: get node info -> vector search -> BM25 search -> RRF -> rerank -> return top_k",
+        "Return RetrievalResult with all scores (vector_score, bm25_score, final_score)",
+        "Store results in node_chunk_ranks table for caching",
+        "Default top_k=10 for final results",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Source-Grounded总结 - LLM Client扩展",
+      "description": "As a developer, I need LLM client to generate source-grounded summaries with citations.",
+      "acceptanceCriteria": [
+        "Add SourceGroundedSummaryRequest struct to llm_client.rs",
+        "Add SourceGroundedSummary and Citation structs",
+        "Build NotebookLM-style prompt with retrieval results as context",
+        "Require citations in [Source: X] format in the prompt",
+        "Implement generate_source_grounded_summary method",
+        "Parse LLM response to extract summary and citation list",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "API端点 - 检索和总结",
+      "description": "As a frontend, I need API endpoints to fetch retrieval results and summaries for nodes.",
+      "acceptanceCriteria": [
+        "Add GET /api/nodes/{id}/retrieval?top_k={n} endpoint to main.rs",
+        "Add GET /api/nodes/{id}/summary endpoint to main.rs",
+        "Implement node_retrieval handler using HybridRetriever",
+        "Implement node_summary handler using HybridRetriever + LLM client",
+        "Return RetrievalResponse with chunks array and total_found",
+        "Return SummaryResponse with summary, citations, and sources",
+        "Test endpoints with curl and verify response format",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "前端API集成",
+      "description": "As a frontend developer, I need API client functions to call the new endpoints.",
+      "acceptanceCriteria": [
+        "Add getNodeRetrieval function to api-client.ts",
+        "Add getNodeSummary function to api-client.ts",
+        "Define TypeScript types: RetrievalResponse, SummaryResponse, Citation, RetrievalResult",
+        "Include proper error handling for API failures",
+        "Verify API calls work with backend",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "NodeDetailPanel Source-Grounded总结UI",
+      "description": "As a user, I want to see source-grounded summaries with citations when clicking a node.",
+      "acceptanceCriteria": [
+        "Modify NodeDetailPanel to fetch summary on node selection",
+        "Add loading state with '正在分析相关段落...' message",
+        "Display summary text with clickable citation markers [Source: X]",
+        "Highlight citation markers with distinct color (e.g., blue)",
+        "Show error state with retry button if generation fails",
+        "Add citation list section showing source details (page, excerpt)",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 3,
-      "passes": true,
-      "notes": "Implemented in ThreeColumnLayout.tsx with smooth CSS transitions, vertical text for book title in collapsed state. Verified collapse/expand with dev-browser."
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "NodeDetailPanel检索结果展示",
+      "description": "As a user, I want to see the retrieved chunks that support the summary.",
+      "acceptanceCriteria": [
+        "Add retrieval results section to NodeDetailPanel",
+        "Display list of retrieved chunks sorted by final_score",
+        "Show each chunk's content preview, page numbers, and scores",
+        "Display vector_score, bm25_score, and final_score for transparency",
+        "Make chunks clickable to jump to reader location",
+        "Add collapsible section to show/hide retrieval details",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Core Concepts改进 - 社区发现算法",
+      "description": "As a system, I need Louvain community detection to improve concept quality.",
+      "acceptanceCriteria": [
+        "Add petgraph dependency to Cargo.toml",
+        "Create build_node_chunk_graph function in core_concept.rs",
+        "Implement detect_communities using Louvain algorithm via petgraph",
+        "Implement calculate_enhanced_scores combining PageRank, community centrality, coverage",
+        "Create identify_core_concepts_v2 function with top_n_percent parameter",
+        "Update existing concept extraction to use new algorithm",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "LMS运维脚本",
+      "description": "As a developer, I need scripts to check and manage LM Studio models.",
+      "acceptanceCriteria": [
+        "Add service.sh check-models command to verify embedding model status",
+        "Check if mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ is downloaded via lms CLI",
+        "Add service.sh start-models command to load required models",
+        "Provide helpful error messages if lms CLI is not available",
+        "Document manual lms commands in CLAUDE.md",
+        "Test scripts work correctly",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
     }
   ]
 }

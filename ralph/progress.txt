@@ -1,20 +1,8 @@
-## Codebase Patterns
-- Use `flex-shrink-0` on header elements to keep them fixed during scroll in flex containers
-- PDF scale calculation: `(containerWidth - 20) / baseViewport.width` for optimal width
-- ThreeColumnLayout uses `flex-[4]` and `flex-[5]` ratios for 40%/50% split
-- Collapsed left panel shows 48px wide bar with vertical text using `writing-mode: vertical-rl`
+# Ralph Progress Log
 
-## 2026-03-31 17:45 - US-001, US-002, US-003 (all stories)
-- Verified all three user stories are implemented and working
-- US-001: EPUB scrolling header stays fixed at y=49 during scroll
-- US-002: PDF width calculation uses (containerWidth - 20)
-- US-003: Collapsible panel with smooth 300ms transitions works correctly
-- Build passes: `tsc -b && vite build` succeeds
-- Typecheck passes: `tsc --noEmit` succeeds
-- **Learnings for future iterations:**
-  - dev-browser skill needs Chrome with remote debugging enabled: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9222`
-  - For EPUB reader, use `page.waitForTimeout()` after navigation to allow React to render
-  - The snapshotForAI() may return empty strings for SPAs; use textContent() as fallback
-  - When verifying scroll behavior, check elements with `getBoundingClientRect()` to get accurate positions
-  - The ThreeColumnLayout component already has all collapse/expand functionality built-in
----
+Feature: V2 智能检索与核心概念优化
+Started: 2026-03-31 23:12
+
+## US-001: 分片Embedding向量化
+Status: pending
+

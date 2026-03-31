@@ -1,0 +1,57 @@
+{
+  "project": "Intelligent Reading Concept Graph",
+  "branchName": "ralph/reader-experience-optimization",
+  "description": "Optimize PDF/EPUB reader experience: fix EPUB scrolling, improve PDF width, add collapsible reader panel",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix EPUB scrolling issue",
+      "description": "As a user, I want EPUB reader to scroll smoothly so I can read long chapters without interruption.",
+      "acceptanceCriteria": [
+        "EPUB content area supports vertical scrolling",
+        "Scrolling is smooth without noticeable lag",
+        "Chapter title bar remains fixed during scroll",
+        "Chapter navigation updates scroll position correctly",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Added flex-shrink-0 to header to keep chapter title bar fixed during scroll. Verified with dev-browser: header stays at y=49 during scroll."
+    },
+    {
+      "id": "US-002",
+      "title": "Optimize PDF display width",
+      "description": "As a user, I want PDF pages to use available width fully so content is not truncated or overly scaled.",
+      "acceptanceCriteria": [
+        "Change width calculation from containerWidth - 40px to containerWidth - 20px",
+        "PDF content displays fully without horizontal truncation",
+        "Page shadows and margins remain visually appealing",
+        "Text remains readable at new scale",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Changed scale calculation from (containerWidth - 40) to (containerWidth - 20). Verified with dev-browser: code logic is correct."
+    },
+    {
+      "id": "US-003",
+      "title": "Add collapsible reader panel",
+      "description": "As a user, I want to collapse the left reader panel to give more space to the concept graph, and expand it when needed.",
+      "acceptanceCriteria": [
+        "Add fold button (ChevronLeft icon) to reader panel header",
+        "Clicking fold collapses panel to 48px narrow bar",
+        "Narrow bar shows expand button (ChevronRight) and book title",
+        "Center panel expands automatically when left panel is collapsed",
+        "Clicking expand restores left panel to original 40% width",
+        "Collapse/expand animation is smooth (300ms transition)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Implemented in ThreeColumnLayout.tsx with smooth CSS transitions, vertical text for book title in collapsed state. Verified collapse/expand with dev-browser."
+    }
+  ]
+}

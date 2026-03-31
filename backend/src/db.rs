@@ -164,6 +164,125 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Migration: Add paragraph_start column to existing chunks table
+    let paragraph_start_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('chunks') WHERE name = 'paragraph_start'"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !paragraph_start_exists {
+        sqlx::query("ALTER TABLE chunks ADD COLUMN paragraph_start INTEGER")
+            .execute(pool)
+            .await?;
+    }
+
+    // Migration: Add paragraph_end column to existing chunks table
+    let paragraph_end_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('chunks') WHERE name = 'paragraph_end'"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !paragraph_end_exists {
+        sqlx::query("ALTER TABLE chunks ADD COLUMN paragraph_end INTEGER")
+            .execute(pool)
+            .await?;
+    }
+
+    // Create chunk_embeddings table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS chunk_embeddings (
+            chunk_id TEXT PRIMARY KEY,
+            embedding BLOB NOT NULL,
+            model_name TEXT NOT NULL,
+            dimensions INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (chunk_id) REFERENCES chunks(id) ON DELETE CASCADE
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Create FTS5 virtual table for full-text search
+    sqlx::query(
+        r#"
+        CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+            content,
+            content_rowid='id',
+            tokenize='porter'
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Create trigger to sync chunks inserts to chunks_fts
+    sqlx::query(
+        r#"
+        CREATE TRIGGER IF NOT EXISTS chunks_fts_insert
+        AFTER INSERT ON chunks
+        BEGIN
+            INSERT INTO chunks_fts(rowid, content)
+            VALUES (new.id, new.content);
+        END
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Create trigger to sync chunks deletes to chunks_fts
+    sqlx::query(
+        r#"
+        CREATE TRIGGER IF NOT EXISTS chunks_fts_delete
+        AFTER DELETE ON chunks
+        BEGIN
+            INSERT INTO chunks_fts(chunks_fts, rowid, content)
+            VALUES ('delete', old.id, old.content);
+        END
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Create trigger to sync chunks updates to chunks_fts
+    sqlx::query(
+        r#"
+        CREATE TRIGGER IF NOT EXISTS chunks_fts_update
+        AFTER UPDATE ON chunks
+        BEGIN
+            INSERT INTO chunks_fts(chunks_fts, rowid, content)
+            VALUES ('delete', old.id, old.content);
+            INSERT INTO chunks_fts(rowid, content)
+            VALUES (new.id, new.content);
+        END
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Create node_chunk_ranks table for storing node-chunk relevance scores
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS node_chunk_ranks (
+            id TEXT PRIMARY KEY,
+            node_id TEXT NOT NULL,
+            chunk_id TEXT NOT NULL,
+            vector_score REAL,
+            bm25_score REAL,
+            final_score REAL NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE,
+            FOREIGN KEY (chunk_id) REFERENCES chunks(id) ON DELETE CASCADE,
+            UNIQUE(node_id, chunk_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
     Ok(())
 }
 
