@@ -11,7 +11,7 @@ pub async fn create_pool(database_url: &str) -> Result<SqlitePool, sqlx::Error> 
 }
 
 pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
-    // Create books table
+    // Create books table (with all current columns for new databases)
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS books (
@@ -43,7 +43,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             .await?;
     }
 
-    // Create chunks table
+    // Create chunks table (with all current columns for new databases)
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS chunks (
@@ -52,6 +52,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             page_start INTEGER NOT NULL,
             page_end INTEGER NOT NULL,
             content TEXT NOT NULL,
+            chapter_href TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
         )
@@ -60,7 +61,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
-    // Migration: Add chapter_href column to chunks table (for EPUB navigation)
+    // Migration: Add chapter_href column to existing chunks table (for backward compatibility)
     // SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we check pragma_table_info first
     let chapter_href_exists: bool = sqlx::query_scalar(
         "SELECT COUNT(*) > 0 FROM pragma_table_info('chunks') WHERE name = 'chapter_href'"
@@ -74,7 +75,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             .await?;
     }
 
-    // Create nodes table
+    // Create nodes table (with all current columns for new databases)
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS nodes (
@@ -96,8 +97,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
-    // Migration: Add is_core and page_number columns to existing nodes table
-    // SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we check pragma_table_info first
+    // Migration: Add is_core column to existing nodes table (for backward compatibility)
     let is_core_exists: bool = sqlx::query_scalar(
         "SELECT COUNT(*) > 0 FROM pragma_table_info('nodes') WHERE name = 'is_core'"
     )
@@ -110,6 +110,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             .await?;
     }
 
+    // Migration: Add page_number column to existing nodes table (for backward compatibility)
     let page_number_exists: bool = sqlx::query_scalar(
         "SELECT COUNT(*) > 0 FROM pragma_table_info('nodes') WHERE name = 'page_number'"
     )
