@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 use std::collections::HashMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::embedding::call_embedding_api;
 
@@ -701,6 +702,319 @@ fn extract_json(content: &str) -> Result<&str, RetrievalError> {
     Err(RetrievalError::RerankError(
         "No JSON found in response".to_string(),
     ))
+}
+
+/// Node information for retrieval
+#[derive(Debug, Clone)]
+pub struct NodeInfo {
+    pub id: String,
+    pub book_id: Option<String>,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+/// Final retrieval output with chunk content
+#[derive(Debug, Clone, Serialize)]
+pub struct RetrievalOutput {
+    pub chunk_id: String,
+    pub content: String,
+    pub page_start: i64,
+    pub page_end: i64,
+    pub vector_score: Option<f64>,
+    pub bm25_score: Option<f64>,
+    pub final_score: f64,
+}
+
+/// Hybrid Retriever that orchestrates the full retrieval pipeline
+pub struct HybridRetriever {
+    pool: SqlitePool,
+    llm_api_url: String,
+}
+
+impl HybridRetriever {
+    /// Create a new HybridRetriever instance
+    pub fn new(pool: SqlitePool, llm_api_url: String) -> Self {
+        Self {
+            pool,
+            llm_api_url,
+        }
+    }
+
+    /// Retrieve relevant chunks for a given node using the full pipeline:
+    /// 1. Get node info
+    /// 2. Vector search
+    /// 3. BM25 search
+    /// 4. RRF fusion
+    /// 5. Rerank
+    /// 6. Store results and return top_k
+    pub async fn retrieve_for_node(
+        &self,
+        node_id: &str,
+        top_k: Option<usize>,
+    ) -> Result<Vec<RetrievalOutput>, RetrievalError> {
+        let top_k = top_k.unwrap_or(10);
+
+        tracing::info!(
+            "[HybridRetriever] Starting retrieval for node: {}, top_k: {}",
+            node_id,
+            top_k
+        );
+
+        // Step 1: Get node information
+        let node_info = self.get_node_info(node_id).await?;
+
+        // Build query from node name and description
+        let query = if let Some(desc) = &node_info.description {
+            format!("{} {}", node_info.name, desc)
+        } else {
+            node_info.name.clone()
+        };
+
+        tracing::info!(
+            "[HybridRetriever] Query built from node: '{}'",
+            query.chars().take(100).collect::<String>()
+        );
+
+        // Step 2: Vector search (async)
+        let vector_results = self.perform_vector_search(&query, node_info.book_id.as_deref()).await?;
+
+        // Step 3: BM25 search
+        let bm25_results = self.perform_bm25_search(&query, node_info.book_id.as_deref()).await?;
+
+        tracing::info!(
+            "[HybridRetriever] Vector results: {}, BM25 results: {}",
+            vector_results.len(),
+            bm25_results.len()
+        );
+
+        // Step 4: RRF fusion
+        let fused_results = reciprocal_rank_fusion(&vector_results, &bm25_results, Some(RRF_K));
+
+        if fused_results.is_empty() {
+            tracing::warn!("[HybridRetriever] No fused results found");
+            return Ok(Vec::new());
+        }
+
+        // Step 5: Rerank (if we have candidates)
+        let reranked_results = if !fused_results.is_empty() {
+            // Fetch passages for reranking
+            let passages = self.fetch_chunk_contents(
+                &fused_results.iter().take(RERANK_TOP_K).map(|f| f.chunk_id.clone()).collect::<Vec<_>>()
+            ).await?;
+
+            rerank(&query, fused_results.clone(), &passages).await?
+        } else {
+            Vec::new()
+        };
+
+        // Convert reranked results to RetrievalResult
+        let final_results: Vec<RetrievalResult> = if reranked_results.is_empty() {
+            fused_to_retrieval_results(fused_results)
+        } else {
+            reranked_to_retrieval_results(reranked_results)
+        };
+
+        tracing::info!(
+            "[HybridRetriever] Final results after reranking: {}",
+            final_results.len()
+        );
+
+        // Step 6: Store results in node_chunk_ranks table
+        self.store_results(node_id, &final_results).await?;
+
+        // Step 7: Fetch full chunk data and build output
+        let outputs = self.build_retrieval_outputs(&final_results[..top_k.min(final_results.len())]).await?;
+
+        tracing::info!(
+            "[HybridRetriever] Retrieved {} chunks for node {}",
+            outputs.len(),
+            node_id
+        );
+
+        Ok(outputs)
+    }
+
+    /// Get node information from database
+    async fn get_node_info(&self, node_id: &str) -> Result<NodeInfo, RetrievalError> {
+        let row: (String, Option<String>, String, Option<String>) = sqlx::query_as(
+            "SELECT id, book_id, name, description FROM nodes WHERE id = ?"
+        )
+        .bind(node_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RetrievalError::DatabaseError(format!("Failed to fetch node: {}", e)))?;
+
+        Ok(NodeInfo {
+            id: row.0,
+            book_id: row.1,
+            name: row.2,
+            description: row.3,
+        })
+    }
+
+    /// Perform vector search
+    async fn perform_vector_search(
+        &self,
+        query: &str,
+        book_id: Option<&str>,
+    ) -> Result<Vec<SearchResult>, RetrievalError> {
+        vector_search_with_query(&self.pool, query, book_id, Some(DEFAULT_TOP_K)).await
+    }
+
+    /// Perform BM25 search
+    async fn perform_bm25_search(
+        &self,
+        query: &str,
+        book_id: Option<&str>,
+    ) -> Result<Vec<SearchResult>, RetrievalError> {
+        bm25_search(&self.pool, query, book_id, Some(DEFAULT_TOP_K)).await
+    }
+
+    /// Fetch chunk contents for reranking
+    async fn fetch_chunk_contents(
+        &self,
+        chunk_ids: &[String],
+    ) -> Result<HashMap<String, String>, RetrievalError> {
+        if chunk_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        // Build placeholder for IN clause
+        let placeholders: Vec<String> = chunk_ids.iter().map(|_| "?".to_string()).collect();
+        let in_clause = placeholders.join(",");
+
+        let query_str = format!(
+            "SELECT id, content FROM chunks WHERE id IN ({})",
+            in_clause
+        );
+
+        let mut query = sqlx::query_as::<_, (String, String)>(&query_str);
+        for chunk_id in chunk_ids {
+            query = query.bind(chunk_id);
+        }
+
+        let rows = query
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to fetch chunk contents: {}", e)))?;
+
+        let mut contents = HashMap::new();
+        for (id, content) in rows {
+            contents.insert(id, content);
+        }
+
+        Ok(contents)
+    }
+
+    /// Store retrieval results in node_chunk_ranks table
+    async fn store_results(
+        &self,
+        node_id: &str,
+        results: &[RetrievalResult],
+    ) -> Result<(), RetrievalError> {
+        // Delete existing results for this node first
+        sqlx::query("DELETE FROM node_chunk_ranks WHERE node_id = ?")
+            .bind(node_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to clear old results: {}", e)))?;
+
+        // Insert new results
+        for result in results {
+            let id = Uuid::new_v4().to_string();
+
+            sqlx::query(
+                r#"
+                INSERT INTO node_chunk_ranks (id, node_id, chunk_id, vector_score, bm25_score, final_score, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+                "#
+            )
+            .bind(&id)
+            .bind(node_id)
+            .bind(&result.chunk_id)
+            .bind(result.vector_score)
+            .bind(result.bm25_score)
+            .bind(result.final_score)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to store result: {}", e)))?;
+        }
+
+        tracing::info!(
+            "[HybridRetriever] Stored {} results in node_chunk_ranks for node {}",
+            results.len(),
+            node_id
+        );
+
+        Ok(())
+    }
+
+    /// Build retrieval outputs with full chunk data
+    async fn build_retrieval_outputs(
+        &self,
+        results: &[RetrievalResult],
+    ) -> Result<Vec<RetrievalOutput>, RetrievalError> {
+        if results.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Build placeholders for IN clause
+        let chunk_ids: Vec<String> = results.iter().map(|r| r.chunk_id.clone()).collect();
+        let placeholders: Vec<String> = chunk_ids.iter().map(|_| "?".to_string()).collect();
+        let in_clause = placeholders.join(",");
+
+        let query_str = format!(
+            "SELECT id, content, page_start, page_end FROM chunks WHERE id IN ({})",
+            in_clause
+        );
+
+        let mut query = sqlx::query_as::<_, (String, String, i64, i64)>(&query_str);
+        for chunk_id in &chunk_ids {
+            query = query.bind(chunk_id);
+        }
+
+        let rows = query
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to fetch chunk data: {}", e)))?;
+
+        // Build lookup map
+        let mut chunk_data: HashMap<String, (String, i64, i64)> = HashMap::new();
+        for (id, content, page_start, page_end) in rows {
+            chunk_data.insert(id, (content, page_start, page_end));
+        }
+
+        // Build outputs maintaining result order
+        let mut outputs = Vec::new();
+        for result in results {
+            if let Some((content, page_start, page_end)) = chunk_data.get(&result.chunk_id) {
+                outputs.push(RetrievalOutput {
+                    chunk_id: result.chunk_id.clone(),
+                    content: content.clone(),
+                    page_start: *page_start,
+                    page_end: *page_end,
+                    vector_score: result.vector_score,
+                    bm25_score: result.bm25_score,
+                    final_score: result.final_score,
+                });
+            }
+        }
+
+        Ok(outputs)
+    }
+}
+
+/// Convert reranked results to final retrieval results
+fn reranked_to_retrieval_results(reranked: Vec<RerankResult>) -> Vec<RetrievalResult> {
+    reranked
+        .into_iter()
+        .map(|r| RetrievalResult {
+            chunk_id: r.chunk_id,
+            vector_score: r.vector_score,
+            bm25_score: r.bm25_score,
+            final_score: r.rerank_score,
+        })
+        .collect()
 }
 
 #[cfg(test)]
