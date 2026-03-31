@@ -20,11 +20,11 @@ Fix critical bugs in the Intelligent Reading Concept Graph application including
 **Description:** As a developer, I need to fix the database migration that fails silently due to SQLite not supporting `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` syntax, causing chunk API to return 404 errors.
 
 **Acceptance Criteria:**
-- [ ] Replace non-standard SQL with SQLite-compatible column existence check
-- [ ] Add `chapter_href` column only if it doesn't already exist
-- [ ] Migration runs successfully on new databases
-- [ ] Migration handles existing databases gracefully (adds missing column)
-- [ ] Typecheck/lint passes
+- [x] Replace non-standard SQL with SQLite-compatible column existence check
+- [x] Add `chapter_href` column only if it doesn't already exist
+- [x] Migration runs successfully on new databases
+- [x] Migration handles existing databases gracefully (adds missing column)
+- [x] Typecheck/lint passes
 
 ### US-002: Optimize three-column layout proportions
 **Description:** As a user, I want the ConceptGraph to have more space so I can better visualize the concept relationships, while the PDF/EPUB reader and detail panel take appropriate amounts of space.
