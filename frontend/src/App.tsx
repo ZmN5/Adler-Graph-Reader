@@ -94,8 +94,8 @@ function App() {
   if (selectedBook) {
     const isPdf = selectedBook.format.toLowerCase() === 'pdf'
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="flex items-center justify-between border-b px-4 py-2">
+      <div className="h-screen bg-background flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between border-b px-4 py-2 flex-shrink-0">
           <h1 className="text-lg font-medium truncate">{selectedBook.title}</h1>
           <button
             onClick={handleCloseBook}
@@ -128,9 +128,9 @@ function App() {
               )
             }
             centerPanel={
-              <div className="h-full flex flex-col">
-                {/* Tab navigation */}
-                <div className="flex items-center border-b bg-muted/50">
+              <div className="h-full flex flex-col overflow-hidden">
+                {/* Tab navigation - fixed */}
+                <div className="flex items-center border-b bg-muted/50 flex-shrink-0">
                   <button
                     onClick={() => setActiveTab('graph')}
                     className={cn(
@@ -157,7 +157,7 @@ function App() {
                   </button>
                 </div>
 
-                {/* Tab content */}
+                {/* Tab content - scrollable */}
                 <div className="flex-1 overflow-hidden">
                   {activeTab === 'graph' ? (
                     <GraphCanvas

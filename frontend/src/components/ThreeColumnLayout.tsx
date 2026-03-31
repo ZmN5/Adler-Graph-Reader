@@ -15,17 +15,16 @@ interface ThreeColumnLayoutProps {
   className?: string
 }
 
-const DEFAULT_RIGHT_PANEL_WIDTH = 320
+const DEFAULT_RIGHT_PANEL_WIDTH = 280
 
 /**
  * A three-column layout component that shows:
- * - Left panel: Fixed width (flexible via parent)
- * - Center panel: Flexible width that takes remaining space
- * - Right panel: Collapsible detail panel with fixed width
+ * - Left panel: Book reader (40%)
+ * - Center panel: Graph view (50%)
+ * - Right panel: Detail panel (280px fixed width)
  *
  * Layout structure:
- * | Left | Center | Right (collapsible) |
- * |  ~40% |   ~60%  |     320px (or hidden) |
+ * | Left 40% | Center 50% | Right 280px (or hidden) |
  */
 export function ThreeColumnLayout({
   leftPanel,
@@ -42,14 +41,14 @@ export function ThreeColumnLayout({
         className
       )}
     >
-      {/* Left Panel */}
-      <div className="flex-1 min-w-0 overflow-hidden">{leftPanel}</div>
+      {/* Left Panel - 40% */}
+      <div className="flex-[4] min-w-0 overflow-hidden">{leftPanel}</div>
 
-      {/* Center Panel - grows to fill space when right panel is hidden */}
+      {/* Center Panel - 50% (grows when right panel is hidden) */}
       <div
         className={cn(
-          'flex-1 min-w-0 overflow-hidden border-l',
-          !showRightPanel && 'flex-[2]'
+          'flex-[5] min-w-0 overflow-hidden border-l',
+          !showRightPanel && 'flex-[9]'
         )}
       >
         {centerPanel}
