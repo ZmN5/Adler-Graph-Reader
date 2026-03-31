@@ -34,6 +34,21 @@ Started: 2026-03-31 23:12
   - 使用 `sqlx::query_as` 配合元组类型 `(String, String)` 可以简化行映射
 ---
 
+## 2026-04-01 01:10 - US-003
+- 解析器集成异步Embedding生成
+- 文件变更: `backend/src/pdf_parser.rs`, `backend/src/epub_parser.rs`
+- 实现内容:
+  - `pdf_parser.rs`: 在 `parse_pdf` 函数末尾添加 `tokio::spawn` 异步任务
+  - `epub_parser.rs`: 在 `parse_epub` 函数末尾添加 `tokio::spawn` 异步任务
+  - 使用 `pool.clone()` 和 `book_id.to_string()` 移动所有权到异步任务
+  - 添加错误日志记录：`tracing::info` 成功，`tracing::error` 失败
+- **Learnings for future iterations:**
+  - `SqlitePool` 是 `Arc` 包装，可以安全地 clone 并移动到异步任务
+  - 字符串需要 `to_string()` 来移动所有权到 `tokio::spawn`
+  - `tokio::spawn` 创建的任务是非阻塞的，upload响应不受影响
+  - 解析器和embedding模块使用 `crate::embedding` 导入
+---
+
 ## US-001: 分片Embedding向量化
 Status: pending
 
