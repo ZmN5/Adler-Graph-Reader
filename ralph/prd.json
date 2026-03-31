@@ -1,135 +1,67 @@
 {
   "project": "Intelligent Reading Concept Graph",
-  "branchName": "ralph/pdf-epub-reader-refactor",
-  "description": "PDF/EPUB Reader Refactor - Fix blur/rotation issues, implement continuous scroll with mouse wheel navigation",
+  "branchName": "ralph/reader-bug-fixes",
+  "description": "Fix critical bugs: database migration causing 404 errors, layout proportions, and scroll synchronization issues",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Install react-reader dependency for EPUB",
-      "description": "As a developer, I need to install react-reader so we can use it for EPUB continuous scroll support.",
+      "title": "Fix database migration for chapter_href column",
+      "description": "As a developer, I need to fix the database migration that fails silently due to SQLite not supporting ALTER TABLE ... ADD COLUMN IF NOT EXISTS syntax, causing chunk API to return 404 errors.",
       "acceptanceCriteria": [
-        "Install react-reader npm package",
-        "Install @types/epubjs if needed for TypeScript",
-        "Verify package.json includes react-reader dependency",
+        "Replace non-standard SQL with SQLite-compatible column existence check using pragma_table_info",
+        "Add chapter_href column only if it doesn't already exist",
+        "Migration runs successfully on new databases",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Installed react-reader@^2.0.15. Package includes built-in TypeScript types, no @types/epubjs needed."
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Migrate EPUB reader to react-reader with continuous scroll",
-      "description": "As a user, I want to read EPUBs with smooth scrolling and complete chapter content.",
+      "title": "Handle existing database with missing column",
+      "description": "As a user with existing books and data, I want the application to automatically detect and fix the missing chapter_href column without losing my existing books and concept graphs.",
       "acceptanceCriteria": [
-        "Replace custom epubjs with ReactReader component",
-        "Configure flow: 'scrolled', manager: 'continuous', spread: 'none'",
-        "Display current chapter name in header",
-        "Remove previous/next navigation buttons",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill: EPUB content displays fully and scrolls smoothly"
+        "Application detects missing column on startup",
+        "Automatically adds column if missing (backward compatible)",
+        "Existing data remains intact",
+        "No manual database reset required",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "ReactReader configured with continuous scroll, chapter display in header, navigation buttons hidden via readerStyles"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "EPUB support chapter/CFI navigation from graph",
-      "description": "As a user, I want to click a concept in the graph and jump to the corresponding chapter.",
+      "title": "Optimize three-column layout proportions",
+      "description": "As a user, I want the ConceptGraph to have more space so I can better visualize the concept relationships, while the PDF/EPUB reader and detail panel take appropriate amounts of space.",
       "acceptanceCriteria": [
-        "ReactReader accepts highlightAnchor (CFI) prop for navigation",
-        "ReactReader accepts chapterHref prop for chapter navigation",
-        "Smooth scroll to target position when navigating",
-        "Update current chapter display in header",
+        "Adjust layout ratios: Left 40% / Center 50% / Right 280px (was 320px)",
+        "When right panel is hidden, center panel expands appropriately",
+        "All panels remain usable and content doesn't overflow",
         "Typecheck passes",
-        "Verify in browser: click concept node jumps to correct chapter"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "EPUBReader already supports highlightAnchor (CFI) and chapterHref navigation props. Navigation triggers smooth scroll via setLocation."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Fix PDF high-DPI blur with devicePixelRatio",
-      "description": "As a user on Retina/4K displays, I want PDF text to be crisp and clear.",
+      "title": "Fix page-level scroll synchronization",
+      "description": "As a user, I want to scroll the PDF/EPUB reader independently without the ConceptGraph panel following the scroll, so I can focus on reading while keeping the graph view stable.",
       "acceptanceCriteria": [
-        "Detect window.devicePixelRatio in PDFReader",
-        "Set canvas.width = CSS width * devicePixelRatio",
-        "Set canvas.height = CSS height * devicePixelRatio",
-        "Call context.scale(dpr, dpr) before render",
-        "Text renders sharply on high-DPI screens",
+        "Each panel has its own scroll container with overflow-auto",
+        "Scrolling in left panel doesn't affect center/right panels",
+        "No page-level scrollbars appear (only panel-level scrollbars)",
+        "Header and book title bar remain fixed during panel scrolling",
         "Typecheck passes",
-        "Verify in browser on Retina display: text is sharp"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Canvas dimensions now multiplied by window.devicePixelRatio. Context scaled by DPR before render."
-    },
-    {
-      "id": "US-005",
-      "title": "Fix PDF content rotation issue",
-      "description": "As a user, I want PDFs with rotated pages to display correctly.",
-      "acceptanceCriteria": [
-        "Get viewport.rotation from page.getViewport({scale: 1})",
-        "Pass rotation to getViewport({ scale, rotation }) when rendering",
-        "Pages with rotation metadata display correctly oriented",
-        "Typecheck passes",
-        "Verify with rotated PDF: content displays correctly"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": "Rotation from baseViewport passed to scaled viewport. Handles rotated PDF pages correctly."
-    },
-    {
-      "id": "US-006",
-      "title": "Implement PDF virtual scrolling base",
-      "description": "As a developer, I need the foundation for PDF continuous scroll with Intersection Observer.",
-      "acceptanceCriteria": [
-        "Create scroll container with overflow-y: scroll",
-        "Use IntersectionObserver to track visible pages",
-        "Maintain pool of 3-5 canvas elements for visible pages",
-        "Calculate page positions and total scroll height",
-        "Render pages only when they enter viewport",
-        "Typecheck passes",
-        "Verify in browser: scroll through PDF, pages load on demand"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Virtual scrolling implemented with scroll container, page position calculation, and on-demand rendering."
-    },
-    {
-      "id": "US-007",
-      "title": "Complete PDF virtual scrolling with page tracking",
-      "description": "As a user, I want to scroll through PDF smoothly and see current page in header.",
-      "acceptanceCriteria": [
-        "Track current visible page during scroll",
-        "Update page number display in header in real-time",
-        "Support scroll-to-page via pageNumber prop",
-        "Support mouse wheel, touchpad, scrollbar navigation",
-        "Add smooth scroll animation for programmatic navigation",
-        "Typecheck passes",
-        "Verify in browser: scroll smoothly, header shows correct page"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Virtual scrolling includes real-time page tracking, smooth navigation, and scroll-to-page support."
-    },
-    {
-      "id": "US-008",
-      "title": "Unify reader interface and remove navigation buttons",
-      "description": "As a user, I want a consistent reading interface for both PDF and EPUB.",
-      "acceptanceCriteria": [
-        "Remove previous/next page buttons from PDF reader",
-        "Unify header styling between PDF and EPUB readers",
-        "Both show current position (page number or chapter name)",
-        "Consistent loading states",
-        "Typecheck passes",
-        "Verify in browser: UI is clean and consistent for both formats"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Both readers have consistent header styling (border-b bg-muted/50). Navigation buttons removed from both."
+      "passes": false,
+      "notes": ""
     }
   ]
 }
