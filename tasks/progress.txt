@@ -5,8 +5,47 @@
 - ReactReader from 'react-reader' provides EPUB rendering with continuous scroll support
 - Use epubOptions: { flow: 'scrolled', manager: 'continuous', spread: 'none' } for continuous scroll
 - Location in ReactReader can be CFI string, chapter href, or percentage (0-1)
+- ThreeColumnLayout: Left flex-[4] (40%), Center flex-[5] (50%), Right 280px fixed
+- Center panel expands to flex-[9] when right panel is hidden (maintains 40:60 ratio)
+- Root container should use `h-screen overflow-hidden` to prevent page-level scroll
+- Each panel has `overflow-hidden` container with internal `overflow-auto` scroll areas
+- Tab navigation uses `flex-shrink-0` to remain fixed during content scroll
 
-## Progress Log
+## 2026-03-31 - US-004
+- Verified existing database migration for `chapter_href` column
+- Migration uses `pragma_table_info` to check column existence before altering
+- Automatically adds missing column on startup without data loss
+- Database at `backend/data/reader.db` confirmed to have `chapter_href` column
+- Rust compilation passes with only minor unused code warnings (pre-existing)
+- Files verified:
+  - backend/src/db.rs (migration logic already in place)
+- **Learnings for future iterations:**
+  - SQLite `ALTER TABLE` doesn't support `IF NOT EXISTS` - use `pragma_table_info` instead
+  - Pattern for safe migrations: check `pragma_table_info('table') WHERE name = 'column'`
+  - Always use `DEFAULT` value when adding NOT NULL columns to existing tables
+  - Migration runs on every startup, safely no-op if column already exists
+---
+
+## 2026-03-31 - US-003
+- Fixed page-level scroll synchronization
+- Changed ThreeColumnLayout proportions: Left 40% / Center 50% / Right 280px
+- Added `overflow-hidden` to root container (`h-screen` instead of `min-h-screen`)
+- Added `flex-shrink-0` to tab navigation to keep it fixed
+- Each panel now has independent scroll containment:
+  - Left: PDFReader/EPUBReader have internal `overflow-y-auto`
+  - Center: GraphCanvas fills container, CoreConceptsList has `overflow-auto`
+  - Right: NodeDetailPanel has `flex-1 overflow-auto`
+- Header and book title bar remain fixed during scrolling
+- Files changed:
+  - frontend/src/components/ThreeColumnLayout.tsx (layout proportions, right panel width)
+  - frontend/src/App.tsx (scroll containment, overflow handling)
+- **Learnings for future iterations:**
+  - Use `h-screen overflow-hidden` on root to prevent page-level scrollbars
+  - ThreeColumnLayout proportions: flex-[4]/flex-[5] gives 40%/50% split
+  - When right panel hidden, center becomes flex-[9] (90% of remaining space)
+  - Always add `flex-shrink-0` to fixed elements (headers, tabs) to prevent compression
+  - Panel-level scroll containers need explicit `h-full` + `overflow-auto` combination
+---
 
 ## 2026-03-30 - US-001, US-007
 - Migrated EPUBReader to use react-reader library
