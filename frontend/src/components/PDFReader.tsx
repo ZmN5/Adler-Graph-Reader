@@ -73,8 +73,8 @@ export function PDFReader({
           const page = await pdf.getPage(i)
           const baseViewport = page.getViewport({ scale: 1 })
 
-          // Calculate scale to fit container width with padding
-          const scale = (containerWidth - 40) / baseViewport.width
+          // Calculate scale to fit container width with less padding (20px instead of 40px)
+          const scale = (containerWidth - 20) / baseViewport.width
           const scaledViewport = page.getViewport({ scale, rotation: baseViewport.rotation })
 
           const info: PageInfo = {

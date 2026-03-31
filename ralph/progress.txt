@@ -8,6 +8,38 @@
 
 ---
 
+## 2025-03-31 - US-002 - Optimize PDF display width
+
+**What was implemented:**
+- Changed PDF scale calculation from `(containerWidth - 40)` to `(containerWidth - 20)`
+- This gives PDF pages 20px more width, making better use of available space
+- Content displays more fully without horizontal truncation
+
+**Files changed:**
+- frontend/src/components/PDFReader.tsx
+
+**Learnings for future iterations:**
+- PDF scaling is calculated in the loadPdf effect and stored in scaleRef
+- The scale is applied to all pages consistently
+- Small changes in padding can significantly affect readability
+---
+
+## 2025-03-31 - US-001 - Fix EPUB scrolling issue
+
+**What was implemented:**
+- Added `flex-shrink-0` to the chapter header to keep it fixed during scroll
+- EPUB content area uses `flow: 'scrolled'` with `manager: 'continuous'` for smooth scrolling
+- Header stays visible while content scrolls independently within the flex layout
+
+**Files changed:**
+- frontend/src/components/EPUBReader.tsx
+
+**Learnings for future iterations:**
+- `flex-shrink-0` prevents the header from collapsing when content area grows
+- `flex-1 min-h-0` on the content container allows it to scroll properly within flex layout
+- react-reader's `flow: 'scrolled'` enables vertical scrolling within the iframe
+---
+
 ## 2025-03-31 - US-003 - Add collapsible reader panel
 
 **What was implemented:**

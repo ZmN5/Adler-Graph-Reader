@@ -150,8 +150,8 @@ export function EPUBReader({
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
-      {/* Header showing current chapter */}
-      <div className="flex items-center justify-center p-3 border-b bg-muted/50">
+      {/* Header showing current chapter - fixed at top */}
+      <div className="flex items-center justify-center p-3 border-b bg-muted/50 flex-shrink-0">
         <div className="flex-1 min-w-0 text-center">
           <p className="text-sm font-medium truncate">
             {isLoading ? 'Loading...' : currentChapter}

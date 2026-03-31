@@ -16,8 +16,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added flex-shrink-0 to header to keep chapter title bar fixed during scroll"
     },
     {
       "id": "US-002",
@@ -32,8 +32,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Changed scale calculation from (containerWidth - 40) to (containerWidth - 20)"
     },
     {
       "id": "US-003",
