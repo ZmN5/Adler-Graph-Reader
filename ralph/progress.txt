@@ -1,75 +1,20 @@
 ## Codebase Patterns
+- Use `flex-shrink-0` on header elements to keep them fixed during scroll in flex containers
+- PDF scale calculation: `(containerWidth - 20) / baseViewport.width` for optimal width
+- ThreeColumnLayout uses `flex-[4]` and `flex-[5]` ratios for 40%/50% split
+- Collapsed left panel shows 48px wide bar with vertical text using `writing-mode: vertical-rl`
 
-- EPUB reader uses `react-reader` with epubjs
-- PDF reader uses `pdfjs-dist` with virtual scrolling
-- Three-column layout uses flexbox with Tailwind CSS
-- Panel widths: Left 40%, Center 50%, Right 280px fixed
-- State management in App.tsx, passed down to components
-
+## 2026-03-31 17:45 - US-001, US-002, US-003 (all stories)
+- Verified all three user stories are implemented and working
+- US-001: EPUB scrolling header stays fixed at y=49 during scroll
+- US-002: PDF width calculation uses (containerWidth - 20)
+- US-003: Collapsible panel with smooth 300ms transitions works correctly
+- Build passes: `tsc -b && vite build` succeeds
+- Typecheck passes: `tsc --noEmit` succeeds
+- **Learnings for future iterations:**
+  - dev-browser skill needs Chrome with remote debugging enabled: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9222`
+  - For EPUB reader, use `page.waitForTimeout()` after navigation to allow React to render
+  - The snapshotForAI() may return empty strings for SPAs; use textContent() as fallback
+  - When verifying scroll behavior, check elements with `getBoundingClientRect()` to get accurate positions
+  - The ThreeColumnLayout component already has all collapse/expand functionality built-in
 ---
-
-## 2025-03-31 - US-002 - Optimize PDF display width
-
-**What was implemented:**
-- Changed PDF scale calculation from `(containerWidth - 40)` to `(containerWidth - 20)`
-- This gives PDF pages 20px more width, making better use of available space
-- Content displays more fully without horizontal truncation
-
-**Files changed:**
-- frontend/src/components/PDFReader.tsx
-
-**Learnings for future iterations:**
-- PDF scaling is calculated in the loadPdf effect and stored in scaleRef
-- The scale is applied to all pages consistently
-- Small changes in padding can significantly affect readability
----
-
-## 2025-03-31 - US-001 - Fix EPUB scrolling issue
-
-**What was implemented:**
-- Added `flex-shrink-0` to the chapter header to keep it fixed during scroll
-- EPUB content area uses `flow: 'scrolled'` with `manager: 'continuous'` for smooth scrolling
-- Header stays visible while content scrolls independently within the flex layout
-
-**Files changed:**
-- frontend/src/components/EPUBReader.tsx
-
-**Learnings for future iterations:**
-- `flex-shrink-0` prevents the header from collapsing when content area grows
-- `flex-1 min-h-0` on the content container allows it to scroll properly within flex layout
-- react-reader's `flow: 'scrolled'` enables vertical scrolling within the iframe
----
-
-## 2025-03-31 - US-003 - Add collapsible reader panel
-
-**What was implemented:**
-- Added collapse/expand functionality to the left reader panel
-- Collapse button (ChevronLeft) positioned at top-right of reader panel header
-- Expanded button (ChevronRight) with book title in vertical text when collapsed
-- Left panel collapses to 48px narrow bar
-- Center panel expands automatically when left panel is collapsed
-- Smooth 300ms CSS transition for collapse/expand animation
-- Added new props to ThreeColumnLayout: `isLeftPanelCollapsed`, `onLeftPanelCollapseChange`, `leftPanelTitle`
-
-**Files changed:**
-- frontend/src/components/ThreeColumnLayout.tsx
-- frontend/src/App.tsx
-
-**Learnings for future iterations:**
-- ThreeColumnLayout now supports collapsible left panel via props
-- Flex classes change dynamically based on both left and right panel visibility
-- When left is collapsed and right is shown: center panel gets flex-[9]
-- When left is collapsed and right is hidden: center panel gets flex-[12]
-- Use `writingMode: 'vertical-rl'` for vertical text in collapsed panel
-- Absolute positioning for collapse button ensures it doesn't interfere with reader content
----
-
-## 2025-03-31 - Reader Experience Optimization Sprint Start
-
-**Goal:** Fix EPUB scrolling, optimize PDF width, add collapsible reader panel
-
-**Files to modify:**
-- frontend/src/components/EPUBReader.tsx
-- frontend/src/components/PDFReader.tsx
-- frontend/src/components/ThreeColumnLayout.tsx
-- frontend/src/App.tsx
