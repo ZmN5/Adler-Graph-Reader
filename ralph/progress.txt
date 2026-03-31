@@ -103,3 +103,25 @@ Started: 2026-03-31 23:12
   - 结果同时保留原始分数(vector_score/bm25_score)便于调试和后续rerank
 ---
 
+## 2026-04-01 09:30 - US-007
+- 实现了Reranker重排序功能
+- 文件变更: `backend/src/retrieval.rs` (修改)
+- 实现内容:
+  - `RerankResult`结构体: 包含chunk_id、rerank_score、vector_score、bm25_score、rrf_score
+  - `rerank`函数: 主入口，处理top 20候选
+  - `build_reranker_prompt`: 构建reranker prompt，包含query和passages
+  - `call_reranker_api`: 调用LM Studio completions API
+  - `parse_reranker_response`: 解析JSON响应，返回RerankResult列表
+  - `extract_json`: 从响应中提取JSON数组或对象
+  - 使用`RERANKER_MODEL = "qwen3.5-9b"`进行重排序
+  - 温度设置为0.1保证一致性
+  - 添加6个新单元测试覆盖rerank功能
+- **Learnings for future iterations:**
+  - Reranker prompt需要清晰的JSON格式说明，避免LLM返回markdown代码块
+  - 候选passage限制在500字符避免prompt过长
+  - 需要转义内容中的```避免破坏prompt结构
+  - JSON解析使用index字段(1-based)映射回candidates
+  - 分数范围限制在0.0-1.0使用clamp函数
+  - LM Studio completions API返回结构与chat/completions相同
+---
+
