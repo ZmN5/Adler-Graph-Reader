@@ -5,6 +5,7 @@ mod epub_parser;
 mod extractor;
 mod llm_client;
 mod pdf_parser;
+mod retrieval;
 
 use axum::{
     routing::{get, put, post, delete},
