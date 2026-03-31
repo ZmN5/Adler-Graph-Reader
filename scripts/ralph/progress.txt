@@ -96,3 +96,16 @@ Started: Sat Mar 28 16:08:53 CST 2026
   - start.sh runs `cd "$SCRIPT_DIR/backend"` before cargo run, causing backend to use backend/ as current dir
   - The fix uses `cargo run -p backend` from project root, which Cargo interprets as running the backend package
   - CLAUDE.md specifies "后端必须从项目根目录启动以确保路径正确" - backend must start from project root
+
+## 2026-03-31 - US-001, US-002, US-003 verification
+- Verified all three user stories are already implemented
+- US-001: EPUB scrolling fixed - header has flex-shrink-0, verified with dev-browser (header stays at y=49 during scroll)
+- US-002: PDF width optimized - code uses (containerWidth - 20), verified code logic is correct
+- US-003: Collapsible reader panel implemented in ThreeColumnLayout.tsx with ChevronLeft/Right icons, 300ms transition, vertical text for collapsed title
+- Typecheck passes (tsc --noEmit)
+- Files changed: ralph/prd.json (marked all stories as passes: true)
+- **Learnings for future iterations:**
+  - dev-browser skill can be used to verify UI changes with actual browser
+  - Use page.evaluate() to check DOM element positions before/after scroll to verify fixed headers
+  - PDF width timing issue: if container isn't fully rendered when PDF loads, default 800px is used instead of actual container width
+  - The ThreeColumnLayout component handles all collapse/expand logic for the reader panel

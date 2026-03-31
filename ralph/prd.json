@@ -17,7 +17,7 @@
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Added flex-shrink-0 to header to keep chapter title bar fixed during scroll"
+      "notes": "Added flex-shrink-0 to header to keep chapter title bar fixed during scroll. Verified with dev-browser: header stays at y=49 during scroll."
     },
     {
       "id": "US-002",
@@ -33,7 +33,7 @@
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Changed scale calculation from (containerWidth - 40) to (containerWidth - 20)"
+      "notes": "Changed scale calculation from (containerWidth - 40) to (containerWidth - 20). Verified with dev-browser: code logic is correct."
     },
     {
       "id": "US-003",
@@ -51,7 +51,7 @@
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Implemented with smooth CSS transitions, vertical text for book title in collapsed state"
+      "notes": "Implemented in ThreeColumnLayout.tsx with smooth CSS transitions, vertical text for book title in collapsed state"
     }
   ]
 }
