@@ -1,0 +1,120 @@
+# PDF/EPUB Reader Refactor - Ralph Progress
+
+Branch: ralph/pdf-epub-reader-refactor
+Started: 2026-03-30
+
+## User Stories
+| ID | Title | Status |
+|----|-------|--------|
+| US-001 | Install react-reader dependency for EPUB | ✅ completed |
+| US-002 | Migrate EPUB reader to react-reader with continuous scroll | ✅ completed |
+| US-003 | EPUB support chapter/CFI navigation from graph | ✅ completed |
+| US-004 | Fix PDF high-DPI blur with devicePixelRatio | ✅ completed |
+| US-005 | Fix PDF content rotation issue | ✅ completed |
+| US-006 | Implement PDF virtual scrolling base | ✅ completed |
+| US-007 | Complete PDF virtual scrolling with page tracking | ✅ completed |
+| US-008 | Unify reader interface and remove navigation buttons | ✅ completed |
+
+## 2026-03-30 23:26 - US-001
+- Installed react-reader@^2.0.15 npm package
+- Files changed: frontend/package.json, frontend/package-lock.json
+- Verified package includes built-in TypeScript types (no @types/epubjs needed)
+- Typecheck passes
+- **Learnings for future iterations:**
+  - react-reader package is located in the frontend directory
+  - The package already includes TypeScript definitions at dist/index.d.ts
+  - Use `npm run typecheck` in the frontend directory to verify TypeScript
+## 2026-03-30 23:40 - US-002
+- Migrated EPUB reader to use react-reader with continuous scroll configuration
+- Added custom readerStyles to hide prev/next navigation buttons (prev: { display: 'none' }, next: { display: 'none' })
+- EPUBReader displays current chapter name in header and chapter progress (e.g., "1 / 16 chapters")
+- Files changed: frontend/src/components/EPUBReader.tsx
+- **Learnings for future iterations:**
+  - react-reader uses IReactReaderStyle interface for styling, with `prev` and `next` properties for navigation buttons
+  - To hide navigation buttons in react-reader, pass readerStyles prop with prev/next set to display: 'none'
+  - epubOptions config: { flow: 'scrolled', manager: 'continuous', spread: 'none' } enables continuous scroll mode
+  - Current location is tracked via epubcfi string and converted to chapter name using rendition.currentLocation()
+---
+
+## 2026-03-30 23:55 - US-003
+- Verified EPUBReader already supports chapter/CFI navigation from graph
+- highlightAnchor prop accepts epubcfi strings for precise location navigation
+- chapterHref prop accepts chapter URLs for chapter-level navigation
+- Navigation triggers smooth scroll via react-reader's setLocation
+- Chapter display updates automatically via locationChanged callback
+- No code changes needed - functionality was already implemented
+- **Learnings for future iterations:**
+  - EPUB navigation uses priority: highlightAnchor (CFI) > chapterHref > pageNumber
+  - Navigation is triggered via setLocation state update, which react-reader handles
+  - The locationChanged callback receives the new epubcfi and updates chapter display
+---
+
+## 2026-03-30 16:00 - US-004
+- Fixed PDF high-DPI blur by implementing devicePixelRatio support
+- Canvas width/height now set to scaledViewport dimensions * DPR
+- CSS style width/height set to scaledViewport dimensions (logical pixels)
+- Context scaled by DPR before rendering: context.scale(dpr, dpr)
+- Files changed: frontend/src/components/PDFReader.tsx
+- **Learnings for future iterations:**
+  - Always multiply canvas.width/height by devicePixelRatio for sharp rendering
+  - Set canvas.style.width/height to logical dimensions (without DPR)
+  - Call context.scale(dpr, dpr) before pdfPage.render() to scale drawing operations
+  - This pattern ensures crisp text on Retina/4K displays
+---
+
+## 2026-03-30 16:15 - US-006
+- Implemented PDF virtual scrolling with scroll container and on-demand rendering
+- Calculate page dimensions for all pages upfront to determine total scroll height
+- Each page has absolute positioning with calculated yOffset for virtual layout
+- Scroll event listener tracks visible pages and renders them on demand
+- Canvas elements created per page, reused on subsequent scroll events
+- Track rendering state to avoid duplicate render operations
+- Files changed: frontend/src/components/PDFReader.tsx
+- **Learnings for future iterations:**
+  - Virtual scrolling requires calculating total height upfront based on page dimensions
+  - Position pages absolutely with calculated yOffset for proper scroll behavior
+  - Track rendering state per canvas to avoid duplicate render() calls (pdf.js restriction)
+  - Use scroll event listener with visibility buffer for simpler implementation than IntersectionObserver
+  - Smooth scroll navigation via scrollTo({ top: yOffset, behavior: 'smooth' })
+---
+
+## 2026-03-30 16:05 - US-005
+- Fixed PDF content rotation issue by passing rotation to getViewport
+- Get baseViewport with scale: 1 to read rotation property
+- Pass baseViewport.rotation when creating scaled viewport
+- Files changed: frontend/src/components/PDFReader.tsx
+- **Learnings for future iterations:**
+  - Always get viewport with scale: 1 first to read rotation metadata
+  - Pass rotation property when creating scaled viewport: page.getViewport({ scale, rotation: baseViewport.rotation })
+  - PDF.js automatically handles rotation transformation during render
+---
+
+## 2026-03-30 16:20 - US-007
+- Virtual scrolling implementation includes all US-007 requirements
+- Scroll handler tracks current visible page and updates header in real-time
+- Scroll-to-page navigation via pageNumber prop with smooth scrollTo behavior
+- Mouse wheel, touchpad, and scrollbar all trigger scroll events for navigation
+- Visibility buffer (100px) ensures pages render before entering viewport
+- No code changes needed - functionality already implemented in US-006
+- **Learnings for future iterations:**
+  - Scroll event handler can track current page by comparing scrollTop with page yOffsets
+  - Smooth scroll via scrollTo({ top: yOffset, behavior: 'smooth' }) works for programmatic navigation
+  - All scroll input methods (wheel, touchpad, scrollbar) trigger the same scroll event
+  - Visibility buffer provides better UX by preloading pages slightly before they're visible
+---
+
+## 2026-03-30 16:25 - US-008
+- Verified both EPUB and PDF readers have unified interface
+- Both use consistent header styling: border-b bg-muted/50 with centered text
+- EPUB header shows current chapter name and chapter progress
+- PDF header shows current page number and total pages
+- Navigation buttons removed from both readers
+- Loading states use consistent spinner and styling
+- No code changes needed - UI already consistent
+- **Learnings for future iterations:**
+  - Both readers follow same flex flex-col h-full layout pattern
+  - Header uses consistent p-3 border-b bg-muted/50 styling
+  - EPUB uses react-reader loadingView prop for custom loading state
+  - PDF uses conditional rendering with same spinner style
+---
+
