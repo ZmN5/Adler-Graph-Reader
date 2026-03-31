@@ -1,6 +1,8 @@
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 
+use crate::embedding::call_embedding_api;
+
 /// Default number of top results to return
 const DEFAULT_TOP_K: usize = 50;
 /// RRF fusion constant
@@ -145,7 +147,7 @@ fn escape_fts5_query(query: &str) -> String {
 
     // If the query contains spaces or special characters, wrap in double quotes
     // for phrase matching
-    if escaped.contains(' ') {
+    if escaped.contains(' ') || escaped.contains('\'') {
         // For phrase queries, wrap in double quotes
         escaped = format!("\"{}\"", escaped);
     }
@@ -272,6 +274,54 @@ pub async fn vector_search(
     );
 
     Ok(results)
+}
+
+/// Perform vector similarity search with text query (generates embedding internally)
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `query_text` - The text query to search for
+/// * `book_id` - Optional book ID to restrict search
+/// * `top_k` - Maximum number of results to return
+///
+/// # Returns
+/// * `Result<Vec<SearchResult>, RetrievalError>` - Cosine similarity ranked results
+pub async fn vector_search_with_query(
+    pool: &SqlitePool,
+    query_text: &str,
+    book_id: Option<&str>,
+    top_k: Option<usize>,
+) -> Result<Vec<SearchResult>, RetrievalError> {
+    tracing::info!("[Vector Search with Query] Query: '{}'", query_text);
+
+    // Generate embedding for the query text
+    let query_embedding = generate_query_embedding(query_text).await?;
+
+    // Perform vector search with the generated embedding
+    vector_search(pool, &query_embedding, book_id, top_k).await
+}
+
+/// Generate embedding for a query text using the same model as chunks
+///
+/// # Arguments
+/// * `query_text` - The text to embed
+///
+/// # Returns
+/// * `Result<Vec<f32>, RetrievalError>` - The embedding vector
+async fn generate_query_embedding(query_text: &str) -> Result<Vec<f32>, RetrievalError> {
+    let embeddings = call_embedding_api(vec![query_text.to_string()])
+        .await
+        .map_err(|e| RetrievalError::EmbeddingError(e.to_string()))?;
+
+    if embeddings.is_empty() {
+        return Err(RetrievalError::EmbeddingError(
+            "No embedding generated for query".to_string(),
+        ));
+    }
+
+    tracing::debug!("[Query Embedding] Generated embedding with {} dimensions", embeddings[0].len());
+
+    Ok(embeddings[0].clone())
 }
 
 /// Perform Reciprocal Rank Fusion (RRF) to combine multiple retrieval results

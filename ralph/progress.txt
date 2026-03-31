@@ -49,6 +49,39 @@ Started: 2026-03-31 23:12
   - 解析器和embedding模块使用 `crate::embedding` 导入
 ---
 
-## US-001: 分片Embedding向量化
-Status: pending
+## 2026-04-01 08:00 - US-005
+- 实现了向量相似度搜索的完整功能
+- 文件变更: `backend/src/retrieval.rs`
+- 实现内容:
+  - `vector_search`: 已存在的函数，从数据库加载embeddings并计算余弦相似度
+  - `vector_search_with_query`: 新增函数，接受文本查询，自动生成embedding后搜索
+  - `generate_query_embedding`: 新增辅助函数，调用LM Studio API生成查询embedding
+  - 导入`call_embedding_api`从embedding模块
+- **Learnings for future iterations:**
+  - 提供两个API: `vector_search`(原始embedding)和`vector_search_with_query`(文本查询)
+  - 使用`call_embedding_api`时需要将单个字符串包装成Vec
+  - FTS5查询转义需要处理单引号，不仅是空格
+  - 修复了`escape_fts5_query`函数: 现在也检查单引号并包裹双引号
+---
+
+- 实现了BM25搜索功能
+- 文件变更: `backend/src/retrieval.rs` (新建), `backend/src/main.rs` (添加模块声明)
+- 实现内容:
+  - `bm25_search`: 使用SQLite FTS5 BM25排名进行全文搜索
+  - `escape_fts5_query`: 转义FTS5特殊字符防止查询语法错误
+  - `SearchResult`/`FusedResult`/`RetrievalResult` 结构体定义
+  - `RetrievalError` 错误枚举定义
+  - 额外实现(为后续US-005/US-006做准备):
+    - `vector_search`: 向量相似度搜索
+    - `reciprocal_rank_fusion`: RRF融合算法
+    - `cosine_similarity`: 余弦相似度计算
+    - `bytes_to_f32_vec`: 二进制blob转f32向量
+  - 单元测试覆盖所有核心功能
+- **Learnings for future iterations:**
+  - BM25返回的分数越低表示匹配度越高，需要取负值与其他评分方法保持一致(越高越好)
+  - FTS5查询需要转义双引号，多词查询需要用双引号包裹进行短语匹配
+  - 使用 `sqlx::query_as` 配合元组类型 `(String, f64)` 可以简化行映射
+  - RRF公式: score = sum(1/(k + rank))，k=60是常用默认值
+  - 余弦相似度计算时注意处理零向量情况
+---
 
