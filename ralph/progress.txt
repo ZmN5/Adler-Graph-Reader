@@ -125,7 +125,25 @@ Started: 2026-03-31 23:12
   - LM Studio completions API返回结构与chat/completions相同
 ---
 
-## 2026-04-01 10:00 - US-008
+## 2026-04-01 14:30 - US-014
+- 实现了Core Concepts改进 - 社区发现算法
+- 文件变更: `backend/Cargo.toml`, `backend/src/core_concept.rs`
+- **实现内容:**
+  - 添加petgraph和byteorder依赖
+  - 新增NodeInfo结构体用于图构建
+  - build_node_chunk_graph: 构建节点-分片二部图
+  - detect_communities: 简化的Louvain-like社区发现算法
+  - calculate_community_centrality: 计算社区内中心性
+  - calculate_coverage_density: 计算分片覆盖密度
+  - calculate_enhanced_scores: 综合评分(30% PageRank + 30% 社区中心性 + 20% 覆盖密度 + 20% 频率)
+  - identify_core_concepts_v2: 新的核心概念识别函数
+  - 更新identify_core_concepts以委托给v2实现
+- **Learnings for future iterations:**
+  - petgraph的UnGraph用于无向图构建
+  - 社区发现采用贪心迭代策略，10次迭代通常足够
+  - 中心性计算 = 社区内连接数 / (社区大小 - 1)
+  - 使用tokio::spawn异步执行embedding生成，不阻塞上传响应
+---
 - 实现了HybridRetriever主流程，整合完整的检索pipeline
 - 文件变更: `backend/src/retrieval.rs` (修改)
 - 实现内容:
@@ -239,5 +257,22 @@ Started: 2026-03-31 23:12
   - 两种citation来源：LLM返回的JSON citations数组 + 从summary文本解析的标记
   - Excerpt取content前200字符，避免存储过大内容
   - regex crate已添加到Cargo.toml，后续可用
+---
+
+## 2026-04-01 14:45 - US-015
+- 实现了LMS运维脚本
+- 文件变更: `scripts/service.sh` (修改), `CLAUDE.md` (更新文档)
+- **实现内容:**
+  - check_lms_cli: 检查lms CLI是否可用，提供安装指导
+  - check_models: 检查embedding模型和reranker模型是否已下载
+  - start_models: 自动加载所需模型
+  - 更新help文档，添加check-models和start-models命令说明
+  - 在CLAUDE.md中添加LMS CLI安装指南和手动命令文档
+- **Learnings for future iterations:**
+  - lms CLI需要单独安装，可通过LM Studio设置界面或手动创建symlink
+  - lms models list --json 可以获取模型列表，配合grep检查特定模型
+  - lms server status 检查服务器状态，lms server start 启动服务器
+  - 错误处理很重要：CLI未安装、服务器未运行、模型未下载都需要友好提示
+  - 使用ANSI颜色代码增强输出可读性 (\\033[0;32m绿色成功, \\033[0;31m红色错误)
 ---
 

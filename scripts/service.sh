@@ -26,24 +26,32 @@ print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Required models for the application
+REQUIRED_EMBEDDING_MODEL="mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ"
+REQUIRED_RERANKER_MODEL="qwen3.5-9b"
+
 show_help() {
     echo "服务管理脚本"
     echo ""
     echo "用法: $0 [命令]"
     echo ""
     echo "命令:"
-    echo "  start       启动所有服务（后端 + 前端）"
-    echo "  stop        停止所有服务"
-    echo "  restart     重启所有服务"
-    echo "  status      检查服务状态"
-    echo "  logs        查看服务日志"
-    echo "  backend     仅启动/停止/重启后端"
-    echo "  frontend    仅启动/停止/重启前端"
+    echo "  start         启动所有服务（后端 + 前端）"
+    echo "  stop          停止所有服务"
+    echo "  restart       重启所有服务"
+    echo "  status        检查服务状态"
+    echo "  logs          查看服务日志"
+    echo "  backend       仅启动/停止/重启后端"
+    echo "  frontend      仅启动/停止/重启前端"
+    echo "  check-models  检查LM Studio模型是否已下载"
+    echo "  start-models  加载所需的LM Studio模型"
     echo ""
     echo "示例:"
-    echo "  $0 start     # 启动所有服务"
-    echo "  $0 restart   # 重启所有服务"
-    echo "  $0 status    # 查看运行状态"
+    echo "  $0 start       # 启动所有服务"
+    echo "  $0 restart     # 重启所有服务"
+    echo "  $0 status      # 查看运行状态"
+    echo "  $0 check-models # 检查模型状态"
+    echo "  $0 start-models # 加载所需模型"
 }
 
 # Check if service is running
@@ -223,6 +231,137 @@ show_logs() {
     fi
 }
 
+# Check if lms CLI is available
+check_lms_cli() {
+    if ! command -v lms &> /dev/null; then
+        print_error "lms CLI 未找到"
+        echo ""
+        echo "请安装 LM Studio CLI:"
+        echo "  1. 打开 LM Studio 应用"
+        echo "  2. 点击左下角设置 (Settings)"
+        echo "  3. 选择 'CLI' 标签页"
+        echo "  4. 点击 'Install CLI' 按钮"
+        echo ""
+        echo "或者手动安装:"
+        echo "  ln -s '~/.cache/lm-studio/bin/lms' /usr/local/bin/lms"
+        return 1
+    fi
+    return 0
+}
+
+# Check if required models are downloaded
+check_models() {
+    print_info "检查LM Studio模型..."
+    echo ""
+
+    if ! check_lms_cli; then
+        return 1
+    fi
+
+    # Check if LM Studio server is running
+    if ! lms server status &> /dev/null; then
+        print_error "LM Studio 服务器未运行"
+        echo ""
+        echo "请启动 LM Studio 并确保服务器已启动:"
+        echo "  1. 打开 LM Studio 应用"
+        echo "  2. 确保左下角显示 '🟢 运行中'"
+        echo "  或运行: lms server start"
+        return 1
+    fi
+
+    print_success "LM Studio 服务器运行中"
+    echo ""
+
+    # Get list of downloaded models
+    local models_json
+    models_json=$(lms models list --json 2>/dev/null) || {
+        print_error "无法获取模型列表"
+        return 1
+    }
+
+    # Check for embedding model
+    echo "检查Embedding模型:"
+    echo "  需要: $REQUIRED_EMBEDDING_MODEL"
+    if echo "$models_json" | grep -q "$REQUIRED_EMBEDDING_MODEL"; then
+        print_success "  状态: 已下载"
+    else
+        print_error "  状态: 未下载"
+        echo ""
+        echo "  下载命令:"
+        echo "    lms models pull $REQUIRED_EMBEDDING_MODEL"
+    fi
+    echo ""
+
+    # Check for reranker model (optional but recommended)
+    echo "检查Reranker模型 (推荐):"
+    echo "  推荐: $REQUIRED_RERANKER_MODEL"
+    if echo "$models_json" | grep -q "$REQUIRED_RERANKER_MODEL"; then
+        print_success "  状态: 已下载"
+    else
+        print_warning "  状态: 未下载 (可选，但推荐)"
+        echo ""
+        echo "  下载命令:"
+        echo "    lms models pull mlx-community/Qwen3.5-9B-Instruct-4bit-DWQ"
+    fi
+    echo ""
+
+    # Show loaded models
+    echo "当前加载的模型:"
+    local loaded_models
+    loaded_models=$(lms models loaded --json 2>/dev/null | grep '"id"' || echo "  无")
+    echo "$loaded_models" | sed 's/^/  /'
+}
+
+# Load required models
+start_models() {
+    print_info "加载LM Studio模型..."
+    echo ""
+
+    if ! check_lms_cli; then
+        return 1
+    fi
+
+    # Check if LM Studio server is running
+    if ! lms server status &> /dev/null; then
+        print_info "启动LM Studio服务器..."
+        lms server start &> /dev/null || {
+            print_error "无法启动LM Studio服务器"
+            echo "请手动启动LM Studio应用"
+            return 1
+        }
+        sleep 2
+    fi
+
+    print_success "LM Studio 服务器运行中"
+    echo ""
+
+    # Load embedding model
+    print_info "加载Embedding模型: $REQUIRED_EMBEDDING_MODEL"
+    if lms models load "$REQUIRED_EMBEDDING_MODEL" &> /dev/null; then
+        print_success "Embedding模型加载成功"
+    else
+        print_error "Embedding模型加载失败"
+        echo "请确保模型已下载:"
+        echo "  lms models pull $REQUIRED_EMBEDDING_MODEL"
+    fi
+    echo ""
+
+    # Load reranker model (optional)
+    print_info "尝试加载Reranker模型..."
+    if lms models load "mlx-community/Qwen3.5-9B-Instruct-4bit-DWQ" &> /dev/null; then
+        print_success "Reranker模型加载成功"
+    else
+        print_warning "Reranker模型加载失败 (可选)"
+        echo "如需使用，请下载:"
+        echo "  lms models pull mlx-community/Qwen3.5-9B-Instruct-4bit-DWQ"
+    fi
+    echo ""
+
+    # Show loaded models
+    print_info "当前加载的模型:"
+    lms models loaded 2>/dev/null || echo "  无"
+}
+
 # Main command handler
 main() {
     case "${1:-}" in
@@ -262,6 +401,12 @@ main() {
                 restart) pkill -f "vite" 2>/dev/null || true; sleep 2; start_frontend ;;
                 *) echo "用法: $0 frontend [start|stop|restart]" ;;
             esac
+            ;;
+        check-models)
+            check_models
+            ;;
+        start-models)
+            start_models
             ;;
         help|--help|-h)
             show_help

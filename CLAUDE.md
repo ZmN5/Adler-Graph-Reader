@@ -117,6 +117,8 @@
 |------|------|------|
 | `db.sh` | 数据库管理 | `./scripts/db.sh reset` 重置数据库 |
 | `service.sh` | 服务管理 | `./scripts/service.sh restart` 重启服务 |
+| `service.sh` | 模型检查 | `./scripts/service.sh check-models` 检查LM Studio模型 |
+| `service.sh` | 模型加载 | `./scripts/service.sh start-models` 加载所需模型 |
 
 **常用命令**：
 ```bash
@@ -137,6 +139,37 @@
 
 # 查看后端日志
 ./scripts/service.sh logs backend
+
+# 检查LM Studio模型是否已下载
+./scripts/service.sh check-models
+
+# 加载所需的LM Studio模型
+./scripts/service.sh start-models
+```
+
+**LM Studio CLI 安装**：
+如果 `check-models` 或 `start-models` 提示 `lms CLI 未找到`，请安装 LM Studio CLI：
+1. 打开 LM Studio 应用
+2. 点击左下角设置 (Settings)
+3. 选择 'CLI' 标签页
+4. 点击 'Install CLI' 按钮
+
+**手动模型管理命令**：
+```bash
+# 检查模型是否已下载
+lms models list | grep Qwen3-Embedding
+
+# 下载模型
+lms models pull mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ
+
+# 加载模型
+lms models load mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ
+
+# 查看已加载的模型
+lms models loaded
+
+# 启动LM Studio服务器
+lms server start
 ```
 
 ### API 配置

@@ -239,8 +239,8 @@
         "Typecheck passes"
       ],
       "priority": 14,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在 a97be1b 提交中完成：添加了petgraph依赖，实现了Louvain社区发现算法，增强了Core Concepts评分"
     },
     {
       "id": "US-015",
@@ -256,8 +256,8 @@
         "Typecheck passes"
       ],
       "priority": 15,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已添加check-models和start-models命令，检查embedding模型和reranker模型，提供友好错误提示"
     }
   ]
 }
