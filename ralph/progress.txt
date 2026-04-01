@@ -149,9 +149,44 @@ Started: 2026-03-31 23:12
   - 使用fused_results.clone()解决rerank时的所有权问题
   - 通过take(top_k)在多个阶段控制返回数量，减少数据处理
   - 日志记录贯穿整个pipeline，便于调试和性能分析
+## 2026-04-01 11:30 - US-011
+- 实现了前端API集成，添加检索和总结API函数
+- 文件变更: `frontend/src/lib/api-client.ts` (修改)
+- 实现内容:
+  - `RetrievalResult` 接口: 包含chunk_id, content, page_start/end, vector_score, bm25_score, rrf_score, final_score
+  - `RetrievalResponse` 接口: 包含chunks数组和total_found计数
+  - `Citation` 接口: 包含index, chunk_id, page_start/end, excerpt
+  - `SourceItem` 接口: 包含index, chunk_id, page_start/end, content
+  - `SummaryResponse` 接口: 包含summary, citations数组, sources数组
+  - `getNodeRetrieval(nodeId, topK)`: 调用GET /api/nodes/{id}/retrieval?top_k={n}
+  - `getNodeSummary(nodeId)`: 调用GET /api/nodes/{id}/summary
+- 错误处理: 复用现有的ApiError和handleResponse机制
+- **Learnings for future iterations:**
+  - 前端API client使用统一的apiGet/apiPost函数，自动处理错误
+  - 类型定义需要与后端返回类型保持一致
+  - 使用接口而非类型别名，便于后续扩展
+  - 查询参数通过模板字符串拼接，topK默认为10与后端一致
 ---
 
-## 2026-04-01 10:30 - US-009
+
+- 实现了API端点 - 检索和总结
+- 文件变更: `backend/src/main.rs` (修改)
+- 实现内容:
+  - `GET /api/nodes/{id}/retrieval?top_k={n}`: 使用HybridRetriever获取节点相关chunks
+  - `GET /api/nodes/{id}/summary`: 生成带引用的source-grounded summary
+  - `node_retrieval` handler: 创建HybridRetriever实例，调用retrieve_for_node，返回RetrievalResponse
+  - `node_summary` handler: 获取节点信息，调用检索，使用LlmClient生成summary
+  - 新增响应类型: RetrievalResponse, RetrievalResultItem, SummaryResponse, CitationItem, SourceItem
+  - 从retrieval和llm_client模块导入所需类型
+- **Learnings for future iterations:**
+  - HybridRetriever和LlmClient需要pool和llm_api_url来创建实例
+  - SourceGroundedSummaryRequest需要node_name, node_description和retrieval_results
+  - 使用HashMap来解析query参数中的top_k
+  - 注意llm_client::RetrievalResult和retrieval模块的RetrievalOutput是不同的类型
+  - AppError::Sqlx用于数据库错误，不是AppError::DatabaseError
+---
+
+
 - 实现了Source-Grounded总结功能，扩展了LLM Client
 - 文件变更: `backend/src/llm_client.rs` (修改), `backend/Cargo.toml` (添加regex依赖)
 - **实现内容:**

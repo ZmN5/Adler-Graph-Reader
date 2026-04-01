@@ -197,6 +197,56 @@ export async function getChunk(chunkId: string): Promise<ChunkDetails> {
   return apiGet<ChunkDetails>(`/api/chunks/${chunkId}`)
 }
 
+// Retrieval and Summary types
+export interface RetrievalResult {
+  chunk_id: string
+  content: string
+  page_start: number
+  page_end: number
+  vector_score: number
+  bm25_score: number
+  rrf_score: number
+  final_score: number
+}
+
+export interface RetrievalResponse {
+  chunks: RetrievalResult[]
+  total_found: number
+}
+
+export interface Citation {
+  index: number
+  chunk_id: string
+  page_start: number
+  page_end: number
+  excerpt: string
+}
+
+export interface SourceItem {
+  index: number
+  chunk_id: string
+  page_start: number
+  page_end: number
+  content: string
+}
+
+export interface SummaryResponse {
+  summary: string
+  citations: Citation[]
+  sources: SourceItem[]
+}
+
+export async function getNodeRetrieval(
+  nodeId: string,
+  topK: number = 10
+): Promise<RetrievalResponse> {
+  return apiGet<RetrievalResponse>(`/api/nodes/${nodeId}/retrieval?top_k=${topK}`)
+}
+
+export async function getNodeSummary(nodeId: string): Promise<SummaryResponse> {
+  return apiGet<SummaryResponse>(`/api/nodes/${nodeId}/summary`)
+}
+
 export type BookLanguage = 'auto' | 'zh' | 'en'
 
 export interface UploadBookResponse {
