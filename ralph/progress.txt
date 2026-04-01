@@ -151,3 +151,23 @@ Started: 2026-03-31 23:12
   - 日志记录贯穿整个pipeline，便于调试和性能分析
 ---
 
+## 2026-04-01 10:30 - US-009
+- 实现了Source-Grounded总结功能，扩展了LLM Client
+- 文件变更: `backend/src/llm_client.rs` (修改), `backend/Cargo.toml` (添加regex依赖)
+- **实现内容:**
+  - `RetrievalResult`: 简化版检索结果结构，供summary使用
+  - `Citation`: 引用结构，包含index、chunk_id、page_start/end、excerpt
+  - `SourceGroundedSummary`: 最终结果，包含summary和citations列表
+  - `SourceGroundedSummaryRequest`: 请求结构，包含node信息和检索结果
+  - `generate_source_grounded_summary`: 主方法，生成带引用的总结
+  - `build_summary_prompt`: NotebookLM风格的prompt，包含多个source materials
+  - `parse_summary_response`: 解析LLM JSON响应，提取summary和citations
+- **Learnings for future iterations:**
+  - Prompt设计采用NotebookLM风格：列出Source Materials，要求LLM综合并引用
+  - 使用`[Source: X]`格式作为citation marker，便于前端解析和渲染
+  - Regex `\[Source:\s*(\d+)\]` 用于从文本中提取引用标记
+  - 两种citation来源：LLM返回的JSON citations数组 + 从summary文本解析的标记
+  - Excerpt取content前200字符，避免存储过大内容
+  - regex crate已添加到Cargo.toml，后续可用
+---
+
