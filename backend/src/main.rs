@@ -7,6 +7,9 @@ mod llm_client;
 mod pdf_parser;
 mod retrieval;
 
+use retrieval::HybridRetriever;
+use llm_client::{LlmClient, SourceGroundedSummaryRequest};
+
 use axum::{
     routing::{get, put, post, delete},
     Router,
@@ -758,6 +761,49 @@ struct IdentifyCoreConceptsResponse {
     core_concepts_count: usize,
 }
 
+// Retrieval-related types
+#[derive(Serialize)]
+struct RetrievalResponse {
+    chunks: Vec<RetrievalResultItem>,
+    total_found: usize,
+}
+
+#[derive(Serialize)]
+struct RetrievalResultItem {
+    chunk_id: String,
+    content: String,
+    page_start: i64,
+    page_end: i64,
+    vector_score: Option<f64>,
+    bm25_score: Option<f64>,
+    final_score: f64,
+}
+
+// Summary-related types
+#[derive(Serialize)]
+struct SummaryResponse {
+    summary: String,
+    citations: Vec<CitationItem>,
+    sources: Vec<SourceItem>,
+}
+
+#[derive(Serialize)]
+struct CitationItem {
+    index: usize,
+    chunk_id: String,
+    page_start: i64,
+    page_end: i64,
+    excerpt: String,
+}
+
+#[derive(Serialize)]
+struct SourceItem {
+    index: usize,
+    page_start: i64,
+    page_end: i64,
+    excerpt: String,
+}
+
 async fn get_core_concepts(
     Path(book_id): Path<String>,
     pool: axum::extract::State<SqlitePool>,
@@ -841,6 +887,171 @@ async fn identify_core_concepts(
     }))
 }
 
+/// Handler for GET /api/nodes/{id}/retrieval
+/// Returns retrieval results for a node using the hybrid retriever
+async fn node_retrieval(
+    Path(node_id): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<RetrievalResponse>, AppError> {
+    // Parse top_k parameter with default of 10
+    let top_k = params
+        .get("top_k")
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(10);
+
+    tracing::info!(
+        "[API] Node retrieval request: node_id={}, top_k={}",
+        node_id,
+        top_k
+    );
+
+    // Create hybrid retriever
+    let llm_api_url = std::env::var("LLM_API_URL")
+        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
+    let retriever = HybridRetriever::new(pool.0.clone(), llm_api_url);
+
+    // Run retrieval
+    let results = retriever
+        .retrieve_for_node(&node_id, Some(top_k))
+        .await
+        .map_err(|e| AppError::Internal(format!("Retrieval failed: {}", e)))?;
+
+    let total_found = results.len();
+
+    // Convert to response format
+    let chunks: Vec<RetrievalResultItem> = results
+        .into_iter()
+        .map(|r| RetrievalResultItem {
+            chunk_id: r.chunk_id,
+            content: r.content,
+            page_start: r.page_start,
+            page_end: r.page_end,
+            vector_score: r.vector_score,
+            bm25_score: r.bm25_score,
+            final_score: r.final_score,
+        })
+        .collect();
+
+    tracing::info!(
+        "[API] Node retrieval completed: node_id={}, found={}",
+        node_id,
+        total_found
+    );
+
+    Ok(Json(RetrievalResponse {
+        chunks,
+        total_found,
+    }))
+}
+
+/// Handler for GET /api/nodes/{id}/summary
+/// Returns source-grounded summary for a node
+async fn node_summary(
+    Path(node_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<SummaryResponse>, AppError> {
+    tracing::info!("[API] Node summary request: node_id={}", node_id);
+
+    // Get node information from database
+    let node_row: Option<(String, Option<String>, String, Option<String>)> = sqlx::query_as(
+        "SELECT id, book_id, name, description FROM nodes WHERE id = ?"
+    )
+    .bind(&node_id)
+    .fetch_optional(&*pool)
+    .await
+    .map_err(|e| AppError::Sqlx(e))?;
+
+    let node_info = match node_row {
+        Some(row) => row,
+        None => return Err(AppError::NotFound("Node not found".to_string())),
+    };
+
+    let node_name = node_info.2;
+    let node_description = node_info.3;
+
+    // Create hybrid retriever and get retrieval results
+    let llm_api_url = std::env::var("LLM_API_URL")
+        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
+    let retriever = HybridRetriever::new(pool.0.clone(), llm_api_url.clone());
+
+    // Get retrieval results (top 10 for summary)
+    let retrieval_outputs = retriever
+        .retrieve_for_node(&node_id, Some(10))
+        .await
+        .map_err(|e| AppError::Internal(format!("Retrieval failed: {}", e)))?;
+
+    if retrieval_outputs.is_empty() {
+        return Ok(Json(SummaryResponse {
+            summary: format!("未找到与 '{}' 相关的文档内容。", node_name),
+            citations: vec![],
+            sources: vec![],
+        }));
+    }
+
+    // Convert retrieval outputs to LLM client format
+    let retrieval_results: Vec<llm_client::RetrievalResult> = retrieval_outputs
+        .iter()
+        .map(|r| llm_client::RetrievalResult {
+            chunk_id: r.chunk_id.clone(),
+            content: r.content.clone(),
+            page_start: r.page_start,
+            page_end: r.page_end,
+        })
+        .collect();
+
+    // Build summary request
+    let summary_request = SourceGroundedSummaryRequest {
+        node_name: node_name.clone(),
+        node_description: node_description.clone(),
+        retrieval_results,
+    };
+
+    // Create LLM client and generate summary
+    let llm_client = LlmClient::new(&llm_api_url);
+    let summary_result = llm_client
+        .generate_source_grounded_summary(&summary_request)
+        .await
+        .map_err(|e| AppError::Internal(format!("Summary generation failed: {}", e)))?;
+
+    // Convert citations to response format
+    let citations: Vec<CitationItem> = summary_result
+        .citations
+        .iter()
+        .map(|c| CitationItem {
+            index: c.index,
+            chunk_id: c.chunk_id.clone(),
+            page_start: c.page_start,
+            page_end: c.page_end,
+            excerpt: c.excerpt.clone(),
+        })
+        .collect();
+
+    // Build sources from retrieval outputs
+    let sources: Vec<SourceItem> = retrieval_outputs
+        .iter()
+        .enumerate()
+        .map(|(idx, r)| SourceItem {
+            index: idx + 1,
+            page_start: r.page_start,
+            page_end: r.page_end,
+            excerpt: r.content.chars().take(200).collect::<String>(),
+        })
+        .collect();
+
+    tracing::info!(
+        "[API] Node summary completed: node_id={}, citations={}",
+        node_id,
+        citations.len()
+    );
+
+    Ok(Json(SummaryResponse {
+        summary: summary_result.summary,
+        citations,
+        sources,
+    }))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Filter out pdf-extract glyph warnings (they're informational, not errors)
@@ -884,6 +1095,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/books/{id}/graph", get(get_book_graph))
         .route("/api/graph/global", get(get_global_graph))
         .route("/api/nodes/{id}", get(get_node))
+        .route("/api/nodes/{id}/retrieval", get(node_retrieval))
+        .route("/api/nodes/{id}/summary", get(node_summary))
         .route("/api/books/{id}/extract", post(extract_book))
         .route("/api/books/{id}/core-concepts", get(get_core_concepts))
         .route("/api/books/{id}/identify-core-concepts", post(identify_core_concepts))
