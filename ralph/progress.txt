@@ -169,6 +169,22 @@ Started: 2026-03-31 23:12
   - 异步错误处理需要单独try-catch，避免影响其他数据加载
 ---
 
+## 2026-04-01 12:30 - US-013
+- 实现了NodeDetailPanel检索结果展示优化
+- 文件变更: `frontend/src/components/NodeDetailPanel.tsx`
+- **实现内容:**
+  - 添加sortedRetrievalChunks计算属性，使用`[...chunks].sort((a, b) => b.final_score - a.final_score)`确保按final_score降序排序
+  - 优化内容预览显示：使用line-clamp-3替代手动slice，更优雅地限制文本长度
+  - 显示所有分数：final_score(绿色-综合)、vector_score(蓝色-向量)、bm25_score(橙色-BM25)
+  - 可折叠的检索详情区域，显示"{count} 个相关段落"
+  - chunks可点击，调用handleCitationClick跳转到原文位置
+- **Learnings for future iterations:**
+  - 前端排序使用展开运算符`[...array]`创建副本，避免修改原数组
+  - line-clamp-3需要Tailwind的line-clamp插件或原生支持
+  - flex-wrap配合gap可以优雅地处理多行标签布局
+  - 后端已按final_score排序，但前端显式排序确保符合验收标准
+---
+
 - 实现了前端API集成，添加检索和总结API函数
 - 文件变更: `frontend/src/lib/api-client.ts` (修改)
 - 实现内容:
