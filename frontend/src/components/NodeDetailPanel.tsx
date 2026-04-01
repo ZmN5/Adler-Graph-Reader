@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph, getChunk, ChunkDetails } from '@/lib/api-client'
-import { X, ExternalLink, BookOpen, FileText } from 'lucide-react'
+import {
+  GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph,
+  getChunk, ChunkDetails, getNodeSummary, getNodeRetrieval,
+  SummaryResponse, RetrievalResponse
+} from '@/lib/api-client'
+import { X, ExternalLink, BookOpen, FileText, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 
 interface NodeDetailPanelProps {
   node: GraphNode | null
@@ -36,18 +40,30 @@ export function NodeDetailPanel({
   const [loadingChunks, setLoadingChunks] = useState<Set<string>>(new Set())
   const [relatedNodes, setRelatedNodes] = useState<Map<string, GraphNode>>(new Map())
 
+  // Source-grounded summary states
+  const [summary, setSummary] = useState<SummaryResponse | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [retrievalResults, setRetrievalResults] = useState<RetrievalResponse | null>(null)
+  const [showRetrievalDetails, setShowRetrievalDetails] = useState(false)
+
   useEffect(() => {
     if (!node) {
       setNodeDetails(null)
       setEdges([])
       setChunkContents(new Map())
       setRelatedNodes(new Map())
+      setSummary(null)
+      setRetrievalResults(null)
+      setSummaryError(null)
       return
     }
 
     let cancelled = false
     setIsLoading(true)
+    setSummaryLoading(true)
     setError(null)
+    setSummaryError(null)
 
     const loadDetails = async () => {
       try {
@@ -56,6 +72,32 @@ export function NodeDetailPanel({
         if (!cancelled) {
           setNodeDetails(details)
           setPageNumber(details.page_number ?? null)
+        }
+
+        // Fetch source-grounded summary
+        try {
+          const summaryData = await getNodeSummary(node.id)
+          if (!cancelled) {
+            setSummary(summaryData)
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setSummaryError(err instanceof Error ? err.message : 'Failed to load summary')
+          }
+        } finally {
+          if (!cancelled) {
+            setSummaryLoading(false)
+          }
+        }
+
+        // Fetch retrieval results
+        try {
+          const retrievalData = await getNodeRetrieval(node.id, 10)
+          if (!cancelled) {
+            setRetrievalResults(retrievalData)
+          }
+        } catch (err) {
+          console.error('Failed to load retrieval results:', err)
         }
 
         // If we have a bookId, fetch edges and related nodes for this book
@@ -143,6 +185,48 @@ export function NodeDetailPanel({
     [onRelatedNodeClick]
   )
 
+  // Retry loading summary
+  const handleRetrySummary = useCallback(async () => {
+    if (!node) return
+    setSummaryLoading(true)
+    setSummaryError(null)
+    try {
+      const summaryData = await getNodeSummary(node.id)
+      setSummary(summaryData)
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : 'Failed to load summary')
+    } finally {
+      setSummaryLoading(false)
+    }
+  }, [node])
+
+  // Render summary with clickable citation markers
+  const renderSummaryWithCitations = useCallback((summaryText: string) => {
+    // Match [Source: X] pattern
+    const parts = summaryText.split(/(\[Source:\s*\d+\])/g)
+    return parts.map((part, index) => {
+      const match = part.match(/\[Source:\s*(\d+)\]/)
+      if (match) {
+        const citationIndex = parseInt(match[1], 10)
+        return (
+          <button
+            key={index}
+            onClick={() => {
+              const citation = summary?.citations.find(c => c.index === citationIndex)
+              if (citation) {
+                handleCitationClick(citation.chunk_id)
+              }
+            }}
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+          >
+            [{citationIndex}]
+          </button>
+        )
+      }
+      return <span key={index}>{part}</span>
+    })
+  }, [summary?.citations, handleCitationClick])
+
   if (!node) {
     return null
   }
@@ -178,6 +262,79 @@ export function NodeDetailPanel({
 
         {!isLoading && !error && (
           <>
+            {/* Source-Grounded Summary Section */}
+            <div className="mb-6 border border-border rounded-lg overflow-hidden">
+              <div className="bg-muted/30 px-4 py-3 border-b border-border">
+                <h3 className="text-sm font-medium">AI 总结</h3>
+              </div>
+              <div className="p-4">
+                {summaryLoading && (
+                  <div className="flex items-center gap-3 py-4">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <span className="text-sm text-muted-foreground">正在分析相关段落...</span>
+                  </div>
+                )}
+
+                {summaryError && (
+                  <div className="py-4">
+                    <p className="text-sm text-destructive mb-3">{summaryError}</p>
+                    <button
+                      onClick={handleRetrySummary}
+                      className={cn(
+                        'flex items-center gap-2 text-sm px-3 py-2 rounded-md',
+                        'bg-muted hover:bg-muted/80 transition-colors'
+                      )}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      重试
+                    </button>
+                  </div>
+                )}
+
+                {!summaryLoading && !summaryError && summary && (
+                  <div className="space-y-4">
+                    {/* Summary Text */}
+                    <div className="text-sm leading-relaxed text-foreground">
+                      {renderSummaryWithCitations(summary.summary)}
+                    </div>
+
+                    {/* Citations List */}
+                    {summary.citations.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">来源引用</h4>
+                        <div className="space-y-2">
+                          {summary.citations.map((citation) => (
+                            <button
+                              key={citation.index}
+                              onClick={() => handleCitationClick(citation.chunk_id)}
+                              className={cn(
+                                'w-full text-left text-xs p-2 rounded-md',
+                                'bg-muted/30 hover:bg-muted/50 transition-colors'
+                              )}
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="flex-shrink-0 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-medium">
+                                  [{citation.index}]
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-muted-foreground line-clamp-2">
+                                    {citation.excerpt}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground mt-1">
+                                    第 {citation.page_start}{citation.page_start !== citation.page_end ? `-${citation.page_end}` : ''} 页
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Description */}
             {node.description && (
               <div className="mb-6">
@@ -266,6 +423,61 @@ export function NodeDetailPanel({
                     </p>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Retrieval Results Section */}
+            {(retrievalResults?.chunks.length ?? 0) > 0 && (
+              <div className="mb-6 border border-border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setShowRetrievalDetails(!showRetrievalDetails)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors border-b border-border"
+                >
+                  <h3 className="text-sm font-medium">检索详情</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {retrievalResults?.total_found} 个相关段落
+                    </span>
+                    {showRetrievalDetails ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </button>
+
+                {showRetrievalDetails && (
+                  <div className="p-4 space-y-3">
+                    {retrievalResults?.chunks.map((chunk, index) => (
+                      <button
+                        key={chunk.chunk_id}
+                        onClick={() => handleCitationClick(chunk.chunk_id)}
+                        className={cn(
+                          'w-full text-left p-3 rounded-md',
+                          'bg-muted/30 hover:bg-muted/50 transition-colors'
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="flex-shrink-0 text-xs text-muted-foreground font-mono">
+                            #{index + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-foreground line-clamp-3 mb-2">
+                              {chunk.content.slice(0, 200)}
+                              {chunk.content.length > 200 && '...'}
+                            </p>
+                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                              <span>第 {chunk.page_start}-{chunk.page_end} 页</span>
+                              <span className="text-green-600">综合: {chunk.final_score.toFixed(3)}</span>
+                              <span className="text-blue-600">向量: {chunk.vector_score.toFixed(3)}</span>
+                              <span className="text-orange-600">BM25: {chunk.bm25_score.toFixed(3)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
