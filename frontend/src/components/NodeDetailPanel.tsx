@@ -200,6 +200,11 @@ export function NodeDetailPanel({
     }
   }, [node])
 
+  // Sort retrieval results by final_score descending
+  const sortedRetrievalChunks = retrievalResults?.chunks
+    ? [...retrievalResults.chunks].sort((a, b) => b.final_score - a.final_score)
+    : []
+
   // Render summary with clickable citation markers
   const renderSummaryWithCitations = useCallback((summaryText: string) => {
     // Match [Source: X] pattern
@@ -427,7 +432,7 @@ export function NodeDetailPanel({
             )}
 
             {/* Retrieval Results Section */}
-            {(retrievalResults?.chunks.length ?? 0) > 0 && (
+            {sortedRetrievalChunks.length > 0 && (
               <div className="mb-6 border border-border rounded-lg overflow-hidden">
                 <button
                   onClick={() => setShowRetrievalDetails(!showRetrievalDetails)}
@@ -436,7 +441,7 @@ export function NodeDetailPanel({
                   <h3 className="text-sm font-medium">检索详情</h3>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
-                      {retrievalResults?.total_found} 个相关段落
+                      {sortedRetrievalChunks.length} 个相关段落
                     </span>
                     {showRetrievalDetails ? (
                       <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -448,7 +453,7 @@ export function NodeDetailPanel({
 
                 {showRetrievalDetails && (
                   <div className="p-4 space-y-3">
-                    {retrievalResults?.chunks.map((chunk, index) => (
+                    {sortedRetrievalChunks.map((chunk, index) => (
                       <button
                         key={chunk.chunk_id}
                         onClick={() => handleCitationClick(chunk.chunk_id)}
@@ -463,10 +468,9 @@ export function NodeDetailPanel({
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-foreground line-clamp-3 mb-2">
-                              {chunk.content.slice(0, 200)}
-                              {chunk.content.length > 200 && '...'}
+                              {chunk.content}
                             </p>
-                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                               <span>第 {chunk.page_start}-{chunk.page_end} 页</span>
                               <span className="text-green-600">综合: {chunk.final_score.toFixed(3)}</span>
                               <span className="text-blue-600">向量: {chunk.vector_score.toFixed(3)}</span>

@@ -149,7 +149,26 @@ Started: 2026-03-31 23:12
   - 使用fused_results.clone()解决rerank时的所有权问题
   - 通过take(top_k)在多个阶段控制返回数量，减少数据处理
   - 日志记录贯穿整个pipeline，便于调试和性能分析
-## 2026-04-01 11:30 - US-011
+## 2026-04-01 12:00 - US-012
+- 实现了NodeDetailPanel Source-Grounded总结UI
+- 文件变更: `frontend/src/components/NodeDetailPanel.tsx`
+- **实现内容:**
+  - 添加useEffect逻辑：在节点选择时自动调用getNodeSummary和getNodeRetrieval
+  - 新增状态管理：summary, summaryLoading, summaryError, retrievalResults, showRetrievalDetails
+  - 加载状态：显示"正在分析相关段落..."和旋转动画
+  - 错误处理：显示错误消息和重试按钮，支持手动重试
+  - renderSummaryWithCitations：解析[Source: X]标记并渲染为可点击按钮
+  - 引用列表：显示来源详情，包括页码和摘录预览
+  - 检索结果面板：可折叠显示top 10 chunks，包含所有评分
+  - 点击引用跳转到原文：复用handleCitationClick回调
+- **Learnings for future iterations:**
+  - 使用正则`/\[Source:\s*\d+\]/`匹配引用标记
+  - 使用line-clamp-2/3限制文本长度，保持UI整洁
+  - 可折叠section使用Chevron图标和条件渲染
+  - 分数显示使用不同颜色区分：绿色=综合，蓝色=向量，橙色=BM25
+  - 异步错误处理需要单独try-catch，避免影响其他数据加载
+---
+
 - 实现了前端API集成，添加检索和总结API函数
 - 文件变更: `frontend/src/lib/api-client.ts` (修改)
 - 实现内容:
