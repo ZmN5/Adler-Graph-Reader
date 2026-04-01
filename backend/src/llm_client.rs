@@ -2,6 +2,15 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+/// Retrieval result for source-grounded summary
+#[derive(Debug, Clone)]
+pub struct RetrievalResult {
+    pub chunk_id: String,
+    pub content: String,
+    pub page_start: i64,
+    pub page_end: i64,
+}
+
 /// LLM Client for connecting to LM Studio (OpenAI-compatible API)
 pub struct LlmClient {
     client: Client,
@@ -64,6 +73,31 @@ pub struct ConceptExtractionResponse {
     pub concepts: Vec<ExtractedConcept>,
     pub relations: Vec<ExtractedRelation>,
     pub language: String,
+}
+
+/// Citation for a source-grounded summary
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Citation {
+    pub index: usize,
+    pub chunk_id: String,
+    pub page_start: i64,
+    pub page_end: i64,
+    pub excerpt: String,
+}
+
+/// Source-grounded summary with citations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceGroundedSummary {
+    pub summary: String,
+    pub citations: Vec<Citation>,
+}
+
+/// Request to generate a source-grounded summary
+#[derive(Debug, Clone)]
+pub struct SourceGroundedSummaryRequest {
+    pub node_name: String,
+    pub node_description: Option<String>,
+    pub retrieval_results: Vec<RetrievalResult>,
 }
 
 impl LlmClient {
@@ -159,6 +193,81 @@ impl LlmClient {
         tracing::trace!("[LM Client] Raw response content: {}", content);
 
         parse_extraction_response(&content, language)
+    }
+
+    /// Generate a source-grounded summary with citations from retrieval results
+    ///
+    /// # Arguments
+    /// * `request` - The summary request containing node info and retrieval results
+    ///
+    /// # Returns
+    /// * `Result<SourceGroundedSummary, LlmError>` - The generated summary with citations
+    pub async fn generate_source_grounded_summary(
+        &self,
+        request: &SourceGroundedSummaryRequest,
+    ) -> Result<SourceGroundedSummary, LlmError> {
+        // Build NotebookLM-style prompt
+        let prompt = build_summary_prompt(request);
+
+        // Use model from environment or default to qwen3.5-9b
+        let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "qwen3.5-9b".to_string());
+        tracing::debug!("[SourceGroundedSummary] Using model: {}", model);
+
+        let chat_request = ChatRequest {
+            model: model.clone(),
+            messages: vec![ChatMessage {
+                role: "user".to_string(),
+                content: prompt,
+            }],
+            temperature: 0.3,
+        };
+
+        let url = format!("{}/chat/completions", self.base_url);
+        tracing::debug!("[SourceGroundedSummary] Sending request to {}", url);
+
+        let response = self
+            .client
+            .post(&url)
+            .header("Authorization", "Bearer lm-studio")
+            .json(&chat_request)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!("[SourceGroundedSummary] Connection error: {}", e);
+                LlmError::ConnectionError(e.to_string())
+            })?;
+
+        tracing::debug!("[SourceGroundedSummary] Response status: {}", response.status());
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            tracing::error!("[SourceGroundedSummary] API error {}: {}", status, body);
+            return Err(LlmError::ApiError(format!(
+                "API error {}: {}",
+                status, body
+            )));
+        }
+
+        let chat_response: ChatResponse = response
+            .json()
+            .await
+            .map_err(|e| {
+                tracing::error!("[SourceGroundedSummary] Parse error: {}", e);
+                LlmError::ParseError(e.to_string())
+            })?;
+
+        // Extract content from the first choice
+        let content = chat_response
+            .choices
+            .first()
+            .map(|c| c.message.content.clone())
+            .ok_or(LlmError::EmptyResponse)?;
+
+        tracing::trace!("[SourceGroundedSummary] Raw response: {}", content);
+
+        // Parse the summary and extract citations
+        parse_summary_response(&content, request)
     }
 }
 
@@ -465,6 +574,175 @@ fn parse_extraction_response(
         concepts: valid_concepts,
         relations: valid_relations,
         language: language.to_string(),
+    })
+}
+
+/// Build NotebookLM-style prompt for source-grounded summary
+fn build_summary_prompt(request: &SourceGroundedSummaryRequest) -> String {
+    let node_context = if let Some(desc) = &request.node_description {
+        format!("{}: {}", request.node_name, desc)
+    } else {
+        request.node_name.clone()
+    };
+
+    let mut prompt = format!(
+        r#"You are an expert research assistant. Based on the retrieved source materials below, provide a comprehensive summary about the following topic:
+
+TOPIC: {}
+
+---
+
+RETRIEVED SOURCE MATERIALS:
+
+"#,
+        node_context
+    );
+
+    // Add each retrieval result as a source
+    for (idx, result) in request.retrieval_results.iter().enumerate() {
+        let page_info = if result.page_start == result.page_end {
+            format!("Page {}", result.page_start)
+        } else {
+            format!("Pages {}-{}", result.page_start, result.page_end)
+        };
+
+        prompt.push_str(&format!(
+            "[Source {}] ({}):\n{}\n\n",
+            idx + 1,
+            page_info,
+            result.content
+        ));
+    }
+
+    prompt.push_str(&format!(
+        r#"---
+
+INSTRUCTIONS:
+1. Synthesize the information from the sources into a coherent summary about the topic.
+2. When you use information from a specific source, cite it using [Source: X] format where X is the source number.
+3. Include at least one citation per major point or claim.
+4. Be concise but comprehensive - aim for 3-5 paragraphs.
+5. Focus on the most relevant and important information from the sources.
+
+OUTPUT FORMAT:
+Provide your summary with inline citations in the following JSON format:
+
+{{
+  "summary": "Your comprehensive summary here with [Source: 1] citations throughout...",
+  "citations": [
+    {{"index": 1, "pages": "page range"}},
+    {{"index": 2, "pages": "page range"}},
+    ...
+  ]
+}}
+
+Important:
+- Return ONLY valid JSON, no markdown code blocks
+- Every major claim must have a citation
+- Summary should be 200-500 words
+- Citations should list the actual page numbers from the sources"#
+    ));
+
+    prompt
+}
+
+/// Summary response from LLM
+#[derive(Debug, Deserialize)]
+struct SummaryResponse {
+    summary: String,
+    citations: Vec<ParsedCitation>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ParsedCitation {
+    index: usize,
+    pages: Option<String>,
+}
+
+/// Parse the LLM response into a SourceGroundedSummary
+fn parse_summary_response(
+    content: &str,
+    request: &SourceGroundedSummaryRequest,
+) -> Result<SourceGroundedSummary, LlmError> {
+    // Try to extract JSON from the content
+    let json_str = extract_json(content)?;
+
+    tracing::debug!("[parse_summary_response] Parsing JSON of length: {}", json_str.len());
+
+    // Attempt to parse the response
+    let parsed: SummaryResponse = match serde_json::from_str(json_str) {
+        Ok(data) => data,
+        Err(e) => {
+            tracing::error!("[parse_summary_response] Failed to parse JSON: {}", e);
+            tracing::debug!("[parse_summary_response] Raw content: {}", content);
+            return Err(LlmError::ParseError(format!(
+                "Invalid JSON structure: {}",
+                e
+            )));
+        }
+    };
+
+    // Build citations from the parsed data and original request
+    let mut citations: Vec<Citation> = Vec::new();
+
+    for parsed_citation in parsed.citations.iter() {
+        let idx = parsed_citation.index;
+        if idx == 0 || idx > request.retrieval_results.len() {
+            tracing::warn!(
+                "Citation index {} is out of range (1-{}), skipping",
+                idx,
+                request.retrieval_results.len()
+            );
+            continue;
+        }
+
+        // Get the corresponding retrieval result
+        let result = &request.retrieval_results[idx - 1];
+
+        // Create excerpt from content (first 200 chars)
+        let excerpt = result.content.chars().take(200).collect::<String>();
+
+        citations.push(Citation {
+            index: idx,
+            chunk_id: result.chunk_id.clone(),
+            page_start: result.page_start,
+            page_end: result.page_end,
+            excerpt,
+        });
+    }
+
+    // Also extract citations from the summary text by finding [Source: X] patterns
+    // and ensuring they're in our citations list
+    let citation_pattern = regex::Regex::new(r"\[Source:\s*(\d+)\]").unwrap();
+    for caps in citation_pattern.captures_iter(&parsed.summary) {
+        let idx: usize = caps[1].parse().unwrap_or(0);
+        if idx > 0 && idx <= request.retrieval_results.len() {
+            // Check if this citation is already in the list
+            if !citations.iter().any(|c| c.index == idx) {
+                let result = &request.retrieval_results[idx - 1];
+                let excerpt = result.content.chars().take(200).collect::<String>();
+                citations.push(Citation {
+                    index: idx,
+                    chunk_id: result.chunk_id.clone(),
+                    page_start: result.page_start,
+                    page_end: result.page_end,
+                    excerpt,
+                });
+            }
+        }
+    }
+
+    // Sort citations by index
+    citations.sort_by_key(|c| c.index);
+
+    tracing::info!(
+        "[parse_summary_response] Generated summary with {} citations",
+        citations.len()
+    );
+
+    Ok(SourceGroundedSummary {
+        summary: parsed.summary,
+        citations,
     })
 }
 

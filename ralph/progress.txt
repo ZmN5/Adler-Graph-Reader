@@ -125,3 +125,29 @@ Started: 2026-03-31 23:12
   - LM Studio completions API返回结构与chat/completions相同
 ---
 
+## 2026-04-01 10:00 - US-008
+- 实现了HybridRetriever主流程，整合完整的检索pipeline
+- 文件变更: `backend/src/retrieval.rs` (修改)
+- 实现内容:
+  - `NodeInfo`结构体: 节点基本信息(id, book_id, name, description)
+  - `RetrievalOutput`结构体: 最终输出格式(包含chunk内容、页码、所有分数)
+  - `HybridRetriever`结构体: 包含pool和llm_api_url
+  - `HybridRetriever::new()`: 创建实例
+  - `retrieve_for_node()`: 主检索流程，7步pipeline
+    1. 获取节点信息
+    2. 向量搜索(vector_search_with_query)
+    3. BM25搜索(bm25_search)
+    4. RRF融合(reciprocal_rank_fusion)
+    5. Rerank重排序(调用LM Studio API)
+    6. 存储结果到node_chunk_ranks表
+    7. 构建并返回RetrievalOutput
+  - `store_results()`: 先删除旧结果，再插入新结果，使用UNIQUE约束防止重复
+  - `build_retrieval_outputs()`: 获取完整chunk数据并构建输出
+- **Learnings for future iterations:**
+  - HybridRetriever提供了统一的检索接口，简化API端点实现
+  - 结果存储使用DELETE+INSERT模式，避免重复数据
+  - 使用fused_results.clone()解决rerank时的所有权问题
+  - 通过take(top_k)在多个阶段控制返回数量，减少数据处理
+  - 日志记录贯穿整个pipeline，便于调试和性能分析
+---
+
