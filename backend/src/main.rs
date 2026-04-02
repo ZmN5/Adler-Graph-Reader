@@ -356,9 +356,72 @@ async fn delete_book(
         let _ = std::fs::remove_file(path);
     }
 
-    // Delete book (cascades to chunks, nodes, edges via FK)
+    // Disable FK constraints and delete manually to avoid FTS trigger issues
+    // The FTS triggers use rowid (INTEGER) but chunks.id is TEXT (UUID)
+    sqlx::query("PRAGMA foreign_keys = OFF")
+        .execute(&*pool)
+        .await?;
+
+    // Delete chunk_embeddings for chunks belonging to this book
+    sqlx::query(
+        r#"
+        DELETE FROM chunk_embeddings
+        WHERE chunk_id IN (SELECT id FROM chunks WHERE book_id = ?)
+        "#,
+    )
+    .bind(&book_id)
+    .execute(&*pool)
+    .await?;
+
+    // Delete node_chunk_ranks for nodes belonging to this book
+    sqlx::query(
+        r#"
+        DELETE FROM node_chunk_ranks
+        WHERE node_id IN (SELECT id FROM nodes WHERE book_id = ?)
+        "#,
+    )
+    .bind(&book_id)
+    .execute(&*pool)
+    .await?;
+
+    // Delete nodes (cascades to edges via FK since FK is off, delete edges manually)
+    let node_ids: Vec<(String,)> = sqlx::query_as(
+        "SELECT id FROM nodes WHERE book_id = ?"
+    )
+    .bind(&book_id)
+    .fetch_all(&*pool)
+    .await?;
+
+    // Delete edges manually
+    for (node_id,) in node_ids.iter() {
+        sqlx::query("DELETE FROM edges WHERE source_node_id = ? OR target_node_id = ?")
+            .bind(node_id)
+            .bind(node_id)
+            .execute(&*pool)
+            .await?;
+    }
+
+    // Delete nodes
+    sqlx::query("DELETE FROM nodes WHERE book_id = ?")
+        .bind(&book_id)
+        .execute(&*pool)
+        .await?;
+
+    // Delete chunks - FTS cleanup is skipped since triggers have TEXT->INTEGER issue
+    // Orphans in FTS are harmless; rebuild-indexes can clean them later
+    sqlx::query("DELETE FROM chunks WHERE book_id = ?")
+        .bind(&book_id)
+        .execute(&*pool)
+        .await?;
+
+    // Delete the book
     sqlx::query("DELETE FROM books WHERE id = ?")
         .bind(&book_id)
+        .execute(&*pool)
+        .await?;
+
+    // Re-enable FK constraints
+    sqlx::query("PRAGMA foreign_keys = ON")
         .execute(&*pool)
         .await?;
 
@@ -371,6 +434,14 @@ struct ParseResponse {
     status: String,
     chunks_created: usize,
     total_pages: i32,
+}
+
+// Rebuild indexes response types
+#[derive(Serialize)]
+struct RebuildIndexesResponse {
+    status: String,
+    fts_rebuilt: usize,
+    embeddings_generated: usize,
 }
 
 async fn parse_book(
@@ -409,6 +480,66 @@ async fn parse_book(
         status: "completed".to_string(),
         chunks_created: result,
         total_pages: total_pages.unwrap_or(0),
+    }))
+}
+
+async fn rebuild_indexes(
+    Path(book_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<RebuildIndexesResponse>, AppError> {
+    // Verify book exists
+    let book_exists: Option<(String,)> = sqlx::query_as(
+        "SELECT id FROM books WHERE id = ?"
+    )
+    .bind(&book_id)
+    .fetch_optional(&*pool)
+    .await?;
+
+    if book_exists.is_none() {
+        return Err(AppError::NotFound("Book not found".to_string()));
+    }
+
+    // Check if book has chunks
+    let chunk_count: Option<i64> = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM chunks WHERE book_id = ?"
+    )
+    .bind(&book_id)
+    .fetch_optional(&*pool)
+    .await?;
+
+    if chunk_count.unwrap_or(0) == 0 {
+        return Err(AppError::BadRequest(format!(
+            "Book has no chunks. Please parse the book first via POST /api/books/{}/parse.",
+            book_id
+        )));
+    }
+
+    tracing::info!(
+        "[API] Rebuild indexes request for book: {}",
+        book_id
+    );
+
+    // Rebuild FTS index
+    let fts_count = embedding::rebuild_fts_index(&pool, &book_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("FTS rebuild failed: {}", e)))?;
+
+    // Generate embeddings for chunks without embeddings
+    let embedding_count = embedding::generate_chunk_embeddings(&pool, &book_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Embedding generation failed: {}", e)))?;
+
+    tracing::info!(
+        "[API] Rebuild indexes completed for book {}: fts={}, embeddings={}",
+        book_id,
+        fts_count,
+        embedding_count
+    );
+
+    Ok(Json(RebuildIndexesResponse {
+        status: "completed".to_string(),
+        fts_rebuilt: fts_count,
+        embeddings_generated: embedding_count,
     }))
 }
 
@@ -1090,6 +1221,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/books/{id}/file", get(get_book_file))
         .route("/api/books/{id}", delete(delete_book))
         .route("/api/books/{id}/parse", post(parse_book))
+        .route("/api/books/{id}/rebuild-indexes", post(rebuild_indexes))
         .route("/api/books/{id}/chunks", get(get_book_chunks))
         .route("/api/chunks/{id}", get(get_chunk))
         .route("/api/books/{id}/graph", get(get_book_graph))

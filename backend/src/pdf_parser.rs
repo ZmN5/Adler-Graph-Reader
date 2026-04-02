@@ -61,11 +61,22 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
             .bind(book_id)
             .bind(page_num)
             .bind(page_num)
-            .bind(page_text)
+            .bind(&page_text)
             .bind(&created_at)
             .execute(pool)
             .await
             .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+
+            // Insert into FTS table
+            sqlx::query(
+                "INSERT INTO chunks_fts (chunk_id, content) VALUES (?, ?)"
+            )
+            .bind(&chunk_id)
+            .bind(&page_text)
+            .execute(pool)
+            .await
+            .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+
             chunks_created += 1;
         } else {
             // Split page into ~8000 char chunks (~2000 tokens) with overlap
@@ -86,6 +97,17 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
                 .execute(pool)
                 .await
                 .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+
+                // Insert into FTS table
+                sqlx::query(
+                    "INSERT INTO chunks_fts (chunk_id, content) VALUES (?, ?)"
+                )
+                .bind(&chunk_id)
+                .bind(chunk_content)
+                .execute(pool)
+                .await
+                .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+
                 chunks_created += 1;
             }
         }

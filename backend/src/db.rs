@@ -207,57 +207,15 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .await?;
 
     // Create FTS5 virtual table for full-text search
+    // Note: We use content column to store chunk_id instead of content_rowid
+    // because chunks.id is TEXT (UUID) but FTS rowid must be INTEGER
     sqlx::query(
         r#"
         CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+            chunk_id,
             content,
-            content_rowid='id',
             tokenize='porter'
         )
-        "#,
-    )
-    .execute(pool)
-    .await?;
-
-    // Create trigger to sync chunks inserts to chunks_fts
-    sqlx::query(
-        r#"
-        CREATE TRIGGER IF NOT EXISTS chunks_fts_insert
-        AFTER INSERT ON chunks
-        BEGIN
-            INSERT INTO chunks_fts(rowid, content)
-            VALUES (new.id, new.content);
-        END
-        "#,
-    )
-    .execute(pool)
-    .await?;
-
-    // Create trigger to sync chunks deletes to chunks_fts
-    sqlx::query(
-        r#"
-        CREATE TRIGGER IF NOT EXISTS chunks_fts_delete
-        AFTER DELETE ON chunks
-        BEGIN
-            INSERT INTO chunks_fts(chunks_fts, rowid, content)
-            VALUES ('delete', old.id, old.content);
-        END
-        "#,
-    )
-    .execute(pool)
-    .await?;
-
-    // Create trigger to sync chunks updates to chunks_fts
-    sqlx::query(
-        r#"
-        CREATE TRIGGER IF NOT EXISTS chunks_fts_update
-        AFTER UPDATE ON chunks
-        BEGIN
-            INSERT INTO chunks_fts(chunks_fts, rowid, content)
-            VALUES ('delete', old.id, old.content);
-            INSERT INTO chunks_fts(rowid, content)
-            VALUES (new.id, new.content);
-        END
         "#,
     )
     .execute(pool)

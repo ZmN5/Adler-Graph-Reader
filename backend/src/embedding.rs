@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 use std::time::Duration;
 
 /// Default embedding model from LM Studio
-const EMBEDDING_MODEL: &str = "mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ";
+const EMBEDDING_MODEL: &str = "text-embedding-qwen3-embedding-0.6b";
 const EMBEDDING_DIMENSIONS: usize = 1024;
 const BATCH_SIZE: usize = 32;
 const LM_STUDIO_EMBEDDING_URL: &str = "http://localhost:1234/v1/embeddings";
@@ -69,6 +69,88 @@ impl std::fmt::Display for EmbeddingError {
 }
 
 impl std::error::Error for EmbeddingError {}
+
+/// Rebuild FTS5 index for all chunks in a book
+///
+/// This function deletes existing FTS entries for the book and rebuilds them
+/// by inserting all current chunks into the chunks_fts table.
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `book_id` - The book ID to rebuild FTS index for
+///
+/// # Returns
+/// * `Result<usize, EmbeddingError>` - Number of FTS entries created
+pub async fn rebuild_fts_index(
+    pool: &SqlitePool,
+    book_id: &str,
+) -> Result<usize, EmbeddingError> {
+    tracing::info!(
+        "[FTS] Starting FTS index rebuild for book: {}",
+        book_id
+    );
+
+    // Fetch all chunks for this book
+    let chunks: Vec<(String, String)> = sqlx::query_as(
+        r#"
+        SELECT c.id, c.content
+        FROM chunks c
+        WHERE c.book_id = ?
+        ORDER BY c.page_start, c.paragraph_start
+        "#,
+    )
+    .bind(book_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| EmbeddingError::DatabaseError(e.to_string()))?;
+
+    if chunks.is_empty() {
+        tracing::info!("[FTS] No chunks found for book: {}", book_id);
+        return Ok(0);
+    }
+
+    tracing::info!("[FTS] Found {} chunks for book: {}", chunks.len(), book_id);
+
+    // Delete existing FTS entries for chunks in this book by chunk_id
+    for (chunk_id, _content) in &chunks {
+        sqlx::query(
+            r#"
+            DELETE FROM chunks_fts WHERE chunk_id = ?
+            "#,
+        )
+        .bind(chunk_id)
+        .execute(pool)
+        .await
+        .map_err(|e| EmbeddingError::DatabaseError(e.to_string()))?;
+    }
+
+    tracing::info!("[FTS] Deleted existing FTS entries for book: {}", book_id);
+
+    // Insert all chunks into FTS table with chunk_id and content columns
+    let mut count = 0usize;
+    for (chunk_id, content) in &chunks {
+        sqlx::query(
+            r#"
+            INSERT INTO chunks_fts(chunk_id, content)
+            VALUES (?, ?)
+            "#,
+        )
+        .bind(chunk_id)
+        .bind(content)
+        .execute(pool)
+        .await
+        .map_err(|e| EmbeddingError::DatabaseError(e.to_string()))?;
+        count += 1;
+    }
+
+    tracing::info!(
+        "[FTS] Rebuilt FTS index for book: {}. Total entries: {}",
+        book_id,
+        count
+    );
+
+    Ok(count)
+}
 
 /// Call LM Studio embedding API
 ///

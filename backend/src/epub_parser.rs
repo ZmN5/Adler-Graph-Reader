@@ -143,12 +143,23 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
                 .bind(book_id)
                 .bind(chapter)
                 .bind(chapter)
-                .bind(content)
+                .bind(&content)
                 .bind(&chapter_href)
                 .bind(&created_at)
                 .execute(pool)
                 .await
                 .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+
+                // Insert into FTS table
+                sqlx::query(
+                    "INSERT INTO chunks_fts (chunk_id, content) VALUES (?, ?)"
+                )
+                .bind(&chunk_id)
+                .bind(&content)
+                .execute(pool)
+                .await
+                .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+
                 chunks_created += 1;
             } else {
                 // Split chapter into ~16000 char chunks (~4000 tokens) with overlap
@@ -168,6 +179,17 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
                     .execute(pool)
                     .await
                     .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+
+                    // Insert into FTS table
+                    sqlx::query(
+                        "INSERT INTO chunks_fts (chunk_id, content) VALUES (?, ?)"
+                    )
+                    .bind(&chunk_id)
+                    .bind(chunk_content)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+
                     chunks_created += 1;
                 }
             }

@@ -108,7 +108,7 @@ pub async fn bm25_search(
             r#"
             SELECT c.id, bm25(chunks_fts) as score
             FROM chunks c
-            JOIN chunks_fts ON chunks_fts.rowid = c.id
+            JOIN chunks_fts ON chunks_fts.chunk_id = c.id
             WHERE chunks_fts.content MATCH ?
             AND c.book_id = ?
             ORDER BY score ASC
@@ -127,7 +127,7 @@ pub async fn bm25_search(
             r#"
             SELECT c.id, bm25(chunks_fts) as score
             FROM chunks c
-            JOIN chunks_fts ON chunks_fts.rowid = c.id
+            JOIN chunks_fts ON chunks_fts.chunk_id = c.id
             WHERE chunks_fts.content MATCH ?
             ORDER BY score ASC
             LIMIT ?
