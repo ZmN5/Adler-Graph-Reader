@@ -338,7 +338,7 @@ pub async fn extract_concepts_from_book(
     tracing::info!("[{}] Starting concept extraction for book", book_id);
 
     // Get book language configuration from books table
-    // 'auto' defaults to 'zh' for backward compatibility
+    // 'auto' defaults to 'en' for better internationalization
     let book_language: String = sqlx::query_scalar::<_, String>(
         "SELECT language FROM books WHERE id = ?"
     )
@@ -347,10 +347,10 @@ pub async fn extract_concepts_from_book(
     .await
     .map_err(|e| e.to_string())?;
 
-    // Convert 'auto' to default language 'zh', keep 'zh' or 'en' as-is
+    // Convert 'auto' to default language 'en', keep 'zh' or 'en' as-is
     let language = match book_language.as_str() {
-        "en" => "en".to_string(),
-        _ => "zh".to_string(), // 'auto' or 'zh' defaults to Chinese
+        "zh" => "zh".to_string(),
+        _ => "en".to_string(), // 'auto' or 'en' defaults to English
     };
 
     tracing::info!("[{}] Book language: {} (using: {})", book_id, book_language, language);

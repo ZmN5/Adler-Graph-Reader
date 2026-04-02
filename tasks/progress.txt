@@ -129,3 +129,22 @@
   - EPUB uses chapter numbers instead of page numbers for location
   - Component props should be format-agnostic where possible
 ---
+
+## 2026-04-02 - US-002 (Round 2)
+- Completed Round 2 testing with domain-specific-slm.epub
+- Upload: Success (via API, dev-browser sandbox limitation)
+- Parse: Success (50 chunks, 17 pages)
+- Extract: Success (152 nodes, 161 edges)
+- Core Concepts: 15 identified (BERT, GPT, CodeGen, ONNX, Quantization, etc.) - relevant to SLM theme
+- Files changed:
+  - backend/src/extractor.rs (fixed language default from 'zh' to 'en')
+  - problems.md (documented Round 2 issues)
+  - tasks/round-2-report.md (created)
+  - ralph/prd.json (updated US-002 status)
+- **Learnings for future iterations:**
+  - dev-browser sandbox cannot access filesystem - use backend API directly for file uploads
+  - Language defaults to 'auto' which gets converted to 'zh' in extractor.rs - now changed to default to 'en'
+  - Core concept identification may fail silently during extraction - may need manual trigger
+  - Book graph endpoint is `/api/books/{book_id}/graph`, not `/api/graph?book_id=`
+  - Node click in graph canvas may not work - Core Concepts list "View" button is more reliable
+---

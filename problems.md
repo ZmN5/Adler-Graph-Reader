@@ -18,6 +18,32 @@
 
 ---
 
+## Round 2: domain-specific-slm.epub (2026-04-02)
+
+### Problem 1: Language Defaults to Chinese for All Books (Critical)
+- **Severity**: Critical (FIXED)
+- **Description**: All extraction output (descriptions, categories) is in Chinese even for English books. The language setting defaults to "auto" which gets converted to "zh" in extractor.rs.
+- **Status**: FIXED - Changed default from "zh" to "en" in extractor.rs
+- **Root Cause**: In `backend/src/extractor.rs` line 350-351, "auto" language defaulted to "zh" (Chinese) instead of English.
+- **Fix Applied**: Changed the default from "zh" to "en" so English books produce English output.
+- **Impact**: English books like domain-specific-slm.epub were producing Chinese descriptions (e.g., "BERT（Bidirectional Encoder Representation from Transformers）是基于Transformer编码器部分的模型家族...")
+
+### Problem 2: Core Concepts Not Marked After Extraction (High)
+- **Severity**: High (FIXED - but needs verification)
+- **Description**: After extraction completed, 0 out of 152 nodes were marked as core concepts. Core Concepts panel showed "No core concepts yet".
+- **Status**: Fixed by manually triggering POST /api/books/{id}/identify-core-concepts
+- **Root Cause**: The core concept identification may have failed silently during extraction, or there's a race condition.
+- **Verification**: After manual trigger, 15 core concepts were correctly identified using the v2 algorithm (community detection with PageRank).
+- **Note**: This may have been a one-time issue - need to verify in Round 3 if it recurs.
+
+### Problem 3: Node Click in Graph Canvas Not Responding
+- **Severity**: Medium
+- **Description**: Clicking on nodes in the graph canvas doesn't show the node detail panel.
+- **Status**: Open
+- **Notes**: The "View" button in Core Concepts list works, but direct node clicking in the graph canvas doesn't trigger the detail panel.
+
+---
+
 ## Previous Rounds (if any)
 
 _No problems recorded yet._
