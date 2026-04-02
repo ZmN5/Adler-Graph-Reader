@@ -104,7 +104,7 @@ impl LlmClient {
     /// Create a new LLM client connecting to the specified URL
     pub fn new(base_url: &str) -> Self {
         let client = Client::builder()
-            .timeout(Duration::from_secs(60))
+            .timeout(Duration::from_secs(180))
             .build()
             .expect("Failed to create HTTP client");
 
