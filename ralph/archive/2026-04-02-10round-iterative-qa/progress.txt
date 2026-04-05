@@ -1,0 +1,278 @@
+# Ralph Progress Log
+
+Feature: V2 智能检索与核心概念优化
+Started: 2026-03-31 23:12
+
+## Codebase Patterns
+- SQLite 迁移模式：使用 `pragma_table_info` 检查列是否存在，避免 ALTER TABLE 失败
+- FTS5 触发器：需要三个触发器 (insert, delete, update) 保持同步，update 需要先 delete 再 insert
+- 外键约束：所有关联表使用 `ON DELETE CASCADE` 保持数据一致性
+
+## 2026-03-31 23:45 - US-001
+- 实现了数据库迁移，添加智能检索所需的表和列
+- 文件变更: `backend/src/db.rs`
+- **Learnings for future iterations:**
+  - SQLite FTS5 虚拟表使用 `content_rowid` 映射到原始表的主键
+  - FTS5 默认使用 porter tokenizer 进行英文词干提取，中文需要额外配置但先使用默认
+  - 触发器中 update 操作需要分两步：先删除旧记录，再插入新记录
+  - chunk_embeddings.embedding 使用 BLOB 存储 f32 数组的二进制数据
+---
+
+## 2026-04-01 00:15 - US-002
+- 实现了Embedding模块基础功能
+- 文件变更: `backend/src/embedding.rs` (新建), `backend/src/main.rs` (添加模块声明)
+- 实现内容:
+  - `call_embedding_api`: 调用 LM Studio embedding API，使用 Qwen3-Embedding-0.6B-4bit-DWQ 模型
+  - `generate_chunk_embeddings`: 为整本书的chunks生成embeddings
+  - `generate_embeddings_for_chunks`: 为指定chunk IDs生成embeddings
+  - 批处理支持: BATCH_SIZE=32，提高效率
+  - Embedding存储: f32数组转换为二进制blob存储
+- **Learnings for future iterations:**
+  - 使用原始SQL查询而非sqlx宏，避免DATABASE_URL环境变量依赖
+  - f32 to bytes: 使用 `f.to_le_bytes()`，每个f32占4字节
+  - 类型注解很重要：`|f: &f32|` 帮助编译器推断类型
+  - 使用 `sqlx::query_as` 配合元组类型 `(String, String)` 可以简化行映射
+---
+
+## 2026-04-01 01:10 - US-003
+- 解析器集成异步Embedding生成
+- 文件变更: `backend/src/pdf_parser.rs`, `backend/src/epub_parser.rs`
+- 实现内容:
+  - `pdf_parser.rs`: 在 `parse_pdf` 函数末尾添加 `tokio::spawn` 异步任务
+  - `epub_parser.rs`: 在 `parse_epub` 函数末尾添加 `tokio::spawn` 异步任务
+  - 使用 `pool.clone()` 和 `book_id.to_string()` 移动所有权到异步任务
+  - 添加错误日志记录：`tracing::info` 成功，`tracing::error` 失败
+- **Learnings for future iterations:**
+  - `SqlitePool` 是 `Arc` 包装，可以安全地 clone 并移动到异步任务
+  - 字符串需要 `to_string()` 来移动所有权到 `tokio::spawn`
+  - `tokio::spawn` 创建的任务是非阻塞的，upload响应不受影响
+  - 解析器和embedding模块使用 `crate::embedding` 导入
+---
+
+## 2026-04-01 08:00 - US-005
+- 实现了向量相似度搜索的完整功能
+- 文件变更: `backend/src/retrieval.rs`
+- 实现内容:
+  - `vector_search`: 已存在的函数，从数据库加载embeddings并计算余弦相似度
+  - `vector_search_with_query`: 新增函数，接受文本查询，自动生成embedding后搜索
+  - `generate_query_embedding`: 新增辅助函数，调用LM Studio API生成查询embedding
+  - 导入`call_embedding_api`从embedding模块
+- **Learnings for future iterations:**
+  - 提供两个API: `vector_search`(原始embedding)和`vector_search_with_query`(文本查询)
+  - 使用`call_embedding_api`时需要将单个字符串包装成Vec
+  - FTS5查询转义需要处理单引号，不仅是空格
+  - 修复了`escape_fts5_query`函数: 现在也检查单引号并包裹双引号
+---
+
+- 实现了BM25搜索功能
+- 文件变更: `backend/src/retrieval.rs` (新建), `backend/src/main.rs` (添加模块声明)
+- 实现内容:
+  - `bm25_search`: 使用SQLite FTS5 BM25排名进行全文搜索
+  - `escape_fts5_query`: 转义FTS5特殊字符防止查询语法错误
+  - `SearchResult`/`FusedResult`/`RetrievalResult` 结构体定义
+  - `RetrievalError` 错误枚举定义
+  - 额外实现(为后续US-005/US-006做准备):
+    - `vector_search`: 向量相似度搜索
+    - `reciprocal_rank_fusion`: RRF融合算法
+    - `cosine_similarity`: 余弦相似度计算
+    - `bytes_to_f32_vec`: 二进制blob转f32向量
+  - 单元测试覆盖所有核心功能
+- **Learnings for future iterations:**
+  - BM25返回的分数越低表示匹配度越高，需要取负值与其他评分方法保持一致(越高越好)
+  - FTS5查询需要转义双引号，多词查询需要用双引号包裹进行短语匹配
+  - 使用 `sqlx::query_as` 配合元组类型 `(String, f64)` 可以简化行映射
+  - RRF公式: score = sum(1/(k + rank))，k=60是常用默认值
+  - 余弦相似度计算时注意处理零向量情况
+---
+
+## 2026-04-01 08:30 - US-006
+- 实现了RRF融合算法
+- 文件变更: `backend/src/retrieval.rs` (已存在)
+- 实现内容:
+  - `reciprocal_rank_fusion`: RRF融合核心算法，k=60默认参数
+  - RRF公式: score = sum(1/(k + rank))，合并vector和BM25结果
+  - 处理只在单个结果列表中出现的chunk
+  - 按RRF分数降序排序
+  - `FusedResult`结构包含chunk_id、rrf_score、vector_score、bm25_score
+  - `fused_to_retrieval_results`: 转换为RetrievalResult
+  - 单元测试`test_rrf_fusion`验证算法正确性
+- **Learnings for future iterations:**
+  - RRF算法简单但有效，不需要调参，k=60是业界常用值
+  - 使用HashMap构建rank查找表，时间复杂度O(n)
+  - 注意chunk_id使用&str作为key避免clone开销
+  - 结果同时保留原始分数(vector_score/bm25_score)便于调试和后续rerank
+---
+
+## 2026-04-01 09:30 - US-007
+- 实现了Reranker重排序功能
+- 文件变更: `backend/src/retrieval.rs` (修改)
+- 实现内容:
+  - `RerankResult`结构体: 包含chunk_id、rerank_score、vector_score、bm25_score、rrf_score
+  - `rerank`函数: 主入口，处理top 20候选
+  - `build_reranker_prompt`: 构建reranker prompt，包含query和passages
+  - `call_reranker_api`: 调用LM Studio completions API
+  - `parse_reranker_response`: 解析JSON响应，返回RerankResult列表
+  - `extract_json`: 从响应中提取JSON数组或对象
+  - 使用`RERANKER_MODEL = "qwen3.5-9b"`进行重排序
+  - 温度设置为0.1保证一致性
+  - 添加6个新单元测试覆盖rerank功能
+- **Learnings for future iterations:**
+  - Reranker prompt需要清晰的JSON格式说明，避免LLM返回markdown代码块
+  - 候选passage限制在500字符避免prompt过长
+  - 需要转义内容中的```避免破坏prompt结构
+  - JSON解析使用index字段(1-based)映射回candidates
+  - 分数范围限制在0.0-1.0使用clamp函数
+  - LM Studio completions API返回结构与chat/completions相同
+---
+
+## 2026-04-01 14:30 - US-014
+- 实现了Core Concepts改进 - 社区发现算法
+- 文件变更: `backend/Cargo.toml`, `backend/src/core_concept.rs`
+- **实现内容:**
+  - 添加petgraph和byteorder依赖
+  - 新增NodeInfo结构体用于图构建
+  - build_node_chunk_graph: 构建节点-分片二部图
+  - detect_communities: 简化的Louvain-like社区发现算法
+  - calculate_community_centrality: 计算社区内中心性
+  - calculate_coverage_density: 计算分片覆盖密度
+  - calculate_enhanced_scores: 综合评分(30% PageRank + 30% 社区中心性 + 20% 覆盖密度 + 20% 频率)
+  - identify_core_concepts_v2: 新的核心概念识别函数
+  - 更新identify_core_concepts以委托给v2实现
+- **Learnings for future iterations:**
+  - petgraph的UnGraph用于无向图构建
+  - 社区发现采用贪心迭代策略，10次迭代通常足够
+  - 中心性计算 = 社区内连接数 / (社区大小 - 1)
+  - 使用tokio::spawn异步执行embedding生成，不阻塞上传响应
+---
+- 实现了HybridRetriever主流程，整合完整的检索pipeline
+- 文件变更: `backend/src/retrieval.rs` (修改)
+- 实现内容:
+  - `NodeInfo`结构体: 节点基本信息(id, book_id, name, description)
+  - `RetrievalOutput`结构体: 最终输出格式(包含chunk内容、页码、所有分数)
+  - `HybridRetriever`结构体: 包含pool和llm_api_url
+  - `HybridRetriever::new()`: 创建实例
+  - `retrieve_for_node()`: 主检索流程，7步pipeline
+    1. 获取节点信息
+    2. 向量搜索(vector_search_with_query)
+    3. BM25搜索(bm25_search)
+    4. RRF融合(reciprocal_rank_fusion)
+    5. Rerank重排序(调用LM Studio API)
+    6. 存储结果到node_chunk_ranks表
+    7. 构建并返回RetrievalOutput
+  - `store_results()`: 先删除旧结果，再插入新结果，使用UNIQUE约束防止重复
+  - `build_retrieval_outputs()`: 获取完整chunk数据并构建输出
+- **Learnings for future iterations:**
+  - HybridRetriever提供了统一的检索接口，简化API端点实现
+  - 结果存储使用DELETE+INSERT模式，避免重复数据
+  - 使用fused_results.clone()解决rerank时的所有权问题
+  - 通过take(top_k)在多个阶段控制返回数量，减少数据处理
+  - 日志记录贯穿整个pipeline，便于调试和性能分析
+## 2026-04-01 12:00 - US-012
+- 实现了NodeDetailPanel Source-Grounded总结UI
+- 文件变更: `frontend/src/components/NodeDetailPanel.tsx`
+- **实现内容:**
+  - 添加useEffect逻辑：在节点选择时自动调用getNodeSummary和getNodeRetrieval
+  - 新增状态管理：summary, summaryLoading, summaryError, retrievalResults, showRetrievalDetails
+  - 加载状态：显示"正在分析相关段落..."和旋转动画
+  - 错误处理：显示错误消息和重试按钮，支持手动重试
+  - renderSummaryWithCitations：解析[Source: X]标记并渲染为可点击按钮
+  - 引用列表：显示来源详情，包括页码和摘录预览
+  - 检索结果面板：可折叠显示top 10 chunks，包含所有评分
+  - 点击引用跳转到原文：复用handleCitationClick回调
+- **Learnings for future iterations:**
+  - 使用正则`/\[Source:\s*\d+\]/`匹配引用标记
+  - 使用line-clamp-2/3限制文本长度，保持UI整洁
+  - 可折叠section使用Chevron图标和条件渲染
+  - 分数显示使用不同颜色区分：绿色=综合，蓝色=向量，橙色=BM25
+  - 异步错误处理需要单独try-catch，避免影响其他数据加载
+---
+
+## 2026-04-01 12:30 - US-013
+- 实现了NodeDetailPanel检索结果展示优化
+- 文件变更: `frontend/src/components/NodeDetailPanel.tsx`
+- **实现内容:**
+  - 添加sortedRetrievalChunks计算属性，使用`[...chunks].sort((a, b) => b.final_score - a.final_score)`确保按final_score降序排序
+  - 优化内容预览显示：使用line-clamp-3替代手动slice，更优雅地限制文本长度
+  - 显示所有分数：final_score(绿色-综合)、vector_score(蓝色-向量)、bm25_score(橙色-BM25)
+  - 可折叠的检索详情区域，显示"{count} 个相关段落"
+  - chunks可点击，调用handleCitationClick跳转到原文位置
+- **Learnings for future iterations:**
+  - 前端排序使用展开运算符`[...array]`创建副本，避免修改原数组
+  - line-clamp-3需要Tailwind的line-clamp插件或原生支持
+  - flex-wrap配合gap可以优雅地处理多行标签布局
+  - 后端已按final_score排序，但前端显式排序确保符合验收标准
+---
+
+- 实现了前端API集成，添加检索和总结API函数
+- 文件变更: `frontend/src/lib/api-client.ts` (修改)
+- 实现内容:
+  - `RetrievalResult` 接口: 包含chunk_id, content, page_start/end, vector_score, bm25_score, rrf_score, final_score
+  - `RetrievalResponse` 接口: 包含chunks数组和total_found计数
+  - `Citation` 接口: 包含index, chunk_id, page_start/end, excerpt
+  - `SourceItem` 接口: 包含index, chunk_id, page_start/end, content
+  - `SummaryResponse` 接口: 包含summary, citations数组, sources数组
+  - `getNodeRetrieval(nodeId, topK)`: 调用GET /api/nodes/{id}/retrieval?top_k={n}
+  - `getNodeSummary(nodeId)`: 调用GET /api/nodes/{id}/summary
+- 错误处理: 复用现有的ApiError和handleResponse机制
+- **Learnings for future iterations:**
+  - 前端API client使用统一的apiGet/apiPost函数，自动处理错误
+  - 类型定义需要与后端返回类型保持一致
+  - 使用接口而非类型别名，便于后续扩展
+  - 查询参数通过模板字符串拼接，topK默认为10与后端一致
+---
+
+
+- 实现了API端点 - 检索和总结
+- 文件变更: `backend/src/main.rs` (修改)
+- 实现内容:
+  - `GET /api/nodes/{id}/retrieval?top_k={n}`: 使用HybridRetriever获取节点相关chunks
+  - `GET /api/nodes/{id}/summary`: 生成带引用的source-grounded summary
+  - `node_retrieval` handler: 创建HybridRetriever实例，调用retrieve_for_node，返回RetrievalResponse
+  - `node_summary` handler: 获取节点信息，调用检索，使用LlmClient生成summary
+  - 新增响应类型: RetrievalResponse, RetrievalResultItem, SummaryResponse, CitationItem, SourceItem
+  - 从retrieval和llm_client模块导入所需类型
+- **Learnings for future iterations:**
+  - HybridRetriever和LlmClient需要pool和llm_api_url来创建实例
+  - SourceGroundedSummaryRequest需要node_name, node_description和retrieval_results
+  - 使用HashMap来解析query参数中的top_k
+  - 注意llm_client::RetrievalResult和retrieval模块的RetrievalOutput是不同的类型
+  - AppError::Sqlx用于数据库错误，不是AppError::DatabaseError
+---
+
+
+- 实现了Source-Grounded总结功能，扩展了LLM Client
+- 文件变更: `backend/src/llm_client.rs` (修改), `backend/Cargo.toml` (添加regex依赖)
+- **实现内容:**
+  - `RetrievalResult`: 简化版检索结果结构，供summary使用
+  - `Citation`: 引用结构，包含index、chunk_id、page_start/end、excerpt
+  - `SourceGroundedSummary`: 最终结果，包含summary和citations列表
+  - `SourceGroundedSummaryRequest`: 请求结构，包含node信息和检索结果
+  - `generate_source_grounded_summary`: 主方法，生成带引用的总结
+  - `build_summary_prompt`: NotebookLM风格的prompt，包含多个source materials
+  - `parse_summary_response`: 解析LLM JSON响应，提取summary和citations
+- **Learnings for future iterations:**
+  - Prompt设计采用NotebookLM风格：列出Source Materials，要求LLM综合并引用
+  - 使用`[Source: X]`格式作为citation marker，便于前端解析和渲染
+  - Regex `\[Source:\s*(\d+)\]` 用于从文本中提取引用标记
+  - 两种citation来源：LLM返回的JSON citations数组 + 从summary文本解析的标记
+  - Excerpt取content前200字符，避免存储过大内容
+  - regex crate已添加到Cargo.toml，后续可用
+---
+
+## 2026-04-01 14:45 - US-015
+- 实现了LMS运维脚本
+- 文件变更: `scripts/service.sh` (修改), `CLAUDE.md` (更新文档)
+- **实现内容:**
+  - check_lms_cli: 检查lms CLI是否可用，提供安装指导
+  - check_models: 检查embedding模型和reranker模型是否已下载
+  - start_models: 自动加载所需模型
+  - 更新help文档，添加check-models和start-models命令说明
+  - 在CLAUDE.md中添加LMS CLI安装指南和手动命令文档
+- **Learnings for future iterations:**
+  - lms CLI需要单独安装，可通过LM Studio设置界面或手动创建symlink
+  - lms models list --json 可以获取模型列表，配合grep检查特定模型
+  - lms server status 检查服务器状态，lms server start 启动服务器
+  - 错误处理很重要：CLI未安装、服务器未运行、模型未下载都需要友好提示
+  - 使用ANSI颜色代码增强输出可读性 (\\033[0;32m绿色成功, \\033[0;31m红色错误)
+---
+
