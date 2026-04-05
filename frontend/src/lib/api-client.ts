@@ -321,7 +321,19 @@ export function getNodeSummaryStream(
         try {
           while (true) {
             const { done, value } = await reader!.read()
-            if (done) break
+            if (done) {
+              // Process remaining buffer after stream ends
+              if (buffer.startsWith('data: ')) {
+                const data = buffer.slice(6)
+                try {
+                  const chunk: StreamChunk = JSON.parse(data)
+                  yield chunk
+                } catch (e) {
+                  console.error('Failed to parse final SSE data:', data)
+                }
+              }
+              break
+            }
 
             buffer += decoder.decode(value, { stream: true })
             const lines = buffer.split('\n')
