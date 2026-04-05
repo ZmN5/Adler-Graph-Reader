@@ -19,7 +19,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use axum::response::sse::{Sse, Event as SseEvent};
+use axum::response::sse::{Sse, Event as SseEvent, KeepAlive};
 use futures::{stream, StreamExt};
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
@@ -1310,7 +1310,7 @@ async fn node_summary(
 async fn node_summary_stream(
     Path(node_id): Path<String>,
     pool: axum::extract::State<SqlitePool>,
-) -> Result<Sse<impl stream::Stream<Item = Result<SseEvent, std::convert::Infallible>>>, AppError> {
+) -> Result<impl axum::response::IntoResponse, AppError> {
     tracing::info!("[API] Node summary stream request: node_id={}", node_id);
 
     // Get node information from database
@@ -1415,7 +1415,7 @@ async fn node_summary_stream(
                         "type": "content",
                         "text": token
                     });
-                    yield Ok(SseEvent::default().data(content_chunk.to_string()));
+                    yield Ok::<_, std::convert::Infallible>(SseEvent::default().data(content_chunk.to_string()));
                 }
                 Err(e) => {
                     let error_chunk = serde_json::json!({
@@ -1461,7 +1461,9 @@ async fn node_summary_stream(
         yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
     };
 
-    Ok(Sse::new(stream))
+    Ok(Sse::new(stream)
+        .keep_alive(KeepAlive::default())
+        .into_response())
 }
 
 /// Parse citations from the summary text by extracting [Source: X] patterns

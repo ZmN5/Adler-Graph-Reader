@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { cn } from '@/lib/utils'
 import {
   GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph,
@@ -112,9 +113,9 @@ export function NodeDetailPanel({
             // Skip if node changed or effect was cleaned up
             if (cancelled || currentNodeIdRef.current !== currentNodeId) break
             if (chunk.type === 'content' && chunk.text) {
-              setStreamingText(prev => prev + chunk.text)
-              // Yield to event loop to allow React to re-render between chunks
-              await new Promise(resolve => setTimeout(resolve, 0))
+              flushSync(() => {
+                setStreamingText(prev => prev + chunk.text)
+              })
             } else if (chunk.type === 'citation' && chunk.index !== undefined) {
               const citation: Citation = {
                 index: chunk.index,
@@ -123,9 +124,9 @@ export function NodeDetailPanel({
                 page_end: chunk.page_end || 0,
                 excerpt: chunk.excerpt || ''
               }
-              setStreamingCitations(prev => [...prev, citation])
-              // Yield to event loop to allow React to re-render between chunks
-              await new Promise(resolve => setTimeout(resolve, 0))
+              flushSync(() => {
+                setStreamingCitations(prev => [...prev, citation])
+              })
             } else if (chunk.type === 'done' || chunk.type === 'error') {
               break
             }
