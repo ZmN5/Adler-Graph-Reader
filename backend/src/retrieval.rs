@@ -901,7 +901,7 @@ impl HybridRetriever {
             bm25_results.len(),
             RRF_K
         );
-        let fused_results = reciprocal_rank_fusion(&vector_results, &bm25_results, Some(RRF_K));
+        let fused_results: Vec<_> = reciprocal_rank_fusion(&vector_results, &bm25_results, Some(RRF_K)).into_iter().take(5).collect();
         tracing::info!(
             "[RRF Fusion] OUTPUT: {} fused results, top 5: {:?}",
             fused_results.len(),
