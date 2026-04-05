@@ -214,7 +214,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
         CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
             chunk_id,
             content,
-            tokenize='porter'
+            tokenize='unicode61 remove_diacritics 1'
         )
         "#,
     )

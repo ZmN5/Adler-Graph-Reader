@@ -73,13 +73,14 @@ async fn create_node_for_concept(
 
     sqlx::query(
         r#"
-        INSERT INTO nodes (id, book_id, name, description, examples, source_chunk_ids, language, category, is_core, page_number, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO nodes (id, book_id, name, native_term, description, examples, source_chunk_ids, language, category, is_core, page_number, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(&node_id)
     .bind(book_id)
     .bind(&concept.name)
+    .bind(&concept.native_term)
     .bind(&concept.description)
     .bind(&examples_json)
     .bind(&source_chunk_ids_json)
