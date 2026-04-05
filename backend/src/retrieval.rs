@@ -14,7 +14,7 @@ const RERANK_TOP_K: usize = 20;
 /// LM Studio completions API URL
 const LM_STUDIO_COMPLETIONS_URL: &str = "http://localhost:1234/v1/chat/completions";
 /// Reranker model
-const RERANKER_MODEL: &str = "qwen3.5-9b";
+const RERANKER_MODEL: &str = "qwen3-reranker-0.6b";
 
 /// Search result from a single retrieval method
 #[derive(Debug, Clone)]
@@ -96,10 +96,11 @@ pub async fn bm25_search(
     let escaped_query = escape_fts5_query(query);
 
     tracing::info!(
-        "[BM25 Search] Query: '{}', Book: {:?}, TopK: {}",
+        "[BM25 Search] Query: '{}', Book: {:?}, TopK: {}, Escaped: '{}'",
         query,
         book_id,
-        top_k
+        top_k,
+        escaped_query
     );
 
     let results: Vec<(String, f64)> = if let Some(bid) = book_id {
@@ -474,13 +475,19 @@ pub async fn rerank(
     tracing::info!(
         "[Rerank] Reranking {} candidates for query: '{}'",
         candidates_to_rerank.len(),
-        query
+        query.chars().take(100).collect::<String>()
     );
 
     // Build reranker prompt
     let prompt = build_reranker_prompt(query, &candidates_to_rerank, passages);
+    tracing::debug!(
+        "[Rerank] Prompt length: {} chars, first 500 chars: '{}...'",
+        prompt.len(),
+        prompt.chars().take(500).collect::<String>()
+    );
 
     // Call LM Studio API
+    tracing::info!("[Rerank] Calling reranker API with model: {}", RERANKER_MODEL);
     let reranked = call_reranker_api(&prompt, &candidates_to_rerank).await?;
 
     tracing::info!(
@@ -631,13 +638,19 @@ async fn call_reranker_api(
         .map(|c| c.message.content.clone())
         .ok_or_else(|| RetrievalError::ApiError("Empty response from LLM".to_string()))?;
 
-    tracing::debug!("[Rerank] Raw response: {}", content);
+    tracing::info!(
+        "[Rerank] Raw response (first 500 chars): '{}...'",
+        content.chars().take(500).collect::<String>()
+    );
 
     // Parse the JSON response
     parse_reranker_response(&content, candidates)
 }
 
 /// Parse reranker response into RerankResult structs
+/// Supports two formats:
+/// 1. Standard: [{"index": 1, "score": 0.95}, ...] (1-based index)
+/// 2. Simple array: [0, 3, 1, ...] (0-based index, score derived from position)
 fn parse_reranker_response(
     content: &str,
     candidates: &[FusedResult],
@@ -645,14 +658,21 @@ fn parse_reranker_response(
     // Extract JSON from response
     let json_str = extract_json(content)?;
 
+    // Try parsing as simple array first [0, 3, 1, ...]
+    if let Ok(indices) = serde_json::from_str::<Vec<usize>>(json_str) {
+        tracing::debug!("[Rerank] Parsed as simple array format with {} items", indices.len());
+        return parse_simple_array_response(&indices, candidates);
+    }
+
+    // Try parsing as standard format [{"index": 1, "score": 0.95}, ...]
     let ranked_items: Vec<RerankerResponseItem> = serde_json::from_str(json_str)
         .map_err(|e| RetrievalError::RerankError(format!("Failed to parse JSON: {}", e)))?;
 
-    // Build result lookup map
+    // Build result lookup map (1-based index)
     let candidate_map: HashMap<usize, &FusedResult> = candidates
         .iter()
         .enumerate()
-        .map(|(idx, c)| (idx + 1, c)) // 1-based index
+        .map(|(idx, c)| (idx + 1, c))
         .collect();
 
     // Build reranked results
@@ -675,6 +695,55 @@ fn parse_reranker_response(
             .partial_cmp(&a.rerank_score)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
+
+    Ok(reranked)
+}
+
+/// Parse simple array format [0, 3, 1, ...] where values are 0-based indices
+/// Score is derived from position: 1st item gets 1.0, 2nd gets 0.95, etc.
+fn parse_simple_array_response(
+    indices: &[usize],
+    candidates: &[FusedResult],
+) -> Result<Vec<RerankResult>, RetrievalError> {
+    // Build lookup map (0-based index)
+    let candidate_map: HashMap<usize, &FusedResult> = candidates
+        .iter()
+        .enumerate()
+        .map(|(idx, c)| (idx, c))
+        .collect();
+
+    let total = indices.len();
+
+    // Build reranked results with position-based scores
+    let mut reranked: Vec<RerankResult> = indices
+        .iter()
+        .enumerate()
+        .filter_map(|(position, &idx)| {
+            // Score based on position: 1st place = 1.0, 2nd = 1.0 - 0.05, etc.
+            let score = if total > 1 {
+                1.0 - (position as f64 * 0.05).min(0.9)
+            } else {
+                1.0
+            };
+
+            candidate_map.get(&idx).map(|candidate| RerankResult {
+                chunk_id: candidate.chunk_id.clone(),
+                rerank_score: score,
+                vector_score: candidate.vector_score,
+                bm25_score: candidate.bm25_score,
+                rrf_score: Some(candidate.rrf_score),
+            })
+        })
+        .collect();
+
+    // Sort by rerank score descending
+    reranked.sort_by(|a, b| {
+        b.rerank_score
+            .partial_cmp(&a.rerank_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    tracing::info!("[Rerank] Simple array parsed into {} reranked results", reranked.len());
 
     Ok(reranked)
 }
@@ -710,6 +779,7 @@ pub struct NodeInfo {
     pub id: String,
     pub book_id: Option<String>,
     pub name: String,
+    pub native_term: Option<String>, // Original term from source text, used for retrieval
     pub description: Option<String>,
 }
 
@@ -755,76 +825,124 @@ impl HybridRetriever {
         let top_k = top_k.unwrap_or(10);
 
         tracing::info!(
-            "[HybridRetriever] Starting retrieval for node: {}, top_k: {}",
+            "[========== RETRIEVAL PIPELINE START ==========]"
+        );
+        tracing::info!(
+            "[HybridRetriever] Node: {}, top_k: {}",
             node_id,
             top_k
         );
 
         // Step 1: Get node information
         let node_info = self.get_node_info(node_id).await?;
-
-        // Build query from node name and description
-        let query = if let Some(desc) = &node_info.description {
-            format!("{} {}", node_info.name, desc)
-        } else {
-            node_info.name.clone()
-        };
-
         tracing::info!(
-            "[HybridRetriever] Query built from node: '{}'",
-            query.chars().take(100).collect::<String>()
+            "[Step 1: NodeInfo] name='{}', native_term='{:?}', book_id='{:?}'",
+            node_info.name,
+            node_info.native_term.as_ref().map(|s| s.chars().take(50).collect::<String>()),
+            node_info.book_id
         );
 
-        // Step 2: Vector search (async)
-        let vector_results = self.perform_vector_search(&query, node_info.book_id.as_deref()).await?;
-
-        // Step 3: BM25 search
-        let bm25_results = self.perform_bm25_search(&query, node_info.book_id.as_deref()).await?;
+        // Build query from native_term (preferred) or name as fallback
+        // native_term preserves the original term from source text for better BM25 matching
+        let query = node_info.native_term.clone().unwrap_or(node_info.name.clone());
 
         tracing::info!(
-            "[HybridRetriever] Vector results: {}, BM25 results: {}",
+            "[Step 1: Query] Built query: '{}' (len={})",
+            query.chars().take(100).collect::<String>(),
+            query.len()
+        );
+
+        // Step 2: Vector search
+        tracing::info!("[========== VECTOR SEARCH ==========]");
+        tracing::info!("[Vector Search] INPUT: query='{}', book_id='{:?}'", query, node_info.book_id);
+        let vector_results = self.perform_vector_search(&query, node_info.book_id.as_deref()).await?;
+        tracing::info!(
+            "[Vector Search] OUTPUT: {} results, top 5 scores: {:?}",
             vector_results.len(),
-            bm25_results.len()
+            vector_results.iter().take(5).map(|r| (r.chunk_id.chars().take(8).collect::<String>(), r.score)).collect::<Vec<_>>()
+        );
+
+        // Step 3: BM25 search
+        tracing::info!("[========== BM25 SEARCH ==========]");
+        tracing::info!("[BM25 Search] INPUT: query='{}', book_id='{:?}'", query, node_info.book_id);
+        let bm25_results = self.perform_bm25_search(&query, node_info.book_id.as_deref()).await?;
+        tracing::info!(
+            "[BM25 Search] OUTPUT: {} results, top 5 scores: {:?}",
+            bm25_results.len(),
+            bm25_results.iter().take(5).map(|r| (r.chunk_id.chars().take(8).collect::<String>(), r.score)).collect::<Vec<_>>()
         );
 
         // Step 4: RRF fusion
+        tracing::info!("[========== RRF FUSION ==========]");
+        tracing::info!(
+            "[RRF Fusion] INPUT: vector_count={}, bm25_count={}, RRF_K={}",
+            vector_results.len(),
+            bm25_results.len(),
+            RRF_K
+        );
         let fused_results = reciprocal_rank_fusion(&vector_results, &bm25_results, Some(RRF_K));
+        tracing::info!(
+            "[RRF Fusion] OUTPUT: {} fused results, top 5: {:?}",
+            fused_results.len(),
+            fused_results.iter().take(5).map(|r| (r.chunk_id.chars().take(8).collect::<String>(), r.rrf_score)).collect::<Vec<_>>()
+        );
 
         if fused_results.is_empty() {
             tracing::warn!("[HybridRetriever] No fused results found");
             return Ok(Vec::new());
         }
 
-        // Step 5: Rerank (if we have candidates)
+        // Step 5: Rerank
+        tracing::info!("[========== RERANK ==========]");
+        tracing::info!(
+            "[Rerank] INPUT: {} candidates to rerank (top {}), query='{}'",
+            fused_results.len(),
+            RERANK_TOP_K,
+            query.chars().take(50).collect::<String>()
+        );
         let reranked_results = if !fused_results.is_empty() {
             // Fetch passages for reranking
             let passages = self.fetch_chunk_contents(
                 &fused_results.iter().take(RERANK_TOP_K).map(|f| f.chunk_id.clone()).collect::<Vec<_>>()
             ).await?;
 
+            tracing::info!("[Rerank] Fetched {} passage contents for reranking", passages.len());
+
             rerank(&query, fused_results.clone(), &passages).await?
         } else {
             Vec::new()
         };
-
-        // Convert reranked results to RetrievalResult
-        let final_results: Vec<RetrievalResult> = if reranked_results.is_empty() {
-            fused_to_retrieval_results(fused_results)
-        } else {
-            reranked_to_retrieval_results(reranked_results)
-        };
-
         tracing::info!(
-            "[HybridRetriever] Final results after reranking: {}",
-            final_results.len()
+            "[Rerank] OUTPUT: {} reranked results, top 5: {:?}",
+            reranked_results.len(),
+            reranked_results.iter().take(5).map(|r| (r.chunk_id.chars().take(8).collect::<String>(), r.rerank_score)).collect::<Vec<_>>()
         );
 
-        // Step 6: Store results in node_chunk_ranks table
+        // Step 6: Final results
+        tracing::info!("[========== FINAL RESULTS ==========]");
+        let final_results: Vec<RetrievalResult> = if reranked_results.is_empty() {
+            tracing::info!("[Final] Using RRF results (no reranking)");
+            fused_to_retrieval_results(fused_results)
+        } else {
+            tracing::info!("[Final] Using reranked results");
+            reranked_to_retrieval_results(reranked_results)
+        };
+        tracing::info!(
+            "[Final] {} results, top 5 final_scores: {:?}",
+            final_results.len(),
+            final_results.iter().take(5).map(|r| (r.chunk_id.chars().take(8).collect::<String>(), r.final_score)).collect::<Vec<_>>()
+        );
+
+        // Step 7: Store results
+        tracing::info!("[========== STORE RESULTS ==========]");
         self.store_results(node_id, &final_results).await?;
 
-        // Step 7: Fetch full chunk data and build output
+        // Step 8: Fetch full chunk data and build output
         let outputs = self.build_retrieval_outputs(&final_results[..top_k.min(final_results.len())]).await?;
 
+        tracing::info!(
+            "[========== RETRIEVAL PIPELINE END ==========]"
+        );
         tracing::info!(
             "[HybridRetriever] Retrieved {} chunks for node {}",
             outputs.len(),
@@ -836,8 +954,8 @@ impl HybridRetriever {
 
     /// Get node information from database
     async fn get_node_info(&self, node_id: &str) -> Result<NodeInfo, RetrievalError> {
-        let row: (String, Option<String>, String, Option<String>) = sqlx::query_as(
-            "SELECT id, book_id, name, description FROM nodes WHERE id = ?"
+        let row: (String, Option<String>, String, Option<String>, Option<String>) = sqlx::query_as(
+            "SELECT id, book_id, name, native_term, description FROM nodes WHERE id = ?"
         )
         .bind(node_id)
         .fetch_one(&self.pool)
@@ -848,7 +966,8 @@ impl HybridRetriever {
             id: row.0,
             book_id: row.1,
             name: row.2,
-            description: row.3,
+            native_term: row.3,
+            description: row.4,
         })
     }
 

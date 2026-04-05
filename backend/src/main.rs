@@ -786,6 +786,7 @@ struct NodeDetails {
     id: String,
     book_id: Option<String>,
     name: String,
+    native_term: Option<String>,
     description: String,
     examples: Vec<String>,
     source_chunk_ids: Vec<String>,
@@ -798,27 +799,28 @@ async fn get_node(
     Path(node_id): Path<String>,
     pool: axum::extract::State<SqlitePool>,
 ) -> Result<Json<NodeDetails>, AppError> {
-    let row: (String, Option<String>, String, Option<String>, String, String, String, Option<String>, Option<i32>) = sqlx::query_as(
-        "SELECT id, book_id, name, description, examples, source_chunk_ids, language, category, page_number FROM nodes WHERE id = ?"
+    let row: (String, Option<String>, String, Option<String>, Option<String>, String, String, String, Option<String>, Option<i32>) = sqlx::query_as(
+        "SELECT id, book_id, name, native_term, description, examples, source_chunk_ids, language, category, page_number FROM nodes WHERE id = ?"
     )
     .bind(&node_id)
     .fetch_one(&*pool)
     .await
     .map_err(|_| AppError::NotFound("Node not found".to_string()))?;
 
-    let examples: Vec<String> = serde_json::from_str(&row.4).unwrap_or_default();
-    let source_chunk_ids: Vec<String> = serde_json::from_str(&row.5).unwrap_or_default();
+    let examples: Vec<String> = serde_json::from_str(&row.5).unwrap_or_default();
+    let source_chunk_ids: Vec<String> = serde_json::from_str(&row.6).unwrap_or_default();
 
     Ok(Json(NodeDetails {
         id: row.0,
         book_id: row.1,
         name: row.2,
-        description: row.3.unwrap_or_default(),
+        native_term: row.3,
+        description: row.4.unwrap_or_default(),
         examples,
         source_chunk_ids,
-        language: row.6,
-        category: row.7,
-        page_number: row.8,
+        language: row.7,
+        category: row.8,
+        page_number: row.9,
     }))
 }
 
@@ -873,6 +875,19 @@ async fn extract_book(
             .fetch_one(&*pool)
             .await
             .unwrap_or(0);
+
+            // Auto-rebuild FTS index and generate embeddings after extraction
+            let _fts_count = embedding::rebuild_fts_index(&pool, &book_id)
+                .await
+                .unwrap_or(0);
+            let _embedding_count = embedding::generate_chunk_embeddings(&pool, &book_id)
+                .await
+                .unwrap_or(0);
+
+            tracing::info!(
+                "[extract_book] Auto-built indexes for book {}: fts={}, embeddings={}",
+                book_id, _fts_count, _embedding_count
+            );
 
             Ok(Json(ExtractResponse {
                 status: "completed".to_string(),
@@ -1183,6 +1198,140 @@ async fn node_summary(
     }))
 }
 
+/// Handler for GET /api/nodes/{id}/summary/stream
+/// Returns source-grounded summary as a streaming SSE response (placeholder for future)
+/// Currently falls back to non-streaming response
+async fn node_summary_stream(
+    Path(node_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<SummaryResponse>, AppError> {
+    tracing::info!("[API] Node summary stream request: node_id={}", node_id);
+
+    // Get node information from database
+    let node_row: Option<(String, Option<String>, String, Option<String>)> = sqlx::query_as(
+        "SELECT id, book_id, name, description FROM nodes WHERE id = ?"
+    )
+    .bind(&node_id)
+    .fetch_optional(&*pool)
+    .await
+    .map_err(|e| AppError::Sqlx(e))?;
+
+    let node_info = match node_row {
+        Some(row) => row,
+        None => return Err(AppError::NotFound("Node not found".to_string())),
+    };
+
+    let node_name = node_info.2;
+    let node_description = node_info.3;
+
+    // Create hybrid retriever and get retrieval results
+    let llm_api_url = std::env::var("LLM_API_URL")
+        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
+    let retriever = HybridRetriever::new(pool.0.clone(), llm_api_url.clone());
+
+    // Get retrieval results (top 10 for summary)
+    let retrieval_outputs = retriever
+        .retrieve_for_node(&node_id, Some(10))
+        .await
+        .map_err(|e| AppError::Internal(format!("Retrieval failed: {}", e)))?;
+
+    if retrieval_outputs.is_empty() {
+        return Err(AppError::NotFound("No relevant content found".to_string()));
+    }
+
+    // Convert retrieval outputs to LLM client format
+    let retrieval_results: Vec<llm_client::RetrievalResult> = retrieval_outputs
+        .iter()
+        .map(|r| llm_client::RetrievalResult {
+            chunk_id: r.chunk_id.clone(),
+            content: r.content.clone(),
+            page_start: r.page_start,
+            page_end: r.page_end,
+        })
+        .collect();
+
+    tracing::info!(
+        "[========== SUMMARY GENERATION ==========]"
+    );
+    tracing::info!(
+        "[Summary] INPUT: node_name='{}', description='{:?}'",
+        node_name,
+        node_description.as_ref().map(|s| s.chars().take(50).collect::<String>())
+    );
+    tracing::info!(
+        "[Summary] INPUT: {} retrieval chunks for context",
+        retrieval_results.len()
+    );
+    for (i, r) in retrieval_results.iter().take(3).enumerate() {
+        tracing::debug!(
+            "[Summary] Chunk {}: id='{}', pages={}-{}, content='{}...'",
+            i + 1,
+            r.chunk_id.chars().take(8).collect::<String>(),
+            r.page_start,
+            r.page_end,
+            r.content.chars().take(100).collect::<String>()
+        );
+    }
+
+    // Build summary request
+    let summary_request = SourceGroundedSummaryRequest {
+        node_name: node_name.clone(),
+        node_description: node_description.clone(),
+        retrieval_results,
+    };
+
+    // Generate summary
+    tracing::info!("[Summary] Calling LLM for source-grounded summary...");
+    let llm_client = LlmClient::new(&llm_api_url);
+    let summary_result = llm_client
+        .generate_source_grounded_summary(&summary_request)
+        .await
+        .map_err(|e| AppError::Internal(format!("Summary generation failed: {}", e)))?;
+
+    tracing::info!(
+        "[Summary] OUTPUT: summary length={} chars, {} citations",
+        summary_result.summary.len(),
+        summary_result.citations.len()
+    );
+    tracing::debug!(
+        "[Summary] OUTPUT: summary preview='{}...'",
+        summary_result.summary.chars().take(200).collect::<String>()
+    );
+
+    let citations: Vec<CitationItem> = summary_result
+        .citations
+        .iter()
+        .map(|c| CitationItem {
+            index: c.index,
+            chunk_id: c.chunk_id.clone(),
+            page_start: c.page_start,
+            page_end: c.page_end,
+            excerpt: c.excerpt.clone(),
+        })
+        .collect();
+
+    tracing::info!(
+        "[API] Node summary completed: node_id={}, citations={}",
+        node_id,
+        citations.len()
+    );
+
+    Ok(Json(SummaryResponse {
+        summary: summary_result.summary,
+        citations,
+        sources: retrieval_outputs
+            .iter()
+            .enumerate()
+            .map(|(idx, r)| SourceItem {
+                index: idx + 1,
+                page_start: r.page_start,
+                page_end: r.page_end,
+                excerpt: r.content.chars().take(200).collect(),
+            })
+            .collect(),
+    }))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Filter out pdf-extract glyph warnings (they're informational, not errors)
@@ -1229,6 +1378,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/nodes/{id}", get(get_node))
         .route("/api/nodes/{id}/retrieval", get(node_retrieval))
         .route("/api/nodes/{id}/summary", get(node_summary))
+        .route("/api/nodes/{id}/summary/stream", get(node_summary_stream))
         .route("/api/books/{id}/extract", post(extract_book))
         .route("/api/books/{id}/core-concepts", get(get_core_concepts))
         .route("/api/books/{id}/identify-core-concepts", post(identify_core_concepts))

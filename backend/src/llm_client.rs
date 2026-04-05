@@ -30,6 +30,8 @@ struct ChatRequest {
     model: String,
     messages: Vec<ChatMessage>,
     temperature: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stream: Option<bool>,
 }
 
 /// OpenAI-compatible response structure
@@ -52,6 +54,7 @@ struct ChatMessageContent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractedConcept {
     pub name: String,
+    pub native_term: Option<String>, // Original term from the source text, used for retrieval
     pub description: String,
     pub examples: Vec<String>,
     pub category: Option<String>,
@@ -145,6 +148,7 @@ impl LlmClient {
                 },
             ],
             temperature: 0.3,
+            stream: None,
         };
 
         let url = format!("{}/chat/completions", self.base_url);
@@ -220,6 +224,7 @@ impl LlmClient {
                 content: prompt,
             }],
             temperature: 0.3,
+            stream: None,
         };
 
         let url = format!("{}/chat/completions", self.base_url);
@@ -281,7 +286,8 @@ Requirements:
 - Always include source_chunk_id in your response
 - Extract concepts (important terms, entities, ideas) and their relationships
 - Each concept MUST have:
-  * name: concise concept name (2-5 words)
+  * name: concise concept name (2-5 words), translated if needed for clarity
+  * native_term: the exact term as it appears in the ORIGINAL text (DO NOT translate, keep it exactly as written in the source)
   * description: detailed explanation in 2-3 sentences
   * examples: array of 1-2 concrete examples from the text
   * category: classification (e.g., "Theory", "Method", "Person", "Organization")
@@ -297,6 +303,7 @@ Requirements:
 - 提取概念（重要的术语、实体、想法）及其关系
 - 每个概念必须包含：
   * name: 简洁的概念名称（2-5个词）
+  * native_term: 原文中的精确术语（不要翻译，保持原文原样）
   * description: 详细描述，2-3句话的解释
   * examples: 1-2个具体示例的数组，必须来自原文
   * category: 分类（如"理论"、"方法"、"人物"、"组织"）
@@ -330,9 +337,10 @@ JSON Schema for output validation:
       "type": "array",
       "items": {{
         "type": "object",
-        "required": ["name", "description", "examples", "category", "page_number"],
+        "required": ["name", "native_term", "description", "examples", "category", "page_number"],
         "properties": {{
           "name": {{ "type": "string", "minLength": 1, "maxLength": 100 }},
+          "native_term": {{ "type": ["string", "null"] }},
           "description": {{ "type": "string", "minLength": 10, "maxLength": 500 }},
           "examples": {{ "type": "array", "minItems": 1, "maxItems": 2, "items": {{ "type": "string" }} }},
           "category": {{ "type": "string" }},
@@ -362,6 +370,7 @@ Output JSON format:
   "concepts": [
     {{
       "name": "concept name",
+      "native_term": "exact term from original text",
       "description": "Detailed description in 2-3 sentences explaining what this concept means",
       "examples": ["example1 from text", "example2 from text"],
       "category": "category name",
@@ -404,9 +413,10 @@ JSON Schema 用于输出验证：
       "type": "array",
       "items": {{
         "type": "object",
-        "required": ["name", "description", "examples", "category", "page_number"],
+        "required": ["name", "native_term", "description", "examples", "category", "page_number"],
         "properties": {{
           "name": {{ "type": "string", "minLength": 1, "maxLength": 100 }},
+          "native_term": {{ "type": ["string", "null"] }},
           "description": {{ "type": "string", "minLength": 10, "maxLength": 500 }},
           "examples": {{ "type": "array", "minItems": 1, "maxItems": 2, "items": {{ "type": "string" }} }},
           "category": {{ "type": "string" }},
@@ -436,6 +446,7 @@ JSON Schema 用于输出验证：
   "concepts": [
     {{
       "name": "概念名称",
+      "native_term": "原文中的精确术语",
       "description": "详细描述，用2-3句话解释这个概念的含义",
       "examples": ["来自文本的示例1", "来自文本的示例2"],
       "category": "类别名称",
@@ -516,6 +527,7 @@ fn parse_extraction_response(
 
         valid_concepts.push(ExtractedConcept {
             name: concept.name.trim().to_string(),
+            native_term: concept.native_term.as_ref().map(|s| s.trim().to_string()),
             description: concept.description.trim().to_string(),
             examples,
             category: concept.category.filter(|c| !c.trim().is_empty()),
@@ -782,6 +794,8 @@ struct ParsedResponse {
 #[derive(Debug, Deserialize)]
 struct ParsedConcept {
     name: String,
+    #[serde(default)]
+    native_term: Option<String>,
     description: String,
     examples: Vec<String>,
     category: Option<String>,

@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import {
   GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph,
   getChunk, ChunkDetails, getNodeSummary, getNodeRetrieval,
-  SummaryResponse, RetrievalResponse
+  SummaryResponse, RetrievalResponse, Citation, getNodeSummaryStream
 } from '@/lib/api-client'
 import { X, ExternalLink, BookOpen, FileText, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 
@@ -47,6 +47,11 @@ export function NodeDetailPanel({
   const [retrievalResults, setRetrievalResults] = useState<RetrievalResponse | null>(null)
   const [showRetrievalDetails, setShowRetrievalDetails] = useState(false)
 
+  // Streaming summary states
+  const [streamingText, setStreamingText] = useState('')
+  const [streamingCitations, setStreamingCitations] = useState<Citation[]>([])
+  const [isStreaming, setIsStreaming] = useState(false)
+
   useEffect(() => {
     if (!node) {
       setNodeDetails(null)
@@ -74,11 +79,30 @@ export function NodeDetailPanel({
           setPageNumber(details.page_number ?? null)
         }
 
-        // Fetch source-grounded summary
+        // Fetch source-grounded summary (streaming)
+        setStreamingText('')
+        setStreamingCitations([])
+        setIsStreaming(true)
         try {
-          const summaryData = await getNodeSummary(node.id)
+          const generator = await getNodeSummaryStream(node.id)
           if (!cancelled) {
-            setSummary(summaryData)
+            for await (const chunk of generator) {
+              if (cancelled) break
+              if (chunk.type === 'content' && chunk.text) {
+                setStreamingText(prev => prev + chunk.text)
+              } else if (chunk.type === 'citation' && chunk.index !== undefined) {
+                const citation: Citation = {
+                  index: chunk.index,
+                  chunk_id: chunk.chunk_id || '',
+                  page_start: chunk.page_start || 0,
+                  page_end: chunk.page_end || 0,
+                  excerpt: chunk.excerpt || ''
+                }
+                setStreamingCitations(prev => [...prev, citation])
+              } else if (chunk.type === 'done' || chunk.type === 'error') {
+                break
+              }
+            }
           }
         } catch (err) {
           if (!cancelled) {
@@ -86,6 +110,7 @@ export function NodeDetailPanel({
           }
         } finally {
           if (!cancelled) {
+            setIsStreaming(false)
             setSummaryLoading(false)
           }
         }
@@ -273,7 +298,7 @@ export function NodeDetailPanel({
                 <h3 className="text-sm font-medium">AI 总结</h3>
               </div>
               <div className="p-4">
-                {summaryLoading && (
+                {(summaryLoading || isStreaming) && streamingText === '' && (
                   <div className="flex items-center gap-3 py-4">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     <span className="text-sm text-muted-foreground">正在分析相关段落...</span>
@@ -296,19 +321,23 @@ export function NodeDetailPanel({
                   </div>
                 )}
 
-                {!summaryLoading && !summaryError && summary && (
+                {((!summaryLoading && summary) || streamingText !== '') && (
                   <div className="space-y-4">
-                    {/* Summary Text */}
+                    {/* Summary Text - use streaming text or static summary */}
                     <div className="text-sm leading-relaxed text-foreground">
-                      {renderSummaryWithCitations(summary.summary)}
+                      {streamingText !== '' ? (
+                        renderSummaryWithCitations(streamingText)
+                      ) : summary ? (
+                        renderSummaryWithCitations(summary.summary)
+                      ) : null}
                     </div>
 
-                    {/* Citations List */}
-                    {summary.citations.length > 0 && (
+                    {/* Citations List - use streaming citations or static citations */}
+                    {(streamingCitations.length > 0 || (summary && summary.citations.length > 0)) && (
                       <div className="mt-4 pt-4 border-t border-border">
                         <h4 className="text-xs font-medium text-muted-foreground mb-2">来源引用</h4>
                         <div className="space-y-2">
-                          {summary.citations.map((citation) => (
+                          {(streamingCitations.length > 0 ? streamingCitations : summary?.citations || []).map((citation) => (
                             <button
                               key={citation.index}
                               onClick={() => handleCitationClick(citation.chunk_id)}
