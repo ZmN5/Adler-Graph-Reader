@@ -1,5 +1,8 @@
+use bytes::Bytes;
+use futures::{StreamExt, stream};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::pin::Pin;
 use std::time::Duration;
 
 /// Retrieval result for source-grounded summary
@@ -15,6 +18,7 @@ pub struct RetrievalResult {
 pub struct LlmClient {
     client: Client,
     base_url: String,
+    model: String,
 }
 
 /// OpenAI-compatible chat message
@@ -48,6 +52,28 @@ struct ChatChoice {
 #[derive(Debug, Deserialize)]
 struct ChatMessageContent {
     content: String,
+}
+
+/// Streaming response structure (SSE from OpenAI-compatible API)
+#[derive(Debug, Deserialize)]
+struct ChatResponseStream {
+    choices: Vec<ChatChoiceStream>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatChoiceStream {
+    delta: ChatDelta,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatDelta {
+    content: Option<String>,
+}
+
+impl ChatDelta {
+    fn content(&self) -> String {
+        self.content.clone().unwrap_or_default()
+    }
 }
 
 /// Concept extracted from a chunk
@@ -105,7 +131,7 @@ pub struct SourceGroundedSummaryRequest {
 
 impl LlmClient {
     /// Create a new LLM client connecting to the specified URL
-    pub fn new(base_url: &str) -> Self {
+    pub fn new(base_url: &str, model: &str) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(180))
             .build()
@@ -114,6 +140,7 @@ impl LlmClient {
         Self {
             client,
             base_url: base_url.trim_end_matches('/').to_string(),
+            model: model.to_string(),
         }
     }
 
@@ -130,8 +157,8 @@ impl LlmClient {
         tracing::trace!("[{}] System prompt length: {}", chunk_id, system_prompt.len());
         tracing::trace!("[{}] User prompt length: {} chars", chunk_id, user_prompt.len());
 
-        // Use model from environment or default to qwen3.5-9b
-        let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "qwen3.5-9b".to_string());
+        // Use model from client
+        let model = self.model.clone();
         let model_for_log = model.clone();
         tracing::debug!("[{}] Using model: {}", chunk_id, model_for_log);
 
@@ -213,8 +240,8 @@ impl LlmClient {
         // Build NotebookLM-style prompt
         let prompt = build_summary_prompt(request);
 
-        // Use model from environment or default to qwen3.5-9b
-        let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "qwen3.5-9b".to_string());
+        // Use model from client
+        let model = self.model.clone();
         tracing::debug!("[SourceGroundedSummary] Using model: {}", model);
 
         let chat_request = ChatRequest {
@@ -273,6 +300,95 @@ impl LlmClient {
 
         // Parse the summary and extract citations
         parse_summary_response(&content, request)
+    }
+
+    /// Generate a source-grounded summary with true streaming token output
+    ///
+    /// Returns a stream of text tokens
+    /// Note: Takes `self` by ownership to avoid lifetime issues with async_stream
+    pub fn into_summary_stream(
+        self,
+        request: &SourceGroundedSummaryRequest,
+    ) -> Pin<Box<dyn stream::Stream<Item = Result<String, LlmError>> + Send + 'static>> {
+        // Build NotebookLM-style prompt
+        let prompt = build_summary_prompt(request);
+        let model = self.model.clone();
+        let base_url = self.base_url.clone();
+
+        Box::pin(async_stream::stream! {
+            let chat_request = ChatRequest {
+                model: model.clone(),
+                messages: vec![ChatMessage {
+                    role: "user".to_string(),
+                    content: prompt,
+                }],
+                temperature: 0.3,
+                stream: Some(true),
+            };
+
+            let url = format!("{}/chat/completions", base_url);
+            tracing::debug!("[SourceGroundedSummaryStream] Sending streaming request to {}", url);
+
+            let response = match self.client
+                .post(&url)
+                .header("Authorization", "Bearer lm-studio")
+                .json(&chat_request)
+                .send()
+                .await
+            {
+                Ok(resp) => resp,
+                Err(e) => {
+                    tracing::error!("[SourceGroundedSummaryStream] Connection error: {}", e);
+                    yield Err(LlmError::ConnectionError(e.to_string()));
+                    return;
+                }
+            };
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                tracing::error!("[SourceGroundedSummaryStream] API error {}: {}", status, body);
+                yield Err(LlmError::ApiError(format!("API error {}: {}", status, body)));
+                return;
+            }
+
+            // Stream tokens as they arrive
+            let mut stream = response.bytes_stream();
+            let mut current_line = String::new();
+
+            while let Some(item) = stream.next().await {
+                let chunk = match item {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        tracing::error!("[SourceGroundedSummaryStream] Read error: {}", e);
+                        yield Err(LlmError::ConnectionError(e.to_string()));
+                        return;
+                    }
+                };
+
+                for byte in chunk {
+                    if byte == b'\n' {
+                        if current_line.starts_with("data: ") {
+                            let data = &current_line[6..];
+                            if data == "[DONE]" {
+                                continue;
+                            }
+                            if let Ok(resp) = serde_json::from_str::<ChatResponseStream>(data) {
+                                for choice in resp.choices {
+                                    let content = choice.delta.content();
+                                    if !content.is_empty() {
+                                        yield Ok(content);
+                                    }
+                                }
+                            }
+                        }
+                        current_line.clear();
+                    } else if byte != b'\r' {
+                        current_line.push(byte as char);
+                    }
+                }
+            }
+        })
     }
 }
 
@@ -626,7 +742,7 @@ RETRIEVED SOURCE MATERIALS:
         ));
     }
 
-    prompt.push_str(&format!(
+    prompt.push_str(
         r#"---
 
 INSTRUCTIONS:
@@ -637,23 +753,19 @@ INSTRUCTIONS:
 5. Focus on the most relevant and important information from the sources.
 
 OUTPUT FORMAT:
-Provide your summary with inline citations in the following JSON format:
+- Provide your summary as plain text with inline [Source: X] citations.
+- Do NOT wrap the output in JSON, markdown code blocks, or any other formatting.
+- Just output the raw summary text directly.
 
-{{
-  "summary": "Your comprehensive summary here with [Source: 1] citations throughout...",
-  "citations": [
-    {{"index": 1, "pages": "page range"}},
-    {{"index": 2, "pages": "page range"}},
-    ...
-  ]
-}}
+Example output:
+"This is the summary text with [Source: 1] citations inline. Another point with [Source: 2] more information."
 
 Important:
-- Return ONLY valid JSON, no markdown code blocks
+- Output ONLY plain text, no JSON or code blocks
 - Every major claim must have a citation
 - Summary should be 200-500 words
-- Citations should list the actual page numbers from the sources"#
-    ));
+"#,
+    );
 
     prompt
 }

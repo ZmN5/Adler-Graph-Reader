@@ -1,3 +1,4 @@
+mod config;
 mod core_concept;
 mod db;
 mod embedding;
@@ -18,6 +19,8 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
+use axum::response::sse::{Sse, Event as SseEvent};
+use futures::{stream, StreamExt};
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 use std::net::SocketAddr;
@@ -120,6 +123,72 @@ async fn put_language(
         .await?;
 
     Ok(Json(LanguageResponse { language: req.language }))
+}
+
+// Model config types
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ModelConfigResponse {
+    pub embedding_model: String,
+    pub embedding_url: String,
+    pub llm_model: String,
+    pub llm_api_url: String,
+    pub reranker_model: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ModelConfigUpdateRequest {
+    pub key: String,
+    pub value: String,
+}
+
+async fn get_model_config(
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<ModelConfigResponse>, AppError> {
+    let config = config::get_model_config(&pool.0)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(Json(ModelConfigResponse {
+        embedding_model: config.embedding_model,
+        embedding_url: config.embedding_url,
+        llm_model: config.llm_model,
+        llm_api_url: config.llm_api_url,
+        reranker_model: config.reranker_model,
+    }))
+}
+
+async fn put_model_config(
+    pool: axum::extract::State<SqlitePool>,
+    Json(req): Json<ModelConfigUpdateRequest>,
+) -> Result<Json<ModelConfigResponse>, AppError> {
+    // Validate key
+    let valid_keys = ["embedding_model", "embedding_url", "llm_model", "llm_api_url", "reranker_model"];
+    if !valid_keys.contains(&req.key.as_str()) {
+        return Err(AppError::BadRequest(format!(
+            "Invalid config key '{}'. Valid keys: {:?}",
+            req.key, valid_keys
+        )));
+    }
+
+    // Update the config value
+    config::update_config_value(&pool.0, &req.key, &req.value)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // Return updated full config
+    let config = config::get_model_config(&pool.0)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    tracing::info!("[ModelConfig] Updated {} to '{}'", req.key, req.value);
+
+    Ok(Json(ModelConfigResponse {
+        embedding_model: config.embedding_model,
+        embedding_url: config.embedding_url,
+        llm_model: config.llm_model,
+        llm_api_url: config.llm_api_url,
+        reranker_model: config.reranker_model,
+    }))
 }
 
 // Book-related types
@@ -519,15 +588,25 @@ async fn rebuild_indexes(
         book_id
     );
 
+    // Get model config for embedding
+    let model_config = config::get_model_config(&pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
     // Rebuild FTS index
     let fts_count = embedding::rebuild_fts_index(&pool, &book_id)
         .await
         .map_err(|e| AppError::Internal(format!("FTS rebuild failed: {}", e)))?;
 
     // Generate embeddings for chunks without embeddings
-    let embedding_count = embedding::generate_chunk_embeddings(&pool, &book_id)
-        .await
-        .map_err(|e| AppError::Internal(format!("Embedding generation failed: {}", e)))?;
+    let embedding_count = embedding::generate_chunk_embeddings(
+        &pool,
+        &book_id,
+        &model_config.embedding_model,
+        &model_config.embedding_url,
+    )
+    .await
+    .map_err(|e| AppError::Internal(format!("Embedding generation failed: {}", e)))?;
 
     tracing::info!(
         "[API] Rebuild indexes completed for book {}: fts={}, embeddings={}",
@@ -876,13 +955,29 @@ async fn extract_book(
             .await
             .unwrap_or(0);
 
+            // Get model config for embedding
+            let model_config = config::get_model_config(&pool)
+                .await
+                .unwrap_or_else(|_| config::ModelConfig {
+                    embedding_model: "text-embedding-qwen3-embedding-0.6b".to_string(),
+                    embedding_url: "http://localhost:1234/v1/embeddings".to_string(),
+                    llm_model: "qwen3.5-9b".to_string(),
+                    llm_api_url: "http://localhost:1234/v1".to_string(),
+                    reranker_model: "qwen3.5-9b".to_string(),
+                });
+
             // Auto-rebuild FTS index and generate embeddings after extraction
             let _fts_count = embedding::rebuild_fts_index(&pool, &book_id)
                 .await
                 .unwrap_or(0);
-            let _embedding_count = embedding::generate_chunk_embeddings(&pool, &book_id)
-                .await
-                .unwrap_or(0);
+            let _embedding_count = embedding::generate_chunk_embeddings(
+                &pool,
+                &book_id,
+                &model_config.embedding_model,
+                &model_config.embedding_url,
+            )
+            .await
+            .unwrap_or(0);
 
             tracing::info!(
                 "[extract_book] Auto-built indexes for book {}: fts={}, embeddings={}",
@@ -1052,10 +1147,16 @@ async fn node_retrieval(
         top_k
     );
 
-    // Create hybrid retriever
-    let llm_api_url = std::env::var("LLM_API_URL")
-        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
-    let retriever = HybridRetriever::new(pool.0.clone(), llm_api_url);
+    // Create hybrid retriever with config from database
+    let model_config = config::get_model_config(&pool.0)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let retriever = HybridRetriever::new(
+        pool.0.clone(),
+        model_config.llm_api_url,
+        model_config.embedding_model,
+        model_config.embedding_url,
+    );
 
     // Run retrieval
     let results = retriever
@@ -1117,9 +1218,15 @@ async fn node_summary(
     let node_description = node_info.3;
 
     // Create hybrid retriever and get retrieval results
-    let llm_api_url = std::env::var("LLM_API_URL")
-        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
-    let retriever = HybridRetriever::new(pool.0.clone(), llm_api_url.clone());
+    let model_config = config::get_model_config(&pool.0)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let retriever = HybridRetriever::new(
+        pool.0.clone(),
+        model_config.llm_api_url.clone(),
+        model_config.embedding_model.clone(),
+        model_config.embedding_url.clone(),
+    );
 
     // Get retrieval results (top 10 for summary)
     let retrieval_outputs = retriever
@@ -1154,7 +1261,7 @@ async fn node_summary(
     };
 
     // Create LLM client and generate summary
-    let llm_client = LlmClient::new(&llm_api_url);
+    let llm_client = LlmClient::new(&model_config.llm_api_url, &model_config.llm_model);
     let summary_result = llm_client
         .generate_source_grounded_summary(&summary_request)
         .await
@@ -1199,12 +1306,11 @@ async fn node_summary(
 }
 
 /// Handler for GET /api/nodes/{id}/summary/stream
-/// Returns source-grounded summary as a streaming SSE response (placeholder for future)
-/// Currently falls back to non-streaming response
+/// Returns source-grounded summary as a true token-level streaming SSE response
 async fn node_summary_stream(
     Path(node_id): Path<String>,
     pool: axum::extract::State<SqlitePool>,
-) -> Result<Json<SummaryResponse>, AppError> {
+) -> Result<Sse<impl stream::Stream<Item = Result<SseEvent, std::convert::Infallible>>>, AppError> {
     tracing::info!("[API] Node summary stream request: node_id={}", node_id);
 
     // Get node information from database
@@ -1225,9 +1331,15 @@ async fn node_summary_stream(
     let node_description = node_info.3;
 
     // Create hybrid retriever and get retrieval results
-    let llm_api_url = std::env::var("LLM_API_URL")
-        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
-    let retriever = HybridRetriever::new(pool.0.clone(), llm_api_url.clone());
+    let model_config = config::get_model_config(&pool.0)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let retriever = HybridRetriever::new(
+        pool.0.clone(),
+        model_config.llm_api_url.clone(),
+        model_config.embedding_model.clone(),
+        model_config.embedding_url.clone(),
+    );
 
     // Get retrieval results (top 10 for summary)
     let retrieval_outputs = retriever
@@ -1280,56 +1392,108 @@ async fn node_summary_stream(
         retrieval_results,
     };
 
-    // Generate summary
-    tracing::info!("[Summary] Calling LLM for source-grounded summary...");
-    let llm_client = LlmClient::new(&llm_api_url);
-    let summary_result = llm_client
-        .generate_source_grounded_summary(&summary_request)
-        .await
-        .map_err(|e| AppError::Internal(format!("Summary generation failed: {}", e)))?;
+    // Generate summary with streaming tokens
+    tracing::info!("[Summary] Calling LLM for source-grounded summary (streaming)...");
+    let llm_client = LlmClient::new(&model_config.llm_api_url, &model_config.llm_model);
 
-    tracing::info!(
-        "[Summary] OUTPUT: summary length={} chars, {} citations",
-        summary_result.summary.len(),
-        summary_result.citations.len()
-    );
-    tracing::debug!(
-        "[Summary] OUTPUT: summary preview='{}...'",
-        summary_result.summary.chars().take(200).collect::<String>()
-    );
+    // Clone for use in stream
+    let retrieval_results_for_parse = summary_request.retrieval_results.clone();
+    let node_id_clone = node_id.clone();
 
-    let citations: Vec<CitationItem> = summary_result
-        .citations
-        .iter()
-        .map(|c| CitationItem {
-            index: c.index,
-            chunk_id: c.chunk_id.clone(),
-            page_start: c.page_start,
-            page_end: c.page_end,
-            excerpt: c.excerpt.clone(),
-        })
-        .collect();
+    let stream = async_stream::stream! {
+        let mut full_text = String::new();
 
-    tracing::info!(
-        "[API] Node summary completed: node_id={}, citations={}",
-        node_id,
-        citations.len()
-    );
+        // Stream tokens as they arrive from LLM
+        let mut token_stream = llm_client.into_summary_stream(&summary_request);
 
-    Ok(Json(SummaryResponse {
-        summary: summary_result.summary,
-        citations,
-        sources: retrieval_outputs
-            .iter()
-            .enumerate()
-            .map(|(idx, r)| SourceItem {
-                index: idx + 1,
-                page_start: r.page_start,
-                page_end: r.page_end,
-                excerpt: r.content.chars().take(200).collect(),
-            })
-            .collect(),
-    }))
+        while let Some(token_result) = token_stream.next().await {
+            match token_result {
+                Ok(token) => {
+                    full_text.push_str(&token);
+                    // Send each token as a content chunk
+                    let content_chunk = serde_json::json!({
+                        "type": "content",
+                        "text": token
+                    });
+                    yield Ok(SseEvent::default().data(content_chunk.to_string()));
+                }
+                Err(e) => {
+                    let error_chunk = serde_json::json!({
+                        "type": "error",
+                        "message": e.to_string()
+                    });
+                    yield Ok(SseEvent::default().data(error_chunk.to_string()));
+                    yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
+                    tracing::error!("[Summary] Stream error: {}", e);
+                    return;
+                }
+            }
+        }
+
+        tracing::info!(
+            "[Summary] Stream completed, full_text length={} chars",
+            full_text.len()
+        );
+
+        // Parse citations from the full text
+        let citations = parse_citations_from_summary(&full_text, &retrieval_results_for_parse);
+
+        tracing::info!(
+            "[API] Summary stream completed: node_id={}, citations={}",
+            node_id_clone,
+            citations.len()
+        );
+
+        // Send citation events
+        for citation in citations {
+            let citation_chunk = serde_json::json!({
+                "type": "citation",
+                "index": citation.index,
+                "chunk_id": citation.chunk_id,
+                "page_start": citation.page_start,
+                "page_end": citation.page_end,
+                "excerpt": citation.excerpt
+            });
+            yield Ok(SseEvent::default().data(citation_chunk.to_string()));
+        }
+
+        // Send done signal
+        yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
+    };
+
+    Ok(Sse::new(stream))
+}
+
+/// Parse citations from the summary text by extracting [Source: X] patterns
+fn parse_citations_from_summary(
+    summary: &str,
+    retrieval_results: &[llm_client::RetrievalResult],
+) -> Vec<CitationItem> {
+    use regex::Regex;
+
+    let citation_pattern = Regex::new(r"\[Source:\s*(\d+)\]").unwrap();
+    let mut seen_indices = std::collections::HashSet::new();
+    let mut citations = Vec::new();
+
+    for caps in citation_pattern.captures_iter(summary) {
+        if let Ok(idx) = caps[1].parse::<usize>() {
+            if idx > 0 && idx <= retrieval_results.len() && seen_indices.insert(idx) {
+                let result = &retrieval_results[idx - 1];
+                let excerpt = result.content.chars().take(200).collect::<String>();
+                citations.push(CitationItem {
+                    index: idx,
+                    chunk_id: result.chunk_id.clone(),
+                    page_start: result.page_start,
+                    page_end: result.page_end,
+                    excerpt,
+                });
+            }
+        }
+    }
+
+    // Sort by index
+    citations.sort_by_key(|c| c.index);
+    citations
 }
 
 #[tokio::main]
@@ -1364,6 +1528,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/health", get(health))
         .route("/api/settings/language", get(get_language))
         .route("/api/settings/language", put(put_language))
+        .route("/api/settings/model-config", get(get_model_config))
+        .route("/api/settings/model-config", put(put_model_config))
         .route("/api/books/upload", post(upload_book))
         .route("/api/books", get(list_books))
         .route("/api/books/{id}", get(get_book))

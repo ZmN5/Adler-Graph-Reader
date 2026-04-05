@@ -90,6 +90,28 @@ export async function setLanguage(language: Language): Promise<void> {
   await apiPut<{ language: Language }, LanguageResponse>('/api/settings/language', { language })
 }
 
+// Model configuration types
+export interface ModelConfig {
+  embedding_model: string
+  embedding_url: string
+  llm_model: string
+  llm_api_url: string
+  reranker_model: string
+}
+
+export interface ModelConfigUpdateRequest {
+  key: string
+  value: string
+}
+
+export async function getModelConfig(): Promise<ModelConfig> {
+  return apiGet<ModelConfig>('/api/settings/model-config')
+}
+
+export async function updateModelConfig(key: string, value: string): Promise<ModelConfig> {
+  return apiPut<ModelConfigUpdateRequest, ModelConfig>('/api/settings/model-config', { key, value })
+}
+
 // Book-related types
 export interface BookSummary {
   id: string
@@ -258,17 +280,29 @@ export interface StreamChunk {
   message?: string
 }
 
-export function getNodeSummaryStream(nodeId: string): Promise<AsyncGenerator<StreamChunk, void, unknown>> {
+export function getNodeSummaryStream(
+  nodeId: string,
+  signal?: AbortSignal
+): Promise<AsyncGenerator<StreamChunk, void, unknown>> {
   return new Promise(async (resolve, reject) => {
     const API_BASE_URL = import.meta.env.PROD
       ? (import.meta.env.VITE_API_BASE_URL || '')
       : ''
+
+    const controller = new AbortController()
+    const fetchSignal = signal || controller.signal
+
+    // Handle abort from external signal
+    if (signal) {
+      signal.addEventListener('abort', () => controller.abort())
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/nodes/${nodeId}/summary/stream`, {
         headers: {
           'Accept': 'text/event-stream',
         },
+        signal: fetchSignal,
       })
 
       if (!response.ok) {

@@ -13,8 +13,8 @@ const RRF_K: f64 = 60.0;
 const RERANK_TOP_K: usize = 20;
 /// LM Studio completions API URL
 const LM_STUDIO_COMPLETIONS_URL: &str = "http://localhost:1234/v1/chat/completions";
-/// Reranker model
-const RERANKER_MODEL: &str = "qwen3-reranker-0.6b";
+/// Reranker model (qwen3-reranker-0.6b doesn't follow JSON output instructions properly)
+const RERANKER_MODEL: &str = "qwen3.5-9b";
 
 /// Search result from a single retrieval method
 #[derive(Debug, Clone)]
@@ -312,11 +312,13 @@ pub async fn vector_search_with_query(
     query_text: &str,
     book_id: Option<&str>,
     top_k: Option<usize>,
+    embedding_model: &str,
+    embedding_url: &str,
 ) -> Result<Vec<SearchResult>, RetrievalError> {
     tracing::info!("[Vector Search with Query] Query: '{}'", query_text);
 
     // Generate embedding for the query text
-    let query_embedding = generate_query_embedding(query_text).await?;
+    let query_embedding = generate_query_embedding(query_text, embedding_model, embedding_url).await?;
 
     // Perform vector search with the generated embedding
     vector_search(pool, &query_embedding, book_id, top_k).await
@@ -326,13 +328,23 @@ pub async fn vector_search_with_query(
 ///
 /// # Arguments
 /// * `query_text` - The text to embed
+/// * `embedding_model` - Embedding model name
+/// * `embedding_url` - Embedding API URL
 ///
 /// # Returns
 /// * `Result<Vec<f32>, RetrievalError>` - The embedding vector
-async fn generate_query_embedding(query_text: &str) -> Result<Vec<f32>, RetrievalError> {
-    let embeddings = call_embedding_api(vec![query_text.to_string()])
-        .await
-        .map_err(|e| RetrievalError::EmbeddingError(e.to_string()))?;
+async fn generate_query_embedding(
+    query_text: &str,
+    embedding_model: &str,
+    embedding_url: &str,
+) -> Result<Vec<f32>, RetrievalError> {
+    let embeddings = call_embedding_api(
+        vec![query_text.to_string()],
+        embedding_model,
+        embedding_url,
+    )
+    .await
+    .map_err(|e| RetrievalError::EmbeddingError(e.to_string()))?;
 
     if embeddings.is_empty() {
         return Err(RetrievalError::EmbeddingError(
@@ -799,14 +811,23 @@ pub struct RetrievalOutput {
 pub struct HybridRetriever {
     pool: SqlitePool,
     llm_api_url: String,
+    embedding_model: String,
+    embedding_url: String,
 }
 
 impl HybridRetriever {
     /// Create a new HybridRetriever instance
-    pub fn new(pool: SqlitePool, llm_api_url: String) -> Self {
+    pub fn new(
+        pool: SqlitePool,
+        llm_api_url: String,
+        embedding_model: String,
+        embedding_url: String,
+    ) -> Self {
         Self {
             pool,
             llm_api_url,
+            embedding_model,
+            embedding_url,
         }
     }
 
@@ -815,7 +836,7 @@ impl HybridRetriever {
     /// 2. Vector search
     /// 3. BM25 search
     /// 4. RRF fusion
-    /// 5. Rerank
+    /// 5. (Rerank skipped - reranker not available)
     /// 6. Store results and return top_k
     pub async fn retrieve_for_node(
         &self,
@@ -892,40 +913,16 @@ impl HybridRetriever {
             return Ok(Vec::new());
         }
 
-        // Step 5: Rerank
-        tracing::info!("[========== RERANK ==========]");
-        tracing::info!(
-            "[Rerank] INPUT: {} candidates to rerank (top {}), query='{}'",
-            fused_results.len(),
-            RERANK_TOP_K,
-            query.chars().take(50).collect::<String>()
-        );
-        let reranked_results = if !fused_results.is_empty() {
-            // Fetch passages for reranking
-            let passages = self.fetch_chunk_contents(
-                &fused_results.iter().take(RERANK_TOP_K).map(|f| f.chunk_id.clone()).collect::<Vec<_>>()
-            ).await?;
+        // Step 5: Skip reranking (reranker model not available)
+        // TODO: Re-enable when proper reranker endpoint is available in LM Studio
+        tracing::info!("[========== RERANK SKIPPED ==========]");
+        tracing::info!("[Rerank] Skipped - using RRF results directly (reranker not available)");
 
-            tracing::info!("[Rerank] Fetched {} passage contents for reranking", passages.len());
-
-            rerank(&query, fused_results.clone(), &passages).await?
-        } else {
-            Vec::new()
-        };
-        tracing::info!(
-            "[Rerank] OUTPUT: {} reranked results, top 5: {:?}",
-            reranked_results.len(),
-            reranked_results.iter().take(5).map(|r| (r.chunk_id.chars().take(8).collect::<String>(), r.rerank_score)).collect::<Vec<_>>()
-        );
-
-        // Step 6: Final results
+        // Step 6: Final results - use RRF fusion results directly
         tracing::info!("[========== FINAL RESULTS ==========]");
-        let final_results: Vec<RetrievalResult> = if reranked_results.is_empty() {
-            tracing::info!("[Final] Using RRF results (no reranking)");
+        let final_results: Vec<RetrievalResult> = {
+            tracing::info!("[Final] Using RRF results (rerank skipped)");
             fused_to_retrieval_results(fused_results)
-        } else {
-            tracing::info!("[Final] Using reranked results");
-            reranked_to_retrieval_results(reranked_results)
         };
         tracing::info!(
             "[Final] {} results, top 5 final_scores: {:?}",
@@ -933,11 +930,11 @@ impl HybridRetriever {
             final_results.iter().take(5).map(|r| (r.chunk_id.chars().take(8).collect::<String>(), r.final_score)).collect::<Vec<_>>()
         );
 
-        // Step 7: Store results
+        // Step 6: Store results
         tracing::info!("[========== STORE RESULTS ==========]");
         self.store_results(node_id, &final_results).await?;
 
-        // Step 8: Fetch full chunk data and build output
+        // Step 7: Fetch full chunk data and build output
         let outputs = self.build_retrieval_outputs(&final_results[..top_k.min(final_results.len())]).await?;
 
         tracing::info!(
@@ -977,7 +974,15 @@ impl HybridRetriever {
         query: &str,
         book_id: Option<&str>,
     ) -> Result<Vec<SearchResult>, RetrievalError> {
-        vector_search_with_query(&self.pool, query, book_id, Some(DEFAULT_TOP_K)).await
+        vector_search_with_query(
+            &self.pool,
+            query,
+            book_id,
+            Some(DEFAULT_TOP_K),
+            &self.embedding_model,
+            &self.embedding_url,
+        )
+        .await
     }
 
     /// Perform BM25 search

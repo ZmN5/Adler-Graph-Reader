@@ -8,6 +8,7 @@ import { GraphCanvas } from '@/components/GraphCanvas'
 import { ThreeColumnLayout } from '@/components/ThreeColumnLayout'
 import { NodeDetailPanel } from '@/components/NodeDetailPanel'
 import { CoreConceptsList } from '@/components/CoreConceptsList'
+import { ModelSettings } from '@/components/ModelSettings'
 import { useAppStore } from '@/stores/app-store'
 import { cn } from '@/lib/utils'
 import { useState, useCallback, useEffect } from 'react'
@@ -24,6 +25,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'graph' | 'core-concepts'>('graph')
   const [highlightChunkId, setHighlightChunkId] = useState<string | null>(null)
   const [isReaderCollapsed, setIsReaderCollapsed] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   // Handle Escape key to switch from Core Concepts back to Graph view
   useEffect(() => {
@@ -206,37 +208,57 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onSettingsClick={() => setShowSettings(true)} />
       <MainContent>
-        {error && (
-          <div className="mb-4 rounded-md bg-destructive/10 p-4 text-destructive">
-            <p>{error}</p>
-            <button
-              onClick={clearError}
-              className="mt-2 text-sm underline"
-            >
-              Dismiss
-            </button>
+        {showSettings ? (
+          <div className="flex flex-col h-full">
+            <div className="border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
+              <h1 className="text-lg font-medium">Settings</h1>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium bg-muted hover:bg-muted/80 transition-colors"
+              >
+                <X className="h-4 w-4" />
+                Close
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <ModelSettings />
+            </div>
           </div>
+        ) : (
+          <>
+            {error && (
+              <div className="mb-4 rounded-md bg-destructive/10 p-4 text-destructive">
+                <p>{error}</p>
+                <button
+                  onClick={clearError}
+                  className="mt-2 text-sm underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            )}
+            <div className="flex flex-col items-center py-8">
+              <h1 className="text-2xl font-bold">Welcome to Intelligent Reading Concept Graph</h1>
+              <p className="mt-2 text-muted-foreground">
+                Your AI-powered reading companion for building concept graphs
+              </p>
+              <div className="mt-8 w-full max-w-2xl">
+                <UploadButton onUploadSuccess={handleUploadSuccess} />
+              </div>
+              <div className="mt-12 w-full max-w-2xl">
+                <h2 className="text-lg font-semibold mb-4">Your Books</h2>
+                <BookList key={refreshKey} onSelectBook={handleSelectBook} />
+              </div>
+            </div>
+          </>
         )}
-        {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          </div>
-        )}
-        <div className="flex flex-col items-center py-8">
-          <h1 className="text-2xl font-bold">Welcome to Intelligent Reading Concept Graph</h1>
-          <p className="mt-2 text-muted-foreground">
-            Your AI-powered reading companion for building concept graphs
-          </p>
-          <div className="mt-8 w-full max-w-2xl">
-            <UploadButton onUploadSuccess={handleUploadSuccess} />
-          </div>
-          <div className="mt-12 w-full max-w-2xl">
-            <h2 className="text-lg font-semibold mb-4">Your Books</h2>
-            <BookList key={refreshKey} onSelectBook={handleSelectBook} />
-          </div>
-        </div>
       </MainContent>
     </div>
   )

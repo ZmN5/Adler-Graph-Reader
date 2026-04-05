@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 use std::path::Path;
 
+use crate::config;
 use crate::embedding;
 
 /// Parse a PDF file and create chunks in the database
@@ -117,7 +118,23 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
     let pool_clone = pool.clone();
     let book_id_clone = book_id.to_string();
     tokio::spawn(async move {
-        match embedding::generate_chunk_embeddings(&pool_clone, &book_id_clone).await {
+        // Get model config from database
+        let model_config = match config::get_model_config(&pool_clone).await {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                tracing::error!("[PDF Parser] Failed to get model config: {}", e);
+                return;
+            }
+        };
+
+        match embedding::generate_chunk_embeddings(
+            &pool_clone,
+            &book_id_clone,
+            &model_config.embedding_model,
+            &model_config.embedding_url,
+        )
+        .await
+        {
             Ok(count) => {
                 tracing::info!(
                     "[PDF Parser] Embedding generation completed for book {}: {} chunks processed",

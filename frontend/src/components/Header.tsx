@@ -1,11 +1,13 @@
 import { cn } from '@/lib/utils'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { Settings } from 'lucide-react'
 
 interface HeaderProps {
   className?: string
+  onSettingsClick?: () => void
 }
 
-export function Header({ className }: HeaderProps) {
+export function Header({ className, onSettingsClick }: HeaderProps) {
   return (
     <header
       className={cn(
@@ -32,7 +34,16 @@ export function Header({ className }: HeaderProps) {
           <span className="hidden sm:inline-block">Intelligent Reading Concept Graph</span>
           <span className="sm:hidden">IRCG</span>
         </div>
-        <LanguageToggle />
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onSettingsClick}
+            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+          <LanguageToggle />
+        </div>
       </div>
     </header>
   )

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import {
   GraphNode, getNode, NodeDetails, GraphEdge, getBookGraph,
@@ -52,6 +52,10 @@ export function NodeDetailPanel({
   const [streamingCitations, setStreamingCitations] = useState<Citation[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
 
+  // Ref to track current node ID and abort controller for stale requests
+  const currentNodeIdRef = useRef<string | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   useEffect(() => {
     if (!node) {
       setNodeDetails(null)
@@ -61,10 +65,24 @@ export function NodeDetailPanel({
       setSummary(null)
       setRetrievalResults(null)
       setSummaryError(null)
+      // Abort any in-flight request
+      abortControllerRef.current?.abort()
+      currentNodeIdRef.current = null
       return
     }
 
+    // Abort any in-flight request for previous node
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+
+    // Skip if this is the same node we're already loading
+    if (currentNodeIdRef.current === node.id) {
+      return
+    }
+    currentNodeIdRef.current = node.id
+
     let cancelled = false
+    const currentNodeId = node.id
     setIsLoading(true)
     setSummaryLoading(true)
     setError(null)
@@ -74,34 +92,38 @@ export function NodeDetailPanel({
       try {
         // Get full node details
         const details = await getNode(node.id)
-        if (!cancelled) {
-          setNodeDetails(details)
-          setPageNumber(details.page_number ?? null)
+        // Skip if node changed or effect was cleaned up
+        if (cancelled || currentNodeIdRef.current !== currentNodeId) {
+          return
         }
+        setNodeDetails(details)
+        setPageNumber(details.page_number ?? null)
 
         // Fetch source-grounded summary (streaming)
         setStreamingText('')
         setStreamingCitations([])
         setIsStreaming(true)
         try {
-          const generator = await getNodeSummaryStream(node.id)
-          if (!cancelled) {
-            for await (const chunk of generator) {
-              if (cancelled) break
-              if (chunk.type === 'content' && chunk.text) {
-                setStreamingText(prev => prev + chunk.text)
-              } else if (chunk.type === 'citation' && chunk.index !== undefined) {
-                const citation: Citation = {
-                  index: chunk.index,
-                  chunk_id: chunk.chunk_id || '',
-                  page_start: chunk.page_start || 0,
-                  page_end: chunk.page_end || 0,
-                  excerpt: chunk.excerpt || ''
-                }
-                setStreamingCitations(prev => [...prev, citation])
-              } else if (chunk.type === 'done' || chunk.type === 'error') {
-                break
+          const generator = await getNodeSummaryStream(node.id, abortControllerRef.current?.signal)
+          if (cancelled || currentNodeIdRef.current !== currentNodeId) {
+            return
+          }
+          for await (const chunk of generator) {
+            // Skip if node changed or effect was cleaned up
+            if (cancelled || currentNodeIdRef.current !== currentNodeId) break
+            if (chunk.type === 'content' && chunk.text) {
+              setStreamingText(prev => prev + chunk.text)
+            } else if (chunk.type === 'citation' && chunk.index !== undefined) {
+              const citation: Citation = {
+                index: chunk.index,
+                chunk_id: chunk.chunk_id || '',
+                page_start: chunk.page_start || 0,
+                page_end: chunk.page_end || 0,
+                excerpt: chunk.excerpt || ''
               }
+              setStreamingCitations(prev => [...prev, citation])
+            } else if (chunk.type === 'done' || chunk.type === 'error') {
+              break
             }
           }
         } catch (err) {
@@ -193,6 +215,8 @@ export function NodeDetailPanel({
 
     return () => {
       cancelled = true
+      abortControllerRef.current?.abort()
+      currentNodeIdRef.current = null
     }
   }, [node, bookId])
 
@@ -232,6 +256,9 @@ export function NodeDetailPanel({
 
   // Render summary with clickable citation markers
   const renderSummaryWithCitations = useCallback((summaryText: string) => {
+    // Use streamingCitations if available, otherwise use summary.citations
+    const citations = streamingCitations.length > 0 ? streamingCitations : (summary?.citations || [])
+
     // Match [Source: X] pattern
     const parts = summaryText.split(/(\[Source:\s*\d+\])/g)
     return parts.map((part, index) => {
@@ -242,7 +269,7 @@ export function NodeDetailPanel({
           <button
             key={index}
             onClick={() => {
-              const citation = summary?.citations.find(c => c.index === citationIndex)
+              const citation = citations.find(c => c.index === citationIndex)
               if (citation) {
                 handleCitationClick(citation.chunk_id)
               }
@@ -255,7 +282,7 @@ export function NodeDetailPanel({
       }
       return <span key={index}>{part}</span>
     })
-  }, [summary?.citations, handleCitationClick])
+  }, [streamingCitations, summary?.citations, handleCitationClick])
 
   if (!node) {
     return null

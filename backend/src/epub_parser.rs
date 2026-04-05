@@ -4,6 +4,7 @@ use std::path::Path;
 use std::io::{Read, BufReader};
 use zip::ZipArchive;
 
+use crate::config;
 use crate::embedding;
 
 /// Parse an EPUB file and create chunks in the database
@@ -200,7 +201,23 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
     let pool_clone = pool.clone();
     let book_id_clone = book_id.to_string();
     tokio::spawn(async move {
-        match embedding::generate_chunk_embeddings(&pool_clone, &book_id_clone).await {
+        // Get model config from database
+        let model_config = match config::get_model_config(&pool_clone).await {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                tracing::error!("[EPUB Parser] Failed to get model config: {}", e);
+                return;
+            }
+        };
+
+        match embedding::generate_chunk_embeddings(
+            &pool_clone,
+            &book_id_clone,
+            &model_config.embedding_model,
+            &model_config.embedding_url,
+        )
+        .await
+        {
             Ok(count) => {
                 tracing::info!(
                     "[EPUB Parser] Embedding generation completed for book {}: {} chunks processed",

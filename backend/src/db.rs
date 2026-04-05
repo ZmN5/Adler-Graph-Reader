@@ -82,6 +82,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             id TEXT PRIMARY KEY,
             book_id TEXT,
             name TEXT NOT NULL,
+            native_term TEXT,
             description TEXT,
             examples TEXT NOT NULL DEFAULT '[]',
             source_chunk_ids TEXT NOT NULL DEFAULT '[]',
@@ -119,6 +120,19 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
 
     if !page_number_exists {
         sqlx::query("ALTER TABLE nodes ADD COLUMN page_number INTEGER")
+            .execute(pool)
+            .await?;
+    }
+
+    // Migration: Add native_term column to existing nodes table (for backward compatibility)
+    let native_term_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('nodes') WHERE name = 'native_term'"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !native_term_exists {
+        sqlx::query("ALTER TABLE nodes ADD COLUMN native_term TEXT")
             .execute(pool)
             .await?;
     }
@@ -163,6 +177,41 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     )
     .execute(pool)
     .await?;
+
+    // Create model_config table for AI model configuration
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS model_config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            description TEXT,
+            updated_at TEXT NOT NULL
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Insert default model config values if not exists
+    let default_configs = [
+        ("embedding_model", "text-embedding-qwen3-embedding-0.6b", "Embedding model for vector search"),
+        ("embedding_url", "http://localhost:1234/v1/embeddings", "LM Studio embedding API URL"),
+        ("llm_model", "qwen3.5-9b", "LLM model for summarization and extraction"),
+        ("llm_api_url", "http://localhost:1234/v1", "LM Studio LLM API base URL"),
+        ("reranker_model", "qwen3.5-9b", "Reranker model for result ranking"),
+    ];
+
+    for (key, value, description) in default_configs {
+        sqlx::query(
+            r#"INSERT OR IGNORE INTO model_config (key, value, description, updated_at)
+               VALUES (?, ?, ?, datetime('now'))"#,
+        )
+        .bind(key)
+        .bind(value)
+        .bind(description)
+        .execute(pool)
+        .await?;
+    }
 
     // Migration: Add paragraph_start column to existing chunks table
     let paragraph_start_exists: bool = sqlx::query_scalar(

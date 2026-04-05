@@ -156,10 +156,16 @@ pub async fn rebuild_fts_index(
 ///
 /// # Arguments
 /// * `texts` - Vector of text strings to embed
+/// * `model` - Embedding model name
+/// * `url` - Embedding API URL
 ///
 /// # Returns
 /// * `Result<Vec<Vec<f32>>, EmbeddingError>` - Vector of embedding vectors
-pub async fn call_embedding_api(texts: Vec<String>) -> Result<Vec<Vec<f32>>, EmbeddingError> {
+pub async fn call_embedding_api(
+    texts: Vec<String>,
+    model: &str,
+    url: &str,
+) -> Result<Vec<Vec<f32>>, EmbeddingError> {
     if texts.is_empty() {
         return Ok(Vec::new());
     }
@@ -170,17 +176,18 @@ pub async fn call_embedding_api(texts: Vec<String>) -> Result<Vec<Vec<f32>>, Emb
         .expect("Failed to create HTTP client");
 
     let request = EmbeddingRequest {
-        model: EMBEDDING_MODEL.to_string(),
+        model: model.to_string(),
         input: texts,
     };
 
     tracing::debug!(
-        "[Embedding] Sending request for {} texts",
-        request.input.len()
+        "[Embedding] Sending request for {} texts to {}",
+        request.input.len(),
+        url
     );
 
     let response = client
-        .post(LM_STUDIO_EMBEDDING_URL)
+        .post(url)
         .header("Authorization", "Bearer lm-studio")
         .header("Content-Type", "application/json")
         .json(&request)
@@ -234,12 +241,16 @@ pub async fn call_embedding_api(texts: Vec<String>) -> Result<Vec<Vec<f32>>, Emb
 /// # Arguments
 /// * `pool` - Database connection pool
 /// * `book_id` - The book ID to generate embeddings for
+/// * `embedding_model` - Embedding model name
+/// * `embedding_url` - Embedding API URL
 ///
 /// # Returns
 /// * `Result<usize, EmbeddingError>` - Number of chunks processed
 pub async fn generate_chunk_embeddings(
     pool: &SqlitePool,
     book_id: &str,
+    embedding_model: &str,
+    embedding_url: &str,
 ) -> Result<usize, EmbeddingError> {
     tracing::info!(
         "[Embedding] Starting embedding generation for book: {}",
@@ -284,7 +295,7 @@ pub async fn generate_chunk_embeddings(
         let chunk_ids: Vec<&str> = batch.iter().map(|c| c.id.as_str()).collect();
 
         // Call embedding API
-        let embeddings = call_embedding_api(texts).await?;
+        let embeddings = call_embedding_api(texts, embedding_model, embedding_url).await?;
 
         if embeddings.len() != batch.len() {
             return Err(EmbeddingError::ApiError(format!(
@@ -310,7 +321,7 @@ pub async fn generate_chunk_embeddings(
             )
             .bind(chunk_id)
             .bind(&embedding_bytes)
-            .bind(EMBEDDING_MODEL)
+            .bind(embedding_model)
             .bind(EMBEDDING_DIMENSIONS as i32)
             .execute(pool)
             .await
@@ -341,12 +352,16 @@ pub async fn generate_chunk_embeddings(
 /// # Arguments
 /// * `pool` - Database connection pool
 /// * `chunk_ids` - Vector of chunk IDs to generate embeddings for
+/// * `embedding_model` - Embedding model name
+/// * `embedding_url` - Embedding API URL
 ///
 /// # Returns
-/// * `Result<usize, EmbeddingError>` - Number of chunks processed
+/// * `Result<usize, EmbeddingError>> - Number of chunks processed
 pub async fn generate_embeddings_for_chunks(
     pool: &SqlitePool,
     chunk_ids: &[String],
+    embedding_model: &str,
+    embedding_url: &str,
 ) -> Result<usize, EmbeddingError> {
     if chunk_ids.is_empty() {
         return Ok(0);
@@ -390,7 +405,7 @@ pub async fn generate_embeddings_for_chunks(
         let texts: Vec<String> = batch.iter().map(|c| c.content.clone()).collect();
         let batch_chunk_ids: Vec<&str> = batch.iter().map(|c| c.id.as_str()).collect();
 
-        let embeddings = call_embedding_api(texts).await?;
+        let embeddings = call_embedding_api(texts, embedding_model, embedding_url).await?;
 
         for (chunk_id, embedding) in batch_chunk_ids.iter().zip(embeddings.iter()) {
             let embedding_bytes: Vec<u8> = embedding
@@ -406,7 +421,7 @@ pub async fn generate_embeddings_for_chunks(
             )
             .bind(chunk_id)
             .bind(&embedding_bytes)
-            .bind(EMBEDDING_MODEL)
+            .bind(embedding_model)
             .bind(EMBEDDING_DIMENSIONS as i32)
             .execute(pool)
             .await
