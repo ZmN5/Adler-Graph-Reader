@@ -901,7 +901,7 @@ impl HybridRetriever {
             bm25_results.len(),
             RRF_K
         );
-        let fused_results: Vec<_> = reciprocal_rank_fusion(&vector_results, &bm25_results, Some(RRF_K)).into_iter().take(5).collect();
+        let fused_results: Vec<_> = reciprocal_rank_fusion(&vector_results, &bm25_results, Some(RRF_K)).into_iter().take(top_k).collect();
         tracing::info!(
             "[RRF Fusion] OUTPUT: {} fused results, top 5: {:?}",
             fused_results.len(),
@@ -1036,33 +1036,46 @@ impl HybridRetriever {
         node_id: &str,
         results: &[RetrievalResult],
     ) -> Result<(), RetrievalError> {
+        if results.is_empty() {
+            return Ok(());
+        }
+
+        // Use transaction for batch insert
+        let mut tx = self.pool.begin()
+            .await
+            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to begin transaction: {}", e)))?;
+
         // Delete existing results for this node first
         sqlx::query("DELETE FROM node_chunk_ranks WHERE node_id = ?")
             .bind(node_id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| RetrievalError::DatabaseError(format!("Failed to clear old results: {}", e)))?;
 
-        // Insert new results
-        for result in results {
-            let id = Uuid::new_v4().to_string();
+        // Build batch insert with multiple VALUES
+        let mut query_builder: sqlx::query_builder::QueryBuilder<sqlx::Sqlite> =
+            sqlx::query_builder::QueryBuilder::new(
+                "INSERT INTO node_chunk_ranks (id, node_id, chunk_id, vector_score, bm25_score, final_score, created_at) "
+            );
 
-            sqlx::query(
-                r#"
-                INSERT INTO node_chunk_ranks (id, node_id, chunk_id, vector_score, bm25_score, final_score, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-                "#
-            )
-            .bind(&id)
-            .bind(node_id)
-            .bind(&result.chunk_id)
-            .bind(result.vector_score)
-            .bind(result.bm25_score)
-            .bind(result.final_score)
-            .execute(&self.pool)
+        query_builder.push_values(results.iter(), |mut b, result| {
+            b.push_bind(Uuid::new_v4().to_string())
+                .push_bind(node_id.to_string())
+                .push_bind(&result.chunk_id)
+                .push_bind(result.vector_score)
+                .push_bind(result.bm25_score)
+                .push_bind(result.final_score)
+                .push_bind("datetime('now')");
+        });
+
+        let query = query_builder.build();
+        query.execute(&mut *tx)
             .await
-            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to store result: {}", e)))?;
-        }
+            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to store results: {}", e)))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| RetrievalError::DatabaseError(format!("Failed to commit transaction: {}", e)))?;
 
         tracing::info!(
             "[HybridRetriever] Stored {} results in node_chunk_ranks for node {}",
