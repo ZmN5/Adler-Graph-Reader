@@ -4,6 +4,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::time::Duration;
+use axum::response::sse::Event as SseEvent;
 
 /// Retrieval result for source-grounded summary
 #[derive(Debug, Clone)]
@@ -134,6 +135,7 @@ impl LlmClient {
     pub fn new(base_url: &str, model: &str) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(180))
+            .http1_only()
             .build()
             .expect("Failed to create HTTP client");
 
@@ -304,12 +306,12 @@ impl LlmClient {
 
     /// Generate a source-grounded summary with true streaming token output
     ///
-    /// Returns a stream of text tokens
+    /// Returns a stream of SseEvent (text tokens and done signals)
     /// Note: Takes `self` by ownership to avoid lifetime issues with async_stream
     pub fn into_summary_stream(
         self,
         request: &SourceGroundedSummaryRequest,
-    ) -> Pin<Box<dyn stream::Stream<Item = Result<String, LlmError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn stream::Stream<Item = Result<SseEvent, LlmError>> + Send + 'static>> {
         // Build NotebookLM-style prompt
         let prompt = build_summary_prompt(request);
         let model = self.model.clone();
@@ -371,13 +373,15 @@ impl LlmClient {
                         if current_line.starts_with("data: ") {
                             let data = &current_line[6..];
                             if data == "[DONE]" {
+                                yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
+                                // Keep streaming — citations come after [DONE]
                                 continue;
                             }
                             if let Ok(resp) = serde_json::from_str::<ChatResponseStream>(data) {
                                 for choice in resp.choices {
                                     let content = choice.delta.content();
                                     if !content.is_empty() {
-                                        yield Ok(content);
+                                        yield Ok(SseEvent::default().data(content));
                                     }
                                 }
                             }

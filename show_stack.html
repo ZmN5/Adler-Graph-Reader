@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单调栈执行过程可视化 - 84. 柱状图中最大的矩形</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bar { transition: all 0.3s ease; }
+        .active-bar { border: 2px solid #ef4444; }
+        .popped-bar { background-color: #fca5a5; opacity: 0.5; }
+        .stack-item { transition: all 0.2s; }
+    </style>
+</head>
+<body class="bg-gray-50 p-8 font-sans">
+    <div class="max-w-5xl mx-auto bg-white p-6 rounded-xl shadow-lg">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">单调栈可视化 (LeetCode 84)</h1>
+        <p class="text-gray-600 mb-6">原始数组：[2, 1, 5, 6, 2, 3] &nbsp;&nbsp;|&nbsp;&nbsp; 哨兵处理后：[0, 2, 1, 5, 6, 2, 3, 0]</p>
+        
+        <div class="grid grid-cols-3 gap-6">
+            <div class="col-span-2 border-2 border-gray-200 rounded-lg p-4 bg-gray-50 flex items-end h-80 space-x-2 relative" id="histogram">
+                </div>
+
+            <div class="border-2 border-gray-200 rounded-lg p-4 bg-gray-50 flex flex-col">
+                <h2 class="text-lg font-semibold mb-2 text-blue-700">当前单调栈 (存索引)</h2>
+                <div class="flex-grow bg-white border border-gray-300 rounded p-2 overflow-y-auto flex flex-col-reverse" id="stack-container">
+                    </div>
+                
+                <div class="mt-4 p-3 bg-blue-100 rounded text-blue-900 font-mono text-sm">
+                    <div>当前最大面积: <span id="max-area" class="font-bold text-red-600 text-lg">0</span></div>
+                    <div class="mt-2 text-gray-700 font-bold" id="action-msg">点击“下一步”开始执行...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-center space-x-4">
+            <button onclick="prevStep()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 font-medium">上一步</button>
+            <button onclick="nextStep()" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold shadow-md">下一步</button>
+            <button onclick="reset()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 font-medium">重置</button>
+        </div>
+    </div>
+
+    <script>
+        const originalHeights = [2, 1, 5, 6, 2, 3];
+        const heights = [0, ...originalHeights, 0]; // 前后加哨兵
+        let steps = [];
+        let currentStep = 0;
+
+        // 预计算所有步骤的状态
+        function simulate() {
+            steps = [];
+            let stack = [];
+            let max_area = 0;
+
+            steps.push({ i: -1, stack: [], maxArea: 0, msg: "初始状态。准备遍历数组。", highlightI: -1, highlightPop: -1 });
+
+            for (let i = 0; i < heights.length; i++) {
+                steps.push({ i, stack: [...stack], maxArea: max_area, msg: `指针移动到 i=${i}，高度=${heights[i]}。准备判断是否破坏单调递增...`, highlightI: i, highlightPop: -1 });
+
+                while (stack.length > 0 && heights[stack[stack.length - 1]] > heights[i]) {
+                    let popIndex = stack.pop();
+                    let h = heights[popIndex];
+                    let leftBoundary = stack[stack.length - 1];
+                    let w = i - leftBoundary - 1;
+                    let area = h * w;
+                    
+                    let isMax = area > max_area;
+                    max_area = Math.max(max_area, area);
+
+                    steps.push({
+                        i, stack: [...stack], maxArea: max_area, 
+                        msg: `【破坏单调性】弹出栈顶索引 ${popIndex}(高度${h})。<br>左边界是栈新顶 ${leftBoundary}，右边界是 ${i}。<br>宽度 = ${i} - ${leftBoundary} - 1 = ${w}。<br>计算面积 = ${h} * ${w} = ${area}。${isMax ? '<span class="text-red-500 font-bold">更新最大面积！</span>' : ''}`,
+                        highlightI: i, highlightPop: popIndex
+                    });
+                }
+                stack.push(i);
+                steps.push({ i, stack: [...stack], maxArea: max_area, msg: `高度 ${heights[i]} (索引${i}) 入栈，维持单调递增。`, highlightI: i, highlightPop: -1 });
+            }
+            steps.push({ i: heights.length, stack: [...stack], maxArea: max_area, msg: "遍历结束，算法完成！", highlightI: -1, highlightPop: -1 });
+        }
+
+        // 渲染函数
+        function render() {
+            const step = steps[currentStep];
+            
+            // 1. 渲染柱状图
+            const histDiv = document.getElementById('histogram');
+            histDiv.innerHTML = '';
+            heights.forEach((h, index) => {
+                let isCurrentI = index === step.highlightI;
+                let isPopped = index === step.highlightPop;
+                
+                let barHtml = `
+                    <div class="flex flex-col items-center flex-1">
+                        <span class="text-xs text-gray-500 mb-1 ${isCurrentI ? 'text-red-600 font-bold' : ''}">i=${index}</span>
+                        <div class="bar w-full rounded-t flex items-end justify-center pb-2 text-white font-bold
+                            ${isCurrentI ? 'bg-blue-600 active-bar' : (isPopped ? 'popped-bar' : 'bg-gray-400')}
+                            ${index === 0 || index === heights.length - 1 ? 'bg-green-500' : ''}" 
+                            style="height: ${h === 0 ? 30 : h * 40}px;">
+                            ${h}
+                        </div>
+                    </div>
+                `;
+                histDiv.innerHTML += barHtml;
+            });
+
+            // 2. 渲染栈
+            const stackDiv = document.getElementById('stack-container');
+            stackDiv.innerHTML = '';
+            [...step.stack].reverse().forEach(idx => {
+                stackDiv.innerHTML += `<div class="stack-item p-2 mb-2 bg-blue-50 border border-blue-200 text-center rounded text-blue-800 font-mono">索引 ${idx} (高 ${heights[idx]})</div>`;
+            });
+            if(step.stack.length === 0) {
+                 stackDiv.innerHTML = `<div class="text-gray-400 text-center mt-4">栈为空</div>`;
+            }
+
+            // 3. 更新状态文字
+            document.getElementById('max-area').innerText = step.maxArea;
+            document.getElementById('action-msg').innerHTML = `[Step ${currentStep}/${steps.length - 1}]<br>${step.msg}`;
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                render();
+            }
+        }
+
+        function reset() {
+            currentStep = 0;
+            render();
+        }
+
+        // 初始化
+        simulate();
+        render();
+    </script>
+</body>
+</html>

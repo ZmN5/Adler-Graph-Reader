@@ -422,7 +422,9 @@ async fn delete_book(
 
     // Delete the file
     if let Some(path) = file_path {
-        let _ = std::fs::remove_file(path);
+        if let Err(e) = std::fs::remove_file(&path) {
+            tracing::warn!("[delete_book] Failed to delete file {:?}: {}", path, e);
+        }
     }
 
     // Disable FK constraints and delete manually to avoid FTS trigger issues
@@ -1408,14 +1410,25 @@ async fn node_summary_stream(
 
         while let Some(token_result) = token_stream.next().await {
             match token_result {
-                Ok(token) => {
-                    full_text.push_str(&token);
-                    // Send each token as a content chunk
-                    let content_chunk = serde_json::json!({
-                        "type": "content",
-                        "text": token
-                    });
-                    yield Ok::<_, std::convert::Infallible>(SseEvent::default().data(content_chunk.to_string()));
+                Ok(event) => {
+                    // Extract text from SseEvent data for accumulation
+                    // The Event stores data in a private buffer, we use Debug format to get the buffer content
+                    // Event format is: Event { buffer: "...", flags: ... }
+                    let event_debug = format!("{:?}", event);
+                    // Parse the JSON from the buffer field - extract content between buffer: "..." 
+                    if let Some(json_start) = event_debug.find("buffer: \"") {
+                        let json_start = json_start + 9; // skip 'buffer: "'
+                        if let Some(json_end) = event_debug[json_start..].find('"') {
+                            let json_str = &event_debug[json_start..json_start + json_end];
+                            if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(json_str) {
+                                if let Some(text) = json_val.get("text").and_then(|v| v.as_str()) {
+                                    full_text.push_str(text);
+                                }
+                            }
+                        }
+                    }
+                    // Forward the event directly (already formatted as SSE)
+                    yield Ok::<_, std::convert::Infallible>(event);
                 }
                 Err(e) => {
                     let error_chunk = serde_json::json!({
