@@ -13,8 +13,6 @@ const RRF_K: f64 = 60.0;
 const RERANK_TOP_K: usize = 20;
 /// LM Studio completions API URL
 const LM_STUDIO_COMPLETIONS_URL: &str = "http://localhost:1234/v1/chat/completions";
-/// Reranker model (qwen3-reranker-0.6b doesn't follow JSON output instructions properly)
-const RERANKER_MODEL: &str = "qwen3.5-9b";
 
 /// Search result from a single retrieval method
 #[derive(Debug, Clone)]
@@ -469,6 +467,7 @@ pub fn fused_to_retrieval_results(fused: Vec<FusedResult>) -> Vec<RetrievalResul
 /// # Returns
 /// * `Result<Vec<RerankResult>, RetrievalError>` - Reranked results with LLM scores
 pub async fn rerank(
+    reranker_model: &str,
     query: &str,
     candidates: Vec<FusedResult>,
     passages: &HashMap<String, String>,
@@ -499,8 +498,8 @@ pub async fn rerank(
     );
 
     // Call LM Studio API
-    tracing::info!("[Rerank] Calling reranker API with model: {}", RERANKER_MODEL);
-    let reranked = call_reranker_api(&prompt, &candidates_to_rerank).await?;
+    tracing::info!("[Rerank] Calling reranker API with model: {}", reranker_model);
+    let reranked = call_reranker_api(reranker_model, &prompt, &candidates_to_rerank).await?;
 
     tracing::info!(
         "[Rerank] Completed reranking, returned {} results",
@@ -571,6 +570,7 @@ struct RerankerResponseItem {
 
 /// Call LM Studio completions API for reranking
 async fn call_reranker_api(
+    reranker_model: &str,
     prompt: &str,
     candidates: &[FusedResult],
 ) -> Result<Vec<RerankResult>, RetrievalError> {
@@ -612,7 +612,7 @@ async fn call_reranker_api(
         .map_err(|e| RetrievalError::ApiError(format!("Failed to create HTTP client: {}", e)))?;
 
     let request = ChatRequest {
-        model: RERANKER_MODEL.to_string(),
+        model: reranker_model.to_string(),
         messages: vec![ChatMessage {
             role: "user".to_string(),
             content: prompt.to_string(),
