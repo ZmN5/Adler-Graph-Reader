@@ -172,6 +172,7 @@ pub async fn call_embedding_api(
 
     let client = Client::builder()
         .timeout(Duration::from_secs(60))
+        .http1_only()  // ADD THIS LINE — LM Studio only supports HTTP/1.1
         .build()
         .expect("Failed to create HTTP client");
 
