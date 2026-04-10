@@ -1,7 +1,6 @@
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use std::time::Duration;
+use tokio::process::Command;
 
 /// Default embedding model from LM Studio
 const EMBEDDING_MODEL: &str = "text-embedding-qwen3-embedding-0.6b";
@@ -170,50 +169,58 @@ pub async fn call_embedding_api(
         return Ok(Vec::new());
     }
 
-    let client = Client::builder()
-        .timeout(Duration::from_secs(60))
-        .http1_only()  // ADD THIS LINE — LM Studio only supports HTTP/1.1
-        .build()
-        .expect("Failed to create HTTP client");
-
     let request = EmbeddingRequest {
         model: model.to_string(),
-        input: texts,
+        input: texts.clone(),
     };
 
-    tracing::debug!(
-        "[Embedding] Sending request for {} texts to {}",
-        request.input.len(),
-        url
+    let request_body = serde_json::to_string(&request).unwrap_or_default();
+    tracing::info!(
+        "[Embedding] Sending request for {} texts to {} (model: {})",
+        texts.len(),
+        url,
+        model
     );
+    tracing::debug!("[Embedding] Request body ({}): {}", texts.len(), &request_body[..request_body.len().min(200)]);
 
-    let response = client
-        .post(url)
-        .header("Authorization", "Bearer lm-studio")
-        .header("Content-Type", "application/json")
-        .json(&request)
-        .send()
+    // Use curl subprocess to avoid reqwest/LM Studio compatibility issues
+    let output = Command::new("curl")
+        .args([
+            "-s", "-m", "60", "-X", "POST", url,
+            "-H", "Content-Type: application/json",
+            "-H", "Authorization: Bearer lm-studio",
+            "--data-binary", &request_body,
+            "--noproxy", "*",
+        ])
+        .output()
         .await
         .map_err(|e| {
-            tracing::error!("[Embedding] Connection error: {}", e);
-            EmbeddingError::ConnectionError(e.to_string())
+            tracing::error!("[Embedding] curl execution error: {}", e);
+            EmbeddingError::ConnectionError(format!("curl failed: {}", e))
         })?;
 
-    tracing::debug!("[Embedding] Response status: {}", response.status());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        tracing::error!("[Embedding] API error {}: {}", status, body);
+    tracing::warn!("[Embedding] curl exit status: {}, stdout_len: {}, stderr: {}",
+        output.status, stdout.len(), &stderr[..stderr.len().min(100)]);
+
+    if !output.status.success() {
+        tracing::error!("[Embedding] curl failed with status {}: {}", output.status, stderr);
         return Err(EmbeddingError::ApiError(format!(
-            "API error {}: {}",
-            status, body
+            "curl failed: {}",
+            stderr
         )));
     }
 
-    let embedding_response: EmbeddingResponse = response.json().await.map_err(|e| {
-        tracing::error!("[Embedding] Parse error: {}", e);
-        EmbeddingError::ParseError(e.to_string())
+    if stdout.is_empty() {
+        tracing::error!("[Embedding] curl returned empty response");
+        return Err(EmbeddingError::ApiError("empty response from embedding API".to_string()));
+    }
+
+    let embedding_response: EmbeddingResponse = serde_json::from_str(&stdout).map_err(|e| {
+        tracing::error!("[Embedding] Parse error: {} | body: {}", e, &stdout[..stdout.len().min(200)]);
+        EmbeddingError::ParseError(format!("{}: {}", e, &stdout[..stdout.len().min(200)]))
     })?;
 
     // Validate dimensions and extract embeddings

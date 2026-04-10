@@ -144,8 +144,27 @@ export async function deleteBook(bookId: string): Promise<void> {
   await apiDelete<void>(`/api/books/${bookId}`)
 }
 
-export async function extractBook(bookId: string): Promise<ExtractResponse> {
-  return apiPost<null, ExtractResponse>(`/api/books/${bookId}/extract`, null)
+export async function extractBook(bookId: string, timeoutMs = 300000): Promise<ExtractResponse> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/books/${bookId}/extract`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
+    return handleResponse<ExtractResponse>(response)
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Extract operation timed out after ${timeoutMs / 1000} seconds. The book may be too large or the server is busy.`)
+    }
+    throw error
+  }
 }
 
 export interface ParseResponse {

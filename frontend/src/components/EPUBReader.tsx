@@ -61,6 +61,7 @@ export function EPUBReader({
   const [isLoading, setIsLoading] = useState(true)
   const renditionRef = useRef<Rendition | null>(null)
   const tocRef = useRef<Chapter[]>([])
+  const [isRenditionReady, setIsRenditionReady] = useState(false)
 
   const bookUrl = `/api/books/${bookId}/file`
 
@@ -89,6 +90,7 @@ export function EPUBReader({
   // Get rendition when ready
   const getRendition = useCallback((rendition: Rendition) => {
     renditionRef.current = rendition
+    setIsRenditionReady(true)
 
     // Inject CSS to fix scrolling in scrolled mode
     rendition.hooks.content.register((contents: Contents) => {
@@ -137,27 +139,42 @@ export function EPUBReader({
 
   // Handle highlight/chapter navigation from props
   useEffect(() => {
-    if (!renditionRef.current) return
+    if (!renditionRef.current || !isRenditionReady) return
 
+    const rendition = renditionRef.current
     // Priority: highlightAnchor (CFI) > chapterHref > pageNumber
     if (highlightAnchor) {
       // If it's a CFI, use it directly
       if (highlightAnchor.includes('epubcfi')) {
-        setLocation(highlightAnchor)
+        rendition.display(highlightAnchor).catch(console.error)
       } else {
-        // It's a chapter href
-        setLocation(highlightAnchor)
+        // It's a chapter href - use display
+        rendition.display(highlightAnchor).catch(console.error)
       }
     } else if (chapterHref) {
-      setLocation(chapterHref)
+      // Use rendition's display method with spine index for chapter navigation
+      const book = (rendition as unknown as { book?: Book }).book
+      if (book && book.spine) {
+        // Try to find spine item by href (cast to any to bypass type checking)
+        const spineItems = (book.spine as any).items || []
+        const spineItem = spineItems.find((item: { href?: string }) => item.href && chapterHref.includes(item.href))
+        if (spineItem && spineItem.index !== undefined) {
+          rendition.display(spineItem.index).catch(console.error)
+        } else {
+          // Fallback: try direct href display (works for some epub.js versions)
+          rendition.display(chapterHref).catch(console.error)
+        }
+      } else {
+        rendition.display(chapterHref).catch(console.error)
+      }
     } else if (pageNumber && pageNumber > 0) {
       // Convert page number to percentage for EPUB
       const percentage = totalPagesProp && totalPagesProp > 0
         ? (pageNumber - 1) / totalPagesProp
         : (pageNumber - 1) / 100
-      setLocation(Math.max(0, Math.min(0.999, percentage)))
+      rendition.display(Math.max(0, Math.min(0.999, percentage))).catch(console.error)
     }
-  }, [highlightAnchor, chapterHref, pageNumber, totalPagesProp])
+  }, [highlightAnchor, chapterHref, pageNumber, totalPagesProp, isRenditionReady])
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -176,8 +193,8 @@ export function EPUBReader({
       </div>
 
       {/* EPUB Viewer */}
-      <div className="flex-1 min-h-0 relative overflow-hidden">
-        <div style={{ height: "100%", overflow: "auto" }}>
+      <div className="flex-1 min-h-0 relative" style={{ overflow: 'hidden' }}>
+        <div className="absolute inset-0 overflow-auto">
           <ReactReader
             url={bookUrl}
             location={location}

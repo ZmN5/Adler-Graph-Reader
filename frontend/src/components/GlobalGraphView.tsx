@@ -3,6 +3,22 @@ import { cn } from '@/lib/utils'
 import { getGlobalGraph, GraphNode } from '@/lib/api-client'
 import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d'
 
+// Space theme colors - matching GraphCanvas
+const PLANET_COLORS: Record<string, { base: string; glow: string; atmosphere: string }> = {
+  Philosophy: { base: '#6366f1', glow: '#818cf8', atmosphere: 'rgba(99, 102, 241, 0.4)' },
+  Science: { base: '#10b981', glow: '#34d399', atmosphere: 'rgba(16, 185, 129, 0.4)' },
+  History: { base: '#f59e0b', glow: '#fbbf24', atmosphere: 'rgba(245, 158, 11, 0.4)' },
+  Art: { base: '#ec4899', glow: '#f472b6', atmosphere: 'rgba(236, 72, 153, 0.4)' },
+  Technology: { base: '#06b6d4', glow: '#22d3ee', atmosphere: 'rgba(6, 182, 212, 0.4)' },
+  Politics: { base: '#ef4444', glow: '#f87171', atmosphere: 'rgba(239, 68, 68, 0.4)' },
+  Economics: { base: '#84cc16', glow: '#a3e635', atmosphere: 'rgba(132, 204, 22, 0.4)' },
+  Psychology: { base: '#a855f7', glow: '#c084fc', atmosphere: 'rgba(168, 85, 247, 0.4)' },
+  Other: { base: '#64748b', glow: '#94a3b8', atmosphere: 'rgba(100, 116, 139, 0.3)' },
+}
+
+const CORE_COLOR = { base: '#00f5ff', glow: '#67e8f9', atmosphere: 'rgba(0, 245, 255, 0.5)' }
+const DEFAULT_PLANET_COLOR = { base: '#64748b', glow: '#94a3b8', atmosphere: 'rgba(100, 116, 139, 0.3)' }
+
 interface GlobalGraphViewProps {
   className?: string
   onNodeClick?: (node: GraphNode | null) => void
@@ -27,6 +43,7 @@ interface ExtendedNode extends NodeObject {
   source_chunk_ids: string[]
   sourceCount: number
   is_core: boolean
+  category?: string
 }
 
 interface ExtendedLink extends LinkObject {
@@ -48,6 +65,7 @@ export function GlobalGraphView({
   const graphRef = useRef<ForceGraphMethods<ExtendedNode, ExtendedLink> | undefined>()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
+  const [pulseTime, setPulseTime] = useState(0)
 
   // Load global graph data
   useEffect(() => {
@@ -59,12 +77,9 @@ export function GlobalGraphView({
       try {
         const data = await getGlobalGraph()
         if (!cancelled) {
-          // Count source_chunk_ids as source count
-          // In global view, we show nodes from all books
           setGraphData({
             nodes: data.nodes.map((node) => ({
               ...node,
-              // sourceCount will be used for badge
             })),
             links: data.edges.map((edge) => ({
               id: edge.id,
@@ -108,6 +123,17 @@ export function GlobalGraphView({
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
+  // Pulse animation for core concepts
+  useEffect(() => {
+    let animationId: number
+    const animate = () => {
+      setPulseTime((prev) => prev + 0.016)
+      animationId = requestAnimationFrame(animate)
+    }
+    animate()
+    return () => cancelAnimationFrame(animationId)
+  }, [])
+
   const handleNodeClick = useCallback(
     (node: NodeObject) => {
       const extNode = node as ExtendedNode
@@ -131,9 +157,28 @@ export function GlobalGraphView({
     }
   }, [])
 
+  // Helper functions
+  const lightenColor = (hex: string, percent: number): string => {
+    const num = parseInt(hex.replace('#', ''), 16)
+    const amt = Math.round(2.55 * percent)
+    const R = Math.min(255, (num >> 16) + amt)
+    const G = Math.min(255, ((num >> 8) & 0x00FF) + amt)
+    const B = Math.min(255, (num & 0x0000FF) + amt)
+    return `rgb(${R}, ${G}, ${B})`
+  }
+
+  const darkenColor = (hex: string, percent: number): string => {
+    const num = parseInt(hex.replace('#', ''), 16)
+    const amt = Math.round(2.55 * percent)
+    const R = Math.max(0, (num >> 16) - amt)
+    const G = Math.max(0, ((num >> 8) & 0x00FF) - amt)
+    const B = Math.max(0, (num & 0x0000FF) - amt)
+    return `rgb(${R}, ${G}, ${B})`
+  }
+
   const nodeCanvasObject = useCallback(
     (node: NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      // Guard: skip nodes without valid position (can happen during force simulation initialization)
+      // Guard: skip nodes without valid position
       if (node.x === undefined || node.y === undefined ||
           !Number.isFinite(node.x) || !Number.isFinite(node.y)) {
         return
@@ -148,47 +193,124 @@ export function GlobalGraphView({
       const regularNodeSize = Math.min(baseNodeSize + sourceCount * 0.5, 14)
       const nodeSize = extNode.is_core ? regularNodeSize * 1.5 : regularNodeSize
 
-      // Draw node circle
       const isSelected = extNode.id === selectedNodeId
       const isHovered = extNode.id === hoveredNode?.id
 
-      ctx.beginPath()
-      ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI)
-
-      // Fill color based on state and core status
-      if (isSelected) {
-        ctx.fillStyle = '#3b82f6' // primary
-      } else if (isHovered) {
-        ctx.fillStyle = '#60a5fa' // lighter primary
-      } else if (extNode.is_core) {
-        ctx.fillStyle = '#8b5cf6' // purple-500 for core concepts
-      } else {
-        // Color based on source count (more sources = more saturated)
-        const saturation = Math.min(40 + sourceCount * 5, 80)
-        ctx.fillStyle = `hsl(210, ${saturation}%, 50%)`
+      // Get planet color
+      let planetColor = DEFAULT_PLANET_COLOR
+      if (extNode.is_core) {
+        planetColor = CORE_COLOR
+      } else if (extNode.category && PLANET_COLORS[extNode.category]) {
+        planetColor = PLANET_COLORS[extNode.category]
       }
+
+      // Pulse animation for core concepts
+      const pulseScale = extNode.is_core ? 1 + Math.sin(pulseTime * 2) * 0.08 : 1
+      const finalSize = (isHovered ? nodeSize * 1.2 : nodeSize) * pulseScale
+
+      // Draw planetary glow for core concepts
+      if (extNode.is_core) {
+        const glowIntensity = 0.3 + Math.sin(pulseTime * 2) * 0.2
+        const glowRadius = finalSize * (2.5 + Math.sin(pulseTime * 1.5) * 0.5)
+        const glowGradient = ctx.createRadialGradient(
+          node.x, node.y, finalSize * 0.8,
+          node.x, node.y, glowRadius
+        )
+        glowGradient.addColorStop(0, `rgba(0, 245, 255, ${glowIntensity})`)
+        glowGradient.addColorStop(1, 'rgba(0, 245, 255, 0)')
+        ctx.fillStyle = glowGradient
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, glowRadius, 0, 2 * Math.PI)
+        ctx.fill()
+      }
+
+      // Draw hover glow
+      if (isHovered) {
+        const hoverGlowGradient = ctx.createRadialGradient(
+          node.x, node.y, finalSize * 0.5,
+          node.x, node.y, finalSize * 2
+        )
+        hoverGlowGradient.addColorStop(0, planetColor.atmosphere)
+        hoverGlowGradient.addColorStop(1, 'transparent')
+        ctx.fillStyle = hoverGlowGradient
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, finalSize * 2, 0, 2 * Math.PI)
+        ctx.fill()
+      }
+
+      // Draw planet body with gradient
+      const bodyGradient = ctx.createRadialGradient(
+        node.x - finalSize * 0.3, node.y - finalSize * 0.3, 0,
+        node.x, node.y, finalSize
+      )
+      bodyGradient.addColorStop(0, lightenColor(planetColor.base, 40))
+      bodyGradient.addColorStop(0.5, planetColor.base)
+      bodyGradient.addColorStop(1, darkenColor(planetColor.base, 30))
+
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, finalSize, 0, 2 * Math.PI)
+      ctx.fillStyle = bodyGradient
       ctx.fill()
 
-      // Border for selected/hovered/core concepts
-      if (isSelected || isHovered || extNode.is_core) {
-        ctx.strokeStyle = isSelected ? '#2563eb' : isHovered ? '#93c5fd' : '#7c3aed'
-        ctx.lineWidth = extNode.is_core ? 3 / globalScale : 2 / globalScale
+      // Draw selection border
+      if (isSelected) {
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, finalSize + 3 / globalScale, 0, 2 * Math.PI)
+        ctx.strokeStyle = '#ff00aa'
+        ctx.lineWidth = 2 / globalScale
+        ctx.stroke()
+
+        // Selection glow
+        const selectionGlow = ctx.createRadialGradient(
+          node.x, node.y, finalSize,
+          node.x, node.y, finalSize + 8 / globalScale
+        )
+        selectionGlow.addColorStop(0, 'rgba(255, 0, 170, 0.5)')
+        selectionGlow.addColorStop(1, 'rgba(255, 0, 170, 0)')
+        ctx.fillStyle = selectionGlow
+        ctx.fill()
+      } else if (isHovered || extNode.is_core) {
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, finalSize + 2 / globalScale, 0, 2 * Math.PI)
+        ctx.strokeStyle = extNode.is_core ? planetColor.glow : 'rgba(255, 255, 255, 0.5)'
+        ctx.lineWidth = extNode.is_core ? 2 / globalScale : 1.5 / globalScale
         ctx.stroke()
       }
 
-      // Draw source count badge if > 1
+      // Draw specular highlight
+      const highlightGradient = ctx.createRadialGradient(
+        node.x - finalSize * 0.4, node.y - finalSize * 0.4, 0,
+        node.x - finalSize * 0.4, node.y - finalSize * 0.4, finalSize * 0.6
+      )
+      highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)')
+      highlightGradient.addColorStop(1, 'transparent')
+      ctx.fillStyle = highlightGradient
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, finalSize, 0, 2 * Math.PI)
+      ctx.fill()
+
+      // Draw source count badge
       if (sourceCount > 1 && globalScale >= 0.4) {
         const badgeRadius = Math.max(6 / globalScale, 3)
-        const badgeX = node.x! + nodeSize * 0.7
-        const badgeY = node.y! - nodeSize * 0.7
+        const badgeX = node.x! + finalSize * 0.7
+        const badgeY = node.y! - finalSize * 0.7
+
+        // Badge glow
+        const badgeGlow = ctx.createRadialGradient(badgeX, badgeY, 0, badgeX, badgeY, badgeRadius * 2)
+        badgeGlow.addColorStop(0, 'rgba(255, 107, 53, 0.6)')
+        badgeGlow.addColorStop(1, 'transparent')
+        ctx.fillStyle = badgeGlow
+        ctx.beginPath()
+        ctx.arc(badgeX, badgeY, badgeRadius * 2, 0, 2 * Math.PI)
+        ctx.fill()
 
         ctx.beginPath()
         ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI)
-        ctx.fillStyle = '#f97316' // orange-500
+        ctx.fillStyle = '#ff6b35'
         ctx.fill()
 
         if (globalScale >= 0.6) {
-          ctx.font = `${Math.max(8 / globalScale, 4)}px sans-serif`
+          ctx.font = `bold ${Math.max(8 / globalScale, 4)}px 'Space Grotesk', sans-serif`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           ctx.fillStyle = '#ffffff'
@@ -196,16 +318,36 @@ export function GlobalGraphView({
         }
       }
 
-      // Draw label with different style for core concepts
+      // Draw label
       if (globalScale >= 0.5) {
-        ctx.font = extNode.is_core ? `bold ${fontSize}px sans-serif` : `${fontSize}px sans-serif`
+        ctx.font = extNode.is_core ? `bold ${fontSize}px 'Space Grotesk', sans-serif` : `${fontSize}px 'Space Grotesk', sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
-        ctx.fillStyle = '#1e293b' // foreground
-        ctx.fillText(label, node.x!, node.y! + nodeSize + 2 / globalScale)
+
+        // Label background
+        const textMetrics = ctx.measureText(label)
+        const padding = 3 / globalScale
+        ctx.fillStyle = 'rgba(10, 14, 23, 0.85)'
+        ctx.beginPath()
+        ctx.roundRect(
+          node.x! - textMetrics.width / 2 - padding,
+          node.y! + finalSize + 2 / globalScale,
+          textMetrics.width + padding * 2,
+          fontSize + padding * 2,
+          3 / globalScale
+        )
+        ctx.fill()
+
+        // Label text
+        ctx.fillStyle = extNode.is_core ? '#00f5ff' : '#f8fafc'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+        ctx.shadowBlur = 3
+        ctx.fillText(label, node.x!, node.y! + finalSize + 2 / globalScale + padding)
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
       }
     },
-    [selectedNodeId, hoveredNode]
+    [selectedNodeId, hoveredNode, pulseTime]
   )
 
   const linkCanvasObject = useCallback(
@@ -215,51 +357,91 @@ export function GlobalGraphView({
 
       if (!source.x || !source.y || !target.x || !target.y) return
 
-      // Draw edge line
+      const sourceNode = source as ExtendedNode
+      const targetNode = target as ExtendedNode
+
+      const isHighlighted =
+        selectedNodeId === sourceNode.id ||
+        selectedNodeId === targetNode.id ||
+        hoveredNode?.id === sourceNode.id ||
+        hoveredNode?.id === targetNode.id
+
+      // Draw cosmic connection
       ctx.beginPath()
       ctx.moveTo(source.x, source.y)
       ctx.lineTo(target.x, target.y)
-      ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)' // muted with transparency
-      ctx.lineWidth = 0.5 / globalScale
+      
+      if (isHighlighted) {
+        const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y)
+        gradient.addColorStop(0, 'rgba(0, 245, 255, 0.6)')
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.6)')
+        ctx.strokeStyle = gradient
+        ctx.lineWidth = 1.5 / globalScale
+      } else {
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.3)'
+        ctx.lineWidth = 0.5 / globalScale
+        ctx.setLineDash([3, 3])
+      }
       ctx.stroke()
+      ctx.setLineDash([])
+
+      // Animated particles on highlighted links
+      if (isHighlighted && globalScale >= 0.5) {
+        const particleCount = 3
+        const time = Date.now() / 1000
+
+        for (let i = 0; i < particleCount; i++) {
+          const t = ((time * 0.5 + i / particleCount) % 1)
+          const px = source.x + (target.x - source.x) * t
+          const py = source.y + (target.y - source.y) * t
+
+          const particleGradient = ctx.createRadialGradient(px, py, 0, px, py, 4 / globalScale)
+          particleGradient.addColorStop(0, 'rgba(0, 245, 255, 0.8)')
+          particleGradient.addColorStop(1, 'transparent')
+
+          ctx.beginPath()
+          ctx.arc(px, py, 4 / globalScale, 0, 2 * Math.PI)
+          ctx.fillStyle = particleGradient
+          ctx.fill()
+        }
+      }
     },
-    []
+    [selectedNodeId, hoveredNode]
   )
 
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <span className="ml-3 text-muted-foreground">Loading global graph...</span>
+        <div className="h-8 w-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
+        <span className="ml-3 text-slate-400 font-space">Loading global constellation...</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-destructive', className)}>
+      <div className={cn('flex flex-col items-center justify-center py-12 text-red-400', className)}>
         <p>Failed to load global graph</p>
-        <p className="text-sm">{error}</p>
+        <p className="text-sm text-red-400/70">{error}</p>
       </div>
     )
   }
 
   if (graphData.nodes.length === 0) {
     return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-muted-foreground', className)}>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-12 w-12 opacity-50">
+      <div className={cn('flex flex-col items-center justify-center py-12 text-slate-400', className)}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-16 w-16 opacity-40 text-neon-cyan">
           <circle cx="12" cy="12" r="10" />
           <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
           <path d="M2 12h20" />
         </svg>
-        <p className="mt-4">No concepts in global graph</p>
-        <p className="text-sm">Extract concepts from books to build the global graph</p>
+        <p className="mt-4 text-slate-300 font-space">No concepts in global graph</p>
+        <p className="text-sm text-slate-500 mt-1">Extract concepts from books to build the cosmic map</p>
       </div>
     )
   }
 
   const coreConceptCount = graphData.nodes.filter((n) => n.is_core).length
-  const regularConceptCount = graphData.nodes.length - coreConceptCount
 
   return (
     <div ref={containerRef} className={cn('relative h-full w-full', className)}>
@@ -274,29 +456,32 @@ export function GlobalGraphView({
         onNodeHover={handleNodeHover}
         enableZoomInteraction={true}
         enablePanInteraction={true}
-        backgroundColor="#fafafa"
+        backgroundColor="transparent"
         linkDirectionalArrowLength={0}
         cooldownTicks={100}
         d3AlphaDecay={0.02}
         d3VelocityDecay={0.3}
       />
-      <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-        {graphData.nodes.length} nodes, {graphData.links.length} edges (global)
+      
+      {/* Stats */}
+      <div className="absolute bottom-3 left-3 text-xs text-slate-400 bg-space-deep/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/10 font-space">
+        {graphData.nodes.length} planets, {graphData.links.length} connections (global)
       </div>
+      
       {/* Legend */}
-      <div className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-sm">
-        <div className="text-xs font-medium text-foreground mb-1.5">Legend</div>
-        <div className="flex flex-col gap-1.5">
+      <div className="absolute top-3 right-3 glass-panel rounded-lg px-4 py-3">
+        <div className="text-xs font-space font-medium text-neon-cyan mb-2">Legend</div>
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-violet-500 border-2 border-violet-600" />
-            <span className="text-xs text-muted-foreground">
-              Core Concept ({coreConceptCount})
+            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-neon-cyan to-planet-core shadow-[0_0_10px_rgba(0,245,255,0.6)]" />
+            <span className="text-xs text-slate-300 font-space">
+              Core ({coreConceptCount})
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-            <span className="text-xs text-muted-foreground">
-              Regular Concept ({regularConceptCount})
+            <div className="w-3 h-3 rounded-full bg-planet-other" />
+            <span className="text-xs text-slate-400 font-space">
+              Regular ({graphData.nodes.length - coreConceptCount})
             </span>
           </div>
         </div>

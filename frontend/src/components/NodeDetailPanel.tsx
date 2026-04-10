@@ -6,7 +6,8 @@ import {
   getChunk, ChunkDetails, getNodeSummary, getNodeRetrieval,
   SummaryResponse, RetrievalResponse, Citation, getNodeSummaryStream
 } from '@/lib/api-client'
-import { X, ExternalLink, BookOpen, FileText, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
+import { X, ExternalLink, BookOpen, FileText, ChevronDown, ChevronRight, RefreshCw, Sparkles } from 'lucide-react'
 
 interface NodeDetailPanelProps {
   node: GraphNode | null
@@ -32,6 +33,7 @@ export function NodeDetailPanel({
   onRelatedNodeClick,
   bookFormat = 'pdf',
 }: NodeDetailPanelProps) {
+  const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [nodeDetails, setNodeDetails] = useState<NodeDetails | null>(null)
   const [edges, setEdges] = useState<GraphEdge[]>([])
@@ -279,7 +281,7 @@ export function NodeDetailPanel({
                 handleCitationClick(citation.chunk_id)
               }
             }}
-            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 text-xs font-medium text-neon-cyan bg-neon-cyan/10 rounded hover:bg-neon-cyan/20 transition-colors"
           >
             [{citationIndex}]
           </button>
@@ -294,14 +296,19 @@ export function NodeDetailPanel({
   }
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full glass-panel border-l border-neon-cyan/20', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-muted/50">
-        <h2 className="text-lg font-semibold truncate">{node.name}</h2>
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-space-deep/50">
+        <div className="flex items-center gap-3 min-w-0">
+          {node.is_core && (
+            <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse shadow-[0_0_10px_rgba(0,245,255,0.8)]" />
+          )}
+          <h2 className="text-lg font-space font-semibold truncate text-white">{node.name}</h2>
+        </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors"
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -309,15 +316,16 @@ export function NodeDetailPanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4 space-y-4">
         {isLoading && (
           <div className="flex items-center justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-3 border-primary border-t-transparent" />
+            <div className="h-6 w-6 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
+            <span className="ml-3 text-sm text-slate-400 font-space">{t('nodeDetail.loading')}</span>
           </div>
         )}
 
         {error && (
-          <div className="text-center text-destructive py-4">
+          <div className="text-center text-red-400 py-4 font-space">
             <p>{error}</p>
           </div>
         )}
@@ -325,30 +333,31 @@ export function NodeDetailPanel({
         {!isLoading && !error && (
           <>
             {/* Source-Grounded Summary Section */}
-            <div className="mb-6 border border-border rounded-lg overflow-hidden">
-              <div className="bg-muted/30 px-4 py-3 border-b border-border">
-                <h3 className="text-sm font-medium">AI 总结</h3>
+            <div className="border border-white/10 rounded-lg overflow-hidden bg-space-deep/40">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-space-nebula/30">
+                <Sparkles className="h-4 w-4 text-neon-purple" />
+                <h3 className="text-sm font-space font-medium text-slate-200">{t('nodeDetail.aiAnalysis')}</h3>
               </div>
               <div className="p-4">
                 {(summaryLoading || isStreaming) && streamingText === '' && (
                   <div className="flex items-center gap-3 py-4">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <span className="text-sm text-muted-foreground">正在分析相关段落...</span>
+                    <div className="h-5 w-5 border-2 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin" />
+                    <span className="text-sm text-slate-400 font-space">{t('nodeDetail.scanning')}</span>
                   </div>
                 )}
 
                 {summaryError && (
                   <div className="py-4">
-                    <p className="text-sm text-destructive mb-3">{summaryError}</p>
+                    <p className="text-sm text-red-400 mb-3 font-space">{summaryError}</p>
                     <button
                       onClick={handleRetrySummary}
                       className={cn(
-                        'flex items-center gap-2 text-sm px-3 py-2 rounded-md',
-                        'bg-muted hover:bg-muted/80 transition-colors'
+                        'flex items-center gap-2 text-sm px-3 py-2 rounded-md font-space',
+                        'bg-white/5 hover:bg-white/10 border border-white/10 transition-colors'
                       )}
                     >
                       <RefreshCw className="h-4 w-4" />
-                      重试
+                      {t('nodeDetail.retry')}
                     </button>
                   </div>
                 )}
@@ -356,7 +365,7 @@ export function NodeDetailPanel({
                 {((!summaryLoading && summary) || streamingText !== '') && (
                   <div className="space-y-4">
                     {/* Summary Text - use streaming text or static summary */}
-                    <div className="text-sm leading-relaxed text-foreground">
+                    <div className="text-sm leading-relaxed text-slate-200 font-space">
                       {streamingText !== '' ? (
                         renderSummaryWithCitations(streamingText)
                       ) : summary ? (
@@ -366,28 +375,28 @@ export function NodeDetailPanel({
 
                     {/* Citations List - use streaming citations or static citations */}
                     {(streamingCitations.length > 0 || (summary && summary.citations.length > 0)) && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">来源引用</h4>
+                      <div className="mt-4 pt-4 border-t border-white/10">
+                        <h4 className="text-xs font-space font-medium text-slate-400 mb-2">Sources</h4>
                         <div className="space-y-2">
                           {(streamingCitations.length > 0 ? streamingCitations : summary?.citations || []).map((citation) => (
                             <button
                               key={citation.index}
                               onClick={() => handleCitationClick(citation.chunk_id)}
                               className={cn(
-                                'w-full text-left text-xs p-2 rounded-md',
-                                'bg-muted/30 hover:bg-muted/50 transition-colors'
+                                'w-full text-left text-xs p-3 rounded-md font-space',
+                                'bg-white/5 hover:bg-white/10 border border-white/10 transition-colors'
                               )}
                             >
                               <div className="flex items-start gap-2">
-                                <span className="flex-shrink-0 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-medium">
+                                <span className="flex-shrink-0 px-1.5 py-0.5 bg-neon-cyan/20 text-neon-cyan rounded text-[10px] font-medium border border-neon-cyan/30">
                                   [{citation.index}]
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-muted-foreground line-clamp-2">
+                                  <p className="text-slate-300 line-clamp-2">
                                     {citation.excerpt}
                                   </p>
-                                  <p className="text-[10px] text-muted-foreground mt-1">
-                                    第 {citation.page_start}{citation.page_start !== citation.page_end ? `-${citation.page_end}` : ''} 页
+                                  <p className="text-[10px] text-slate-500 mt-1">
+                                    Page {citation.page_start}{citation.page_start !== citation.page_end ? `-${citation.page_end}` : ''}
                                   </p>
                                 </div>
                               </div>
@@ -403,47 +412,44 @@ export function NodeDetailPanel({
 
             {/* Description */}
             {node.description && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
-                <p className="text-sm">{node.description}</p>
+              <div className="bg-space-deep/40 border border-white/10 rounded-lg p-4">
+                <h3 className="text-sm font-space font-medium text-slate-400 mb-2">{t('nodeDetail.description')}</h3>
+                <p className="text-sm text-slate-200 font-space">{node.description}</p>
               </div>
             )}
 
             {/* Location & View in Book */}
             {(pageNumber || onViewInBook) && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Location</h3>
-                <div className="flex items-center gap-3">
-                  {pageNumber && (
-                    <span className="text-sm">
-                      {bookFormat === 'epub' ? `Chapter ${pageNumber}` : `Page ${pageNumber}`}
-                    </span>
-                  )}
-                  {onViewInBook && pageNumber && (
-                    <button
-                      onClick={() => onViewInBook(pageNumber)}
-                      className={cn(
-                        'flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md',
-                        'bg-primary text-primary-foreground hover:bg-primary/90',
-                        'transition-colors'
-                      )}
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      {bookFormat === 'epub' ? 'View in EPUB' : 'View in PDF'}
-                    </button>
-                  )}
-                </div>
+              <div className="flex items-center gap-4">
+                {pageNumber && (
+                  <span className="text-sm text-slate-300 font-space">
+                    {bookFormat === 'epub' ? `${t('nodeDetail.chapter')} ${pageNumber}` : `${t('nodeDetail.page')} ${pageNumber}`}
+                  </span>
+                )}
+                {onViewInBook && pageNumber && (
+                  <button
+                    onClick={() => onViewInBook(pageNumber)}
+                    className={cn(
+                      'flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md font-space',
+                      'bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan',
+                      'hover:bg-neon-cyan/20 hover:border-neon-cyan/50 transition-all'
+                    )}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    {bookFormat === 'epub' ? t('nodeDetail.viewInEpub') : t('nodeDetail.viewInPdf')}
+                  </button>
+                )}
               </div>
             )}
 
             {/* Examples */}
             {nodeDetails?.examples && nodeDetails.examples.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Examples</h3>
+              <div className="bg-space-deep/40 border border-white/10 rounded-lg p-4">
+                <h3 className="text-sm font-space font-medium text-slate-400 mb-2">{t('nodeDetail.examples')}</h3>
                 <ul className="space-y-2">
                   {nodeDetails.examples.map((example, idx) => (
-                    <li key={idx} className="text-sm bg-muted/50 rounded-md p-2">
-                      {example}
+                    <li key={idx} className="text-sm text-slate-200 bg-white/5 rounded-md p-2 font-space">
+                      • {example}
                     </li>
                   ))}
                 </ul>
@@ -452,9 +458,9 @@ export function NodeDetailPanel({
 
             {/* Source Citations */}
             {node.source_chunk_ids.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  Source Citations ({node.source_chunk_ids.length})
+              <div className="bg-space-deep/40 border border-white/10 rounded-lg p-4">
+                <h3 className="text-sm font-space font-medium text-slate-400 mb-2">
+                  <span className="text-neon-cyan">⬡</span> {t('nodeDetail.sourceCitations')} ({node.source_chunk_ids.length})
                 </h3>
                 <div className="space-y-1">
                   {node.source_chunk_ids.slice(0, 10).map((chunkId) => {
@@ -472,8 +478,8 @@ export function NodeDetailPanel({
                         key={chunkId}
                         onClick={() => handleCitationClick(chunkId)}
                         className={cn(
-                          'flex items-center gap-2 w-full text-left text-sm rounded-md px-2 py-1.5',
-                          'hover:bg-muted transition-colors text-primary'
+                          'flex items-center gap-2 w-full text-left text-sm rounded-md px-2 py-1.5 font-space',
+                          'hover:bg-white/10 transition-colors text-neon-cyan/80 hover:text-neon-cyan'
                         )}
                       >
                         <ExternalLink className="h-3 w-3 flex-shrink-0" />
@@ -484,7 +490,7 @@ export function NodeDetailPanel({
                     )
                   })}
                   {node.source_chunk_ids.length > 10 && (
-                    <p className="text-xs text-muted-foreground pl-2">
+                    <p className="text-xs text-slate-500 pl-2 font-space">
                       +{node.source_chunk_ids.length - 10} more citations
                     </p>
                   )}
@@ -494,20 +500,20 @@ export function NodeDetailPanel({
 
             {/* Retrieval Results Section */}
             {sortedRetrievalChunks.length > 0 && (
-              <div className="mb-6 border border-border rounded-lg overflow-hidden">
+              <div className="border border-white/10 rounded-lg overflow-hidden bg-space-deep/40">
                 <button
                   onClick={() => setShowRetrievalDetails(!showRetrievalDetails)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors border-b border-border"
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/10"
                 >
-                  <h3 className="text-sm font-medium">检索详情</h3>
+                  <h3 className="text-sm font-space font-medium text-slate-200">Retrieval Details</h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {sortedRetrievalChunks.length} 个相关段落
+                    <span className="text-xs text-slate-400 font-space">
+                      {sortedRetrievalChunks.length} related chunks
                     </span>
                     {showRetrievalDetails ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      <ChevronDown className="h-4 w-4 text-slate-400" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 text-slate-400" />
                     )}
                   </div>
                 </button>
@@ -519,23 +525,21 @@ export function NodeDetailPanel({
                         key={chunk.chunk_id}
                         onClick={() => handleCitationClick(chunk.chunk_id)}
                         className={cn(
-                          'w-full text-left p-3 rounded-md',
-                          'bg-muted/30 hover:bg-muted/50 transition-colors'
+                          'w-full text-left p-3 rounded-md font-space',
+                          'bg-white/5 hover:bg-white/10 border border-white/10 transition-colors'
                         )}
                       >
                         <div className="flex items-start gap-3">
-                          <span className="flex-shrink-0 text-xs text-muted-foreground font-mono">
+                          <span className="flex-shrink-0 text-xs text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded">
                             #{index + 1}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-foreground line-clamp-3 mb-2">
+                            <p className="text-xs text-slate-200 line-clamp-3 mb-2">
                               {chunk.content}
                             </p>
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                              <span>第 {chunk.page_start}-{chunk.page_end} 页</span>
-                              <span className="text-green-600">综合: {chunk.final_score.toFixed(3)}</span>
-                              <span className="text-blue-600">向量: {chunk.vector_score.toFixed(3)}</span>
-                              <span className="text-orange-600">BM25: {chunk.bm25_score.toFixed(3)}</span>
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-space">
+                              <span className="text-slate-500">Page {chunk.page_start}-{chunk.page_end}</span>
+                              <span className="text-emerald-400/80">Score: {chunk.final_score.toFixed(3)}</span>
                             </div>
                           </div>
                         </div>
@@ -548,8 +552,8 @@ export function NodeDetailPanel({
 
             {/* Connected Edges */}
             {edges.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              <div className="bg-space-deep/40 border border-white/10 rounded-lg p-4">
+                <h3 className="text-sm font-space font-medium text-slate-400 mb-3">
                   Related Concepts ({edges.length})
                 </h3>
                 <div className="space-y-2">
@@ -565,16 +569,16 @@ export function NodeDetailPanel({
                         onClick={() => otherNode && handleRelatedNodeClick(otherNode)}
                         disabled={!otherNode}
                         className={cn(
-                          'flex items-center gap-2 text-sm bg-muted/50 rounded-md p-2 w-full text-left',
-                          otherNode && 'hover:bg-muted cursor-pointer transition-colors',
+                          'flex items-center gap-2 text-sm bg-white/5 rounded-md p-2 w-full text-left font-space',
+                          otherNode && 'hover:bg-white/10 border border-white/10 cursor-pointer transition-colors',
                           !otherNode && 'opacity-70 cursor-not-allowed'
                         )}
                       >
-                        <BookOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <BookOpen className="h-4 w-4 flex-shrink-0 text-neon-purple" />
                         <span className="flex-1 truncate">
-                          <span className="font-medium">{edge.relation_type}</span>
-                          {' to '}
-                          <span className="text-primary">{otherNodeName}</span>
+                          <span className="text-slate-300">{edge.relation_type}</span>
+                          {' → '}
+                          <span className="text-neon-cyan">{otherNodeName}</span>
                         </span>
                       </button>
                     )
@@ -584,9 +588,9 @@ export function NodeDetailPanel({
             )}
 
             {/* Metadata */}
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-slate-500 font-space border-t border-white/10 pt-3">
               {nodeDetails?.language && <p>Language: {nodeDetails.language}</p>}
-              {nodeDetails?.category && <p>Category: {nodeDetails.category}</p>}
+              {nodeDetails?.category && <p>Category: <span className="text-neon-purple">{nodeDetails.category}</span></p>}
             </div>
           </>
         )}

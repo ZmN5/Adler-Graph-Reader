@@ -50,7 +50,7 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-space-void/80 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -58,7 +58,7 @@ export function ConfirmDialog({
       {/* Dialog */}
       <div
         className={cn(
-          'relative z-10 w-full max-w-md mx-4 bg-card rounded-xl shadow-2xl',
+          'relative z-10 w-full max-w-md mx-4 rounded-xl shadow-2xl glass-panel border border-white/20',
           'animate-in fade-in-0 zoom-in-95 duration-200'
         )}
         role="dialog"
@@ -66,18 +66,18 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
       >
         {/* Header */}
-        <div className="flex items-center gap-3 p-5 border-b">
+        <div className="flex items-center gap-3 p-5 border-b border-white/10">
           {variant === 'danger' && (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 border border-red-500/30">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
             </div>
           )}
-          <h2 id="confirm-dialog-title" className="text-lg font-semibold">
+          <h2 id="confirm-dialog-title" className="text-lg font-space font-semibold text-white">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="ml-auto rounded-md p-1.5 hover:bg-muted transition-colors"
+            className="ml-auto rounded-md p-1.5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -86,16 +86,16 @@ export function ConfirmDialog({
 
         {/* Content */}
         <div className="p-5">
-          <p className="text-muted-foreground">{message}</p>
+          <p className="text-slate-300 font-space">{message}</p>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t bg-muted/30 rounded-b-xl">
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10 bg-space-deep/30 rounded-b-xl">
           <button
             onClick={onClose}
             className={cn(
-              'px-4 py-2 rounded-lg font-medium transition-colors',
-              'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              'px-4 py-2 rounded-lg font-space font-medium transition-colors',
+              'bg-white/5 border border-white/20 text-slate-300 hover:bg-white/10 hover:text-white'
             )}
           >
             {cancelText}
@@ -103,10 +103,10 @@ export function ConfirmDialog({
           <button
             onClick={handleConfirm}
             className={cn(
-              'px-4 py-2 rounded-lg font-medium transition-colors',
+              'px-4 py-2 rounded-lg font-space font-medium transition-all',
               variant === 'danger'
-                ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 hover:border-red-500/60'
+                : 'bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/30 hover:border-neon-cyan/60'
             )}
           >
             {confirmText}

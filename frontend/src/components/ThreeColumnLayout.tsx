@@ -112,7 +112,8 @@ export function ThreeColumnLayout({
       {/* Left Panel - resizable (collapsible to 48px) */}
       <div
         className={cn(
-          'relative overflow-hidden bg-background border-r transition-all duration-300 ease-in-out flex-shrink-0',
+          'relative overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0',
+          'bg-space-deep/50 border-r border-white/10',
           isLeftPanelCollapsed ? 'w-12' : 'min-w-0'
         )}
         style={isLeftPanelCollapsed ? undefined : { width: leftPanelWidth, flex: 'none' }}
@@ -122,14 +123,14 @@ export function ThreeColumnLayout({
           <div className="h-full flex flex-col items-center py-3">
             <button
               onClick={() => onLeftPanelCollapseChange?.(false)}
-              className="p-2 rounded-md hover:bg-muted transition-colors"
+              className="p-2 rounded-md hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
               title="Expand reader panel"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
             {leftPanelTitle && (
               <div
-                className="mt-4 text-xs text-muted-foreground writing-vertical"
+                className="mt-4 text-xs text-slate-500"
                 style={{
                   writingMode: 'vertical-rl',
                   textOrientation: 'mixed',
@@ -148,7 +149,7 @@ export function ThreeColumnLayout({
             {/* Collapse button - positioned at right edge of panel */}
             <button
               onClick={() => onLeftPanelCollapseChange?.(true)}
-              className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-background/80 hover:bg-muted transition-colors shadow-sm border"
+              className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-space-deep/80 hover:bg-white/10 transition-colors shadow-sm border border-white/10 text-slate-400 hover:text-white"
               title="Collapse reader panel"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -158,16 +159,16 @@ export function ThreeColumnLayout({
               onMouseDown={handleResizeStart}
               className={cn(
                 'absolute top-0 right-0 bottom-0 w-2 cursor-col-resize z-20',
-                'hover:bg-primary/20 active:bg-primary/40 transition-colors',
-                isDragging && 'bg-primary/30'
+                'hover:bg-neon-cyan/20 active:bg-neon-cyan/30 transition-colors',
+                isDragging && 'bg-neon-cyan/30'
               )}
               title="Drag to resize panel"
             >
               {/* Visual indicator line */}
               <div className={cn(
                 'absolute top-1/2 right-0 -translate-y-1/2 w-0.5 h-8 rounded-full',
-                'bg-border hover:bg-primary/50',
-                isDragging && 'bg-primary'
+                'bg-white/20 hover:bg-neon-cyan/50',
+                isDragging && 'bg-neon-cyan'
               )} />
             </div>
           </>
@@ -177,7 +178,8 @@ export function ThreeColumnLayout({
       {/* Center Panel - Graph view (expands when right panel is hidden or left is collapsed) */}
       <div
         className={cn(
-          'min-w-0 overflow-hidden border-l transition-all duration-300 ease-in-out flex-1'
+          'min-w-0 overflow-hidden transition-all duration-300 ease-in-out flex-1',
+          'bg-space-void'
         )}
       >
         {centerPanel}
@@ -186,7 +188,7 @@ export function ThreeColumnLayout({
       {/* Right Panel - Detail Panel */}
       {showRightPanel && (
         <div
-          className="border-l bg-background overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0"
+          className="border-l border-neon-cyan/20 overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0"
           style={{ width: rightPanelWidth }}
         >
           {rightPanel}

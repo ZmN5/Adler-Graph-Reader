@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { getModelConfig, updateModelConfig, ModelConfig } from '@/lib/api-client'
-import { Settings, Save, Loader2 } from 'lucide-react'
+import { Settings, Save } from 'lucide-react'
 
 interface ModelSettingsProps {
   className?: string
@@ -66,14 +66,14 @@ export function ModelSettings({ className }: ModelSettingsProps) {
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center p-8', className)}>
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="h-6 w-6 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
       </div>
     )
   }
 
   if (error && !config) {
     return (
-      <div className={cn('p-4 text-sm text-destructive', className)}>
+      <div className={cn('p-4 text-sm text-red-400 font-space', className)}>
         Failed to load model config: {error}
       </div>
     )
@@ -81,55 +81,59 @@ export function ModelSettings({ className }: ModelSettingsProps) {
 
   return (
     <div className={cn('space-y-6', className)}>
-      <div className="flex items-center gap-2">
-        <Settings className="h-5 w-5" />
-        <h2 className="text-lg font-semibold">Model Configuration</h2>
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <Settings className="h-5 w-5 text-neon-cyan" />
+          <div className="absolute inset-0 blur-sm bg-neon-cyan/30 rounded-full" />
+        </div>
+        <h2 className="text-lg font-space font-semibold text-white">Model Configuration</h2>
       </div>
 
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400 backdrop-blur-sm font-space">
           {error}
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         {CONFIG_FIELDS.map(({ key, label, description }) => (
-          <div key={key} className="space-y-2">
+          <div key={key} className="space-y-2 p-4 rounded-lg border border-white/10 bg-space-deep/40">
             <div className="flex items-center justify-between">
-              <label htmlFor={key} className="text-sm font-medium">
+              <label htmlFor={key} className="text-sm font-space font-medium text-slate-200">
                 {label}
               </label>
               {saveSuccess && editValues[key] !== config?.[key as keyof ModelConfig] && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-neon-orange font-space">
                   Unsaved changes
                 </span>
               )}
               {saveSuccess && editValues[key] === config?.[key as keyof ModelConfig] && (
-                <span className="text-xs text-green-600">
-                  Saved
+                <span className="text-xs text-emerald-400 font-space">
+                  ✓ Saved
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">{description}</p>
-            <div className="flex gap-2">
+            <p className="text-xs text-slate-500 font-space">{description}</p>
+            <div className="flex gap-3">
               <input
                 id={key}
                 type="text"
                 value={editValues[key] || ''}
                 onChange={(e) => handleChange(key, e.target.value)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex-1 rounded-md border border-white/20 bg-space-deep/80 px-3 py-2 text-sm font-space text-white placeholder-slate-500 focus:border-neon-cyan/50 focus:outline-none focus:ring-1 focus:ring-neon-cyan/30"
               />
               <button
                 onClick={() => handleSave(key)}
                 disabled={isSaving || editValues[key] === config?.[key as keyof ModelConfig]}
                 className={cn(
-                  'flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  'bg-primary text-primary-foreground hover:bg-primary/90',
+                  'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-space font-medium transition-all',
+                  'bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan',
+                  'hover:bg-neon-cyan/30 hover:border-neon-cyan/60',
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
                 {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="h-4 w-4 border border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
@@ -140,8 +144,8 @@ export function ModelSettings({ className }: ModelSettingsProps) {
         ))}
       </div>
 
-      <div className="rounded-md bg-muted p-3">
-        <p className="text-xs text-muted-foreground">
+      <div className="rounded-lg border border-white/10 bg-space-deep/40 p-4">
+        <p className="text-xs text-slate-500 font-space">
           Changes take effect immediately. Model names should match the models loaded in LM Studio.
         </p>
       </div>

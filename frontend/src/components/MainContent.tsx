@@ -7,7 +7,7 @@ interface MainContentProps {
 
 export function MainContent({ className, children }: MainContentProps) {
   return (
-    <main className={cn('container py-6', className)}>
+    <main className={cn('container py-8 px-4', className)}>
       {children}
     </main>
   )
