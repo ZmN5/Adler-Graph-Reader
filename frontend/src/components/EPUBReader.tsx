@@ -66,23 +66,66 @@ export function EPUBReader({
   const bookUrl = `/api/books/${bookId}/file`
 
   // Handle location changes
-  const locationChanged = useCallback((epubcfi: string) => {
-    setLocation(epubcfi)
+  const locationChanged = useCallback((loc: string) => {
+    console.log('[EPUBReader] locationChanged called with:', loc)
+    
+    const rendition = renditionRef.current
+    if (!rendition) return
+
+    // For href navigation (from TOC), we need to handle it ourselves because
+    // react-reader's componentDidUpdate might not work correctly with href strings
+    if (!loc.includes('epubcfi') && !loc.includes('epubcfi(')) {
+      console.log('[EPUBReader] locationChanged: href detected, attempting navigation:', loc)
+      
+      // For href navigation (from TOC), use rendition.display() directly
+      // Then the CFI-based locationChanged will fire and we can update state from that
+      rendition.display(loc).then(() => {
+        console.log('[EPUBReader] display(href) succeeded, location updated')
+      }).catch((err) => {
+        console.error('[EPUBReader] display(href) failed:', err)
+      })
+      // Update location state immediately - don't wait for display() to complete
+      setLocation(loc)
+      // Also find and set the current chapter label right away
+      const chapter = tocRef.current.find((c) => 
+        loc.toLowerCase().includes(c.href.toLowerCase()) ||
+        c.href.toLowerCase().includes(loc.toLowerCase())
+      )
+      if (chapter) {
+        console.log('[EPUBReader] Setting currentChapter to:', chapter.label)
+        setCurrentChapter(chapter.label)
+      }
+      return
+    }
+    
+    // For CFI navigation, just update the location state
+    setLocation(loc)
 
     // Update current chapter based on location
-    if (renditionRef.current && tocRef.current.length > 0) {
-      // Get current location from rendition
-      const locationObj = renditionRef.current.currentLocation() as unknown as {
-        start?: { href?: string; cfi?: string }
-        end?: { href?: string; cfi?: string }
-      } | null
-
-      if (locationObj && locationObj.start && locationObj.start.href) {
-        const currentHref = locationObj.start.href
-        const chapter = tocRef.current.find((c) => currentHref.includes(c.href))
-        if (chapter) {
-          setCurrentChapter(chapter.label)
+    if (tocRef.current.length > 0) {
+      const locResult = rendition.currentLocation()
+      const handleLocObj = (result: any) => {
+        const currentHref = result?.start?.href
+        if (currentHref) {
+          console.log('[EPUBReader] Current location href:', currentHref)
+          const chapter = tocRef.current.find((c) => 
+            currentHref.toLowerCase().includes(c.href.toLowerCase()) ||
+            c.href.toLowerCase().includes(currentHref.toLowerCase())
+          )
+          if (chapter) {
+            console.log('[EPUBReader] Matched chapter:', chapter.label)
+            setCurrentChapter(chapter.label)
+          } else {
+            console.log('[EPUBReader] No chapter match for href:', currentHref, 'Available TOC:', tocRef.current.map(c => c.href))
+          }
         }
+      }
+      if ((locResult as unknown as { then?: Function }).then) {
+        (locResult as unknown as Promise<any>).then(handleLocObj).catch((err: Error) => {
+          console.error('[EPUBReader] currentLocation() failed:', err)
+        })
+      } else {
+        handleLocObj(locResult as unknown as { start?: { href?: string } })
       }
     }
   }, [])
@@ -139,33 +182,51 @@ export function EPUBReader({
 
   // Handle highlight/chapter navigation from props
   useEffect(() => {
-    if (!renditionRef.current || !isRenditionReady) return
+    if (!renditionRef.current || !isRenditionReady) {
+      console.log('[EPUBReader] useEffect skipped: rendition not ready', { 
+        hasRendition: !!renditionRef.current, 
+        isRenditionReady 
+      })
+      return
+    }
 
     const rendition = renditionRef.current
+    console.log('[EPUBReader] useEffect triggered:', { highlightAnchor, chapterHref, pageNumber })
+    
     // Priority: highlightAnchor (CFI) > chapterHref > pageNumber
     if (highlightAnchor) {
-      // If it's a CFI, use it directly
+      console.log('[EPUBReader] Navigating via highlightAnchor:', highlightAnchor)
       if (highlightAnchor.includes('epubcfi')) {
-        rendition.display(highlightAnchor).catch(console.error)
+        rendition.display(highlightAnchor).then(() => setLocation(highlightAnchor)).catch(console.error)
       } else {
-        // It's a chapter href - use display
-        rendition.display(highlightAnchor).catch(console.error)
+        // It's a chapter href - use spine.get() to find correct spine item
+        const book = (rendition as unknown as { book?: Book }).book
+        if (book && book.spine) {
+          const spineItem = book.spine.get(highlightAnchor)
+          if (spineItem) {
+            rendition.display(spineItem.index).then(() => setLocation(highlightAnchor)).catch(console.error)
+          } else {
+            rendition.display(highlightAnchor).then(() => setLocation(highlightAnchor)).catch(console.error)
+          }
+        } else {
+          rendition.display(highlightAnchor).then(() => setLocation(highlightAnchor)).catch(console.error)
+        }
       }
     } else if (chapterHref) {
-      // Use rendition's display method with spine index for chapter navigation
+      console.log('[EPUBReader] Navigating via chapterHref:', chapterHref)
+      
+      // Use spine.get() to find correct spine item
       const book = (rendition as unknown as { book?: Book }).book
       if (book && book.spine) {
-        // Try to find spine item by href (cast to any to bypass type checking)
-        const spineItems = (book.spine as any).items || []
-        const spineItem = spineItems.find((item: { href?: string }) => item.href && chapterHref.includes(item.href))
-        if (spineItem && spineItem.index !== undefined) {
-          rendition.display(spineItem.index).catch(console.error)
+        const spineItem = book.spine.get(chapterHref)
+        if (spineItem) {
+          console.log('[EPUBReader] spine.get found index:', spineItem.index)
+          rendition.display(spineItem.index).then(() => setLocation(chapterHref)).catch(console.error)
         } else {
-          // Fallback: try direct href display (works for some epub.js versions)
-          rendition.display(chapterHref).catch(console.error)
+          rendition.display(chapterHref).then(() => setLocation(chapterHref)).catch(console.error)
         }
       } else {
-        rendition.display(chapterHref).catch(console.error)
+        rendition.display(chapterHref).then(() => setLocation(chapterHref)).catch(console.error)
       }
     } else if (pageNumber && pageNumber > 0) {
       // Convert page number to percentage for EPUB

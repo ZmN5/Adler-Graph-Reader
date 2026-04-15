@@ -30,16 +30,20 @@ function App() {
   const [isReaderCollapsed, setIsReaderCollapsed] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
-  // Handle Escape key to switch from Core Concepts back to Graph view
+  // Handle Escape key to close modals and switch views
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && activeTab === 'core-concepts') {
-        setActiveTab('graph')
+      if (e.key === 'Escape') {
+        if (showSettings) {
+          setShowSettings(false)
+        } else if (activeTab === 'core-concepts') {
+          setActiveTab('graph')
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeTab])
+  }, [activeTab, showSettings])
 
   const handleUploadSuccess = useCallback((_response: UploadBookResponse) => {
     setRefreshKey((k) => k + 1)

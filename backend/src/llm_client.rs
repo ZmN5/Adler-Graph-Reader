@@ -64,11 +64,15 @@ struct ChatResponseStream {
 #[derive(Debug, Deserialize)]
 struct ChatChoiceStream {
     delta: ChatDelta,
+    #[serde(default)]
+    finish_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct ChatDelta {
     content: Option<String>,
+    #[serde(default)]
+    reasoning_content: Option<String>,
 }
 
 impl ChatDelta {
@@ -370,19 +374,31 @@ impl LlmClient {
 
                 for byte in chunk {
                     if byte == b'\n' {
-                        if current_line.starts_with("data: ") {
-                            let data = &current_line[6..];
+                        let line = current_line.trim();
+                        if line.starts_with("data: ") {
+                            let data = &line[6..];
                             if data == "[DONE]" {
+                                tracing::debug!("[SourceGroundedSummaryStream] Received [DONE], ending stream");
                                 yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
-                                // Keep streaming — citations come after [DONE]
-                                continue;
+                                return;
                             }
-                            if let Ok(resp) = serde_json::from_str::<ChatResponseStream>(data) {
-                                for choice in resp.choices {
-                                    let content = choice.delta.content();
-                                    if !content.is_empty() {
-                                        yield Ok(SseEvent::default().data(content));
+                            match serde_json::from_str::<ChatResponseStream>(data) {
+                                Ok(resp) => {
+                                    for choice in resp.choices {
+                                        // Check for finish_reason to detect stream end
+                                        if choice.finish_reason.as_deref() == Some("stop") {
+                                            tracing::debug!("[SourceGroundedSummaryStream] Received stop signal");
+                                            yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
+                                            return;
+                                        }
+                                        let content = choice.delta.content();
+                                        if !content.is_empty() {
+                                            yield Ok(SseEvent::default().data(content));
+                                        }
                                     }
+                                }
+                                Err(e) => {
+                                    tracing::warn!("[SourceGroundedSummaryStream] Failed to parse SSE data: {}", e);
                                 }
                             }
                         }
@@ -392,6 +408,23 @@ impl LlmClient {
                     }
                 }
             }
+
+            // Handle any remaining data in buffer (SSE lines without trailing newline)
+            let line = current_line.trim();
+            if !line.is_empty() && line.starts_with("data: ") {
+                let data = &line[6..];
+                if data != "[DONE]" {
+                    if let Ok(resp) = serde_json::from_str::<ChatResponseStream>(data) {
+                        for choice in resp.choices {
+                            let content = choice.delta.content();
+                            if !content.is_empty() {
+                                yield Ok(SseEvent::default().data(content));
+                            }
+                        }
+                    }
+                }
+            }
+            tracing::debug!("[SourceGroundedSummaryStream] Stream completed");
         })
     }
 }
@@ -709,6 +742,11 @@ fn parse_extraction_response(
     })
 }
 
+/// Maximum number of sources to include in the summary prompt
+const MAX_SUMMARY_SOURCES: usize = 5;
+/// Maximum characters per source content (to stay within context limits)
+const MAX_SOURCE_CHARS: usize = 1500;
+
 /// Build NotebookLM-style prompt for source-grounded summary
 fn build_summary_prompt(request: &SourceGroundedSummaryRequest) -> String {
     let node_context = if let Some(desc) = &request.node_description {
@@ -730,19 +768,31 @@ RETRIEVED SOURCE MATERIALS:
         node_context
     );
 
-    // Add each retrieval result as a source
-    for (idx, result) in request.retrieval_results.iter().enumerate() {
+    // Limit the number of sources to stay within context length
+    let limited_results: Vec<_> = request.retrieval_results.iter()
+        .take(MAX_SUMMARY_SOURCES)
+        .collect();
+
+    // Add each retrieval result as a source, with content truncation
+    for (idx, result) in limited_results.iter().enumerate() {
         let page_info = if result.page_start == result.page_end {
             format!("Page {}", result.page_start)
         } else {
             format!("Pages {}-{}", result.page_start, result.page_end)
         };
 
+        // Truncate content to stay within context limits
+        let truncated_content = if result.content.len() > MAX_SOURCE_CHARS {
+            format!("{}...[content truncated]", &result.content[..MAX_SOURCE_CHARS])
+        } else {
+            result.content.clone()
+        };
+
         prompt.push_str(&format!(
             "[Source {}] ({}):\n{}\n\n",
             idx + 1,
             page_info,
-            result.content
+            truncated_content
         ));
     }
 
@@ -757,15 +807,15 @@ INSTRUCTIONS:
 5. Focus on the most relevant and important information from the sources.
 
 OUTPUT FORMAT:
-- Provide your summary as plain text with inline [Source: X] citations.
-- Do NOT wrap the output in JSON, markdown code blocks, or any other formatting.
-- Just output the raw summary text directly.
+- Output a JSON object with two fields: "summary" (the summary text with inline [Source: X] citations) and "citations" (an array of citation objects).
+- Each citation in the citations array should have: "index" (the source number, 1-based), "pages" (page range like "10-12" or "5" if single page).
+- Do NOT wrap the output in markdown code blocks or any other formatting.
 
 Example output:
-"This is the summary text with [Source: 1] citations inline. Another point with [Source: 2] more information."
+{"summary": "This is the summary text with [Source: 1] citations inline. Another point with [Source: 2] more information.", "citations": [{"index": 1, "pages": "10-12"}, {"index": 2, "pages": "5"}]}
 
 Important:
-- Output ONLY plain text, no JSON or code blocks
+- Output ONLY valid JSON, no markdown code blocks
 - Every major claim must have a citation
 - Summary should be 200-500 words
 "#,
