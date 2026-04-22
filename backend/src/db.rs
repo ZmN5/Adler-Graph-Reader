@@ -290,6 +290,23 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Add indexes for frequently queried columns to improve performance
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_chunks_book_id ON chunks(book_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_nodes_book_id ON nodes(book_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source_node_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_node_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_chunk_id ON chunk_embeddings(chunk_id)")
+        .execute(pool)
+        .await?;
+
     Ok(())
 }
 

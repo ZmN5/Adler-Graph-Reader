@@ -5,6 +5,7 @@ use std::path::Path;
 
 use crate::config;
 use crate::embedding;
+use crate::text_utils::split_text_with_overlap;
 
 /// Parse a PDF file and create chunks in the database
 /// Each page becomes a chunk, or pages are split into ~16000 char segments (~4000 tokens) with overlap
@@ -193,30 +194,3 @@ fn split_pages_from_text(text: &str) -> Vec<String> {
     pages
 }
 
-/// Split text into chunks of approximately target_size with overlap
-fn split_text_with_overlap(text: &str, target_size: usize, overlap: usize) -> Vec<String> {
-    let chars: Vec<char> = text.chars().collect();
-    let total_chars = chars.len();
-
-    if total_chars <= target_size {
-        return vec![text.to_string()];
-    }
-
-    let mut chunks: Vec<String> = Vec::new();
-    let mut start = 0;
-
-    while start < total_chars {
-        let end = (start + target_size).min(total_chars);
-        let chunk_text: String = chars[start..end].iter().collect();
-
-        chunks.push(chunk_text);
-
-        // Move start forward (target_size - overlap to maintain overlap)
-        if end >= total_chars {
-            break;
-        }
-        start = end - overlap;
-    }
-
-    chunks
-}

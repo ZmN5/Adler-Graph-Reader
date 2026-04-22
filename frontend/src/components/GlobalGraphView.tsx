@@ -1,23 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { getGlobalGraph, GraphNode } from '@/lib/api-client'
+import { useTranslation } from '@/lib/i18n'
+import {
+  PLANET_COLORS,
+  CORE_COLOR,
+  DEFAULT_PLANET_COLOR,
+  lightenColor,
+  darkenColor,
+} from '@/lib/graph-utils'
 import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d'
-
-// Space theme colors - matching GraphCanvas
-const PLANET_COLORS: Record<string, { base: string; glow: string; atmosphere: string }> = {
-  Philosophy: { base: '#6366f1', glow: '#818cf8', atmosphere: 'rgba(99, 102, 241, 0.4)' },
-  Science: { base: '#10b981', glow: '#34d399', atmosphere: 'rgba(16, 185, 129, 0.4)' },
-  History: { base: '#f59e0b', glow: '#fbbf24', atmosphere: 'rgba(245, 158, 11, 0.4)' },
-  Art: { base: '#ec4899', glow: '#f472b6', atmosphere: 'rgba(236, 72, 153, 0.4)' },
-  Technology: { base: '#06b6d4', glow: '#22d3ee', atmosphere: 'rgba(6, 182, 212, 0.4)' },
-  Politics: { base: '#ef4444', glow: '#f87171', atmosphere: 'rgba(239, 68, 68, 0.4)' },
-  Economics: { base: '#84cc16', glow: '#a3e635', atmosphere: 'rgba(132, 204, 22, 0.4)' },
-  Psychology: { base: '#a855f7', glow: '#c084fc', atmosphere: 'rgba(168, 85, 247, 0.4)' },
-  Other: { base: '#64748b', glow: '#94a3b8', atmosphere: 'rgba(100, 116, 139, 0.3)' },
-}
-
-const CORE_COLOR = { base: '#00f5ff', glow: '#67e8f9', atmosphere: 'rgba(0, 245, 255, 0.5)' }
-const DEFAULT_PLANET_COLOR = { base: '#64748b', glow: '#94a3b8', atmosphere: 'rgba(100, 116, 139, 0.3)' }
 
 interface GlobalGraphViewProps {
   className?: string
@@ -58,6 +50,7 @@ export function GlobalGraphView({
   onNodeClick,
   selectedNodeId,
 }: GlobalGraphViewProps) {
+  const { t } = useTranslation()
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -156,25 +149,6 @@ export function GlobalGraphView({
       containerRef.current.style.cursor = node ? 'pointer' : 'grab'
     }
   }, [])
-
-  // Helper functions
-  const lightenColor = (hex: string, percent: number): string => {
-    const num = parseInt(hex.replace('#', ''), 16)
-    const amt = Math.round(2.55 * percent)
-    const R = Math.min(255, (num >> 16) + amt)
-    const G = Math.min(255, ((num >> 8) & 0x00FF) + amt)
-    const B = Math.min(255, (num & 0x0000FF) + amt)
-    return `rgb(${R}, ${G}, ${B})`
-  }
-
-  const darkenColor = (hex: string, percent: number): string => {
-    const num = parseInt(hex.replace('#', ''), 16)
-    const amt = Math.round(2.55 * percent)
-    const R = Math.max(0, (num >> 16) - amt)
-    const G = Math.max(0, ((num >> 8) & 0x00FF) - amt)
-    const B = Math.max(0, (num & 0x0000FF) - amt)
-    return `rgb(${R}, ${G}, ${B})`
-  }
 
   const nodeCanvasObject = useCallback(
     (node: NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -470,7 +444,7 @@ export function GlobalGraphView({
       
       {/* Legend */}
       <div className="absolute top-3 right-3 glass-panel rounded-lg px-4 py-3">
-        <div className="text-xs font-space font-medium text-neon-cyan mb-2">Legend</div>
+        <div className="text-xs font-space font-medium text-neon-cyan mb-2">{t('graph.legend')}</div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-neon-cyan to-planet-core shadow-[0_0_10px_rgba(0,245,255,0.6)]" />

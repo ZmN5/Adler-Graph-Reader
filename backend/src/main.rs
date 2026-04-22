@@ -7,6 +7,7 @@ mod extractor;
 mod llm_client;
 mod pdf_parser;
 mod retrieval;
+mod text_utils;
 
 use retrieval::HybridRetriever;
 use llm_client::{LlmClient, SourceGroundedSummaryRequest};
@@ -206,7 +207,6 @@ struct BookDetails {
     id: String,
     title: String,
     author: Option<String>,
-    file_path: String,
     format: String,
     total_pages: Option<i32>,
     created_at: String,
@@ -352,8 +352,8 @@ async fn get_book(
     Path(book_id): Path<String>,
     pool: axum::extract::State<SqlitePool>,
 ) -> Result<Json<BookDetails>, AppError> {
-    let row: (String, String, Option<String>, String, String, Option<i32>, String) = sqlx::query_as(
-        "SELECT id, title, author, file_path, format, total_pages, created_at FROM books WHERE id = ?"
+    let row: (String, String, Option<String>, String, Option<i32>, String) = sqlx::query_as(
+        "SELECT id, title, author, format, total_pages, created_at FROM books WHERE id = ?"
     )
     .bind(&book_id)
     .fetch_one(&*pool)
@@ -364,10 +364,9 @@ async fn get_book(
         id: row.0,
         title: row.1,
         author: row.2,
-        file_path: row.3,
-        format: row.4,
-        total_pages: row.5,
-        created_at: row.6,
+        format: row.3,
+        total_pages: row.4,
+        created_at: row.5,
     }))
 }
 
@@ -427,13 +426,10 @@ async fn delete_book(
         }
     }
 
-    // Disable FK constraints and delete manually to avoid FTS trigger issues
-    // The FTS triggers use rowid (INTEGER) but chunks.id is TEXT (UUID)
-    sqlx::query("PRAGMA foreign_keys = OFF")
-        .execute(&*pool)
-        .await?;
+    // Use a transaction for atomic deletion, with cascading deletes in dependency order
+    let mut tx = pool.begin().await?;
 
-    // Delete chunk_embeddings for chunks belonging to this book
+    // Delete dependent records in order: chunk_embeddings -> node_chunk_ranks -> edges -> nodes -> chunks -> books
     sqlx::query(
         r#"
         DELETE FROM chunk_embeddings
@@ -441,10 +437,9 @@ async fn delete_book(
         "#,
     )
     .bind(&book_id)
-    .execute(&*pool)
+    .execute(&mut *tx)
     .await?;
 
-    // Delete node_chunk_ranks for nodes belonging to this book
     sqlx::query(
         r#"
         DELETE FROM node_chunk_ranks
@@ -452,49 +447,37 @@ async fn delete_book(
         "#,
     )
     .bind(&book_id)
-    .execute(&*pool)
+    .execute(&mut *tx)
     .await?;
 
-    // Delete nodes (cascades to edges via FK since FK is off, delete edges manually)
-    let node_ids: Vec<(String,)> = sqlx::query_as(
-        "SELECT id FROM nodes WHERE book_id = ?"
+    sqlx::query(
+        r#"
+        DELETE FROM edges
+        WHERE source_node_id IN (SELECT id FROM nodes WHERE book_id = ?)
+           OR target_node_id IN (SELECT id FROM nodes WHERE book_id = ?)
+        "#,
     )
     .bind(&book_id)
-    .fetch_all(&*pool)
+    .bind(&book_id)
+    .execute(&mut *tx)
     .await?;
 
-    // Delete edges manually
-    for (node_id,) in node_ids.iter() {
-        sqlx::query("DELETE FROM edges WHERE source_node_id = ? OR target_node_id = ?")
-            .bind(node_id)
-            .bind(node_id)
-            .execute(&*pool)
-            .await?;
-    }
-
-    // Delete nodes
     sqlx::query("DELETE FROM nodes WHERE book_id = ?")
         .bind(&book_id)
-        .execute(&*pool)
+        .execute(&mut *tx)
         .await?;
 
-    // Delete chunks - FTS cleanup is skipped since triggers have TEXT->INTEGER issue
-    // Orphans in FTS are harmless; rebuild-indexes can clean them later
     sqlx::query("DELETE FROM chunks WHERE book_id = ?")
         .bind(&book_id)
-        .execute(&*pool)
+        .execute(&mut *tx)
         .await?;
 
-    // Delete the book
     sqlx::query("DELETE FROM books WHERE id = ?")
         .bind(&book_id)
-        .execute(&*pool)
+        .execute(&mut *tx)
         .await?;
 
-    // Re-enable FK constraints
-    sqlx::query("PRAGMA foreign_keys = ON")
-        .execute(&*pool)
-        .await?;
+    tx.commit().await?;
 
     Ok(Json(serde_json::json!({ "deleted": true })))
 }
@@ -788,8 +771,12 @@ async fn get_book_graph(
     let nodes: Vec<GraphNode> = node_rows
         .into_iter()
         .map(|(id, name, description, examples, source_chunk_ids, is_core, category)| {
-            let examples: Vec<String> = serde_json::from_str(&examples).unwrap_or_default();
-            let source_chunk_ids: Vec<String> = serde_json::from_str(&source_chunk_ids).unwrap_or_default();
+            let examples: Vec<String> = serde_json::from_str(&examples)
+                .map_err(|e| tracing::warn!("Failed to parse examples JSON for node '{}': {}", name, e))
+                .unwrap_or_default();
+            let source_chunk_ids: Vec<String> = serde_json::from_str(&source_chunk_ids)
+                .map_err(|e| tracing::warn!("Failed to parse source_chunk_ids JSON for node '{}': {}", name, e))
+                .unwrap_or_default();
             GraphNode {
                 id,
                 name,
@@ -835,8 +822,12 @@ async fn get_global_graph(
     let nodes: Vec<GraphNode> = node_rows
         .into_iter()
         .map(|(id, name, description, examples, source_chunk_ids, is_core, category)| {
-            let examples: Vec<String> = serde_json::from_str(&examples).unwrap_or_default();
-            let source_chunk_ids: Vec<String> = serde_json::from_str(&source_chunk_ids).unwrap_or_default();
+            let examples: Vec<String> = serde_json::from_str(&examples)
+                .map_err(|e| tracing::warn!("Failed to parse examples JSON for node '{}': {}", name, e))
+                .unwrap_or_default();
+            let source_chunk_ids: Vec<String> = serde_json::from_str(&source_chunk_ids)
+                .map_err(|e| tracing::warn!("Failed to parse source_chunk_ids JSON for node '{}': {}", name, e))
+                .unwrap_or_default();
             GraphNode {
                 id,
                 name,
@@ -888,8 +879,12 @@ async fn get_node(
     .await
     .map_err(|_| AppError::NotFound("Node not found".to_string()))?;
 
-    let examples: Vec<String> = serde_json::from_str(&row.5).unwrap_or_default();
-    let source_chunk_ids: Vec<String> = serde_json::from_str(&row.6).unwrap_or_default();
+    let examples: Vec<String> = serde_json::from_str(&row.5)
+        .map_err(|e| tracing::warn!("Failed to parse examples JSON for node '{}': {}", row.2, e))
+        .unwrap_or_default();
+    let source_chunk_ids: Vec<String> = serde_json::from_str(&row.6)
+        .map_err(|e| tracing::warn!("Failed to parse source_chunk_ids JSON for node '{}': {}", row.2, e))
+        .unwrap_or_default();
 
     Ok(Json(NodeDetails {
         id: row.0,
@@ -1074,8 +1069,12 @@ async fn get_core_concepts(
     let nodes: Vec<GraphNode> = node_rows
         .into_iter()
         .map(|(id, name, description, examples, source_chunk_ids, is_core, category)| {
-            let examples: Vec<String> = serde_json::from_str(&examples).unwrap_or_default();
-            let source_chunk_ids: Vec<String> = serde_json::from_str(&source_chunk_ids).unwrap_or_default();
+            let examples: Vec<String> = serde_json::from_str(&examples)
+                .map_err(|e| tracing::warn!("Failed to parse examples JSON for node '{}': {}", name, e))
+                .unwrap_or_default();
+            let source_chunk_ids: Vec<String> = serde_json::from_str(&source_chunk_ids)
+                .map_err(|e| tracing::warn!("Failed to parse source_chunk_ids JSON for node '{}': {}", name, e))
+                .unwrap_or_default();
             GraphNode {
                 id,
                 name,
@@ -1410,25 +1409,14 @@ async fn node_summary_stream(
 
         while let Some(token_result) = token_stream.next().await {
             match token_result {
-                Ok(event) => {
-                    // Extract text from SseEvent data for accumulation
-                    // The Event stores data in a private buffer, we use Debug format to get the buffer content
-                    // Event format is: Event { buffer: "...", flags: ... }
-                    let event_debug = format!("{:?}", event);
-                    // Parse the JSON from the buffer field - extract content between buffer: "..." 
-                    if let Some(json_start) = event_debug.find("buffer: \"") {
-                        let json_start = json_start + 9; // skip 'buffer: "'
-                        if let Some(json_end) = event_debug[json_start..].find('"') {
-                            let json_str = &event_debug[json_start..json_start + json_end];
-                            if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(json_str) {
-                                if let Some(text) = json_val.get("text").and_then(|v| v.as_str()) {
-                                    full_text.push_str(text);
-                                }
-                            }
-                        }
-                    }
-                    // Forward the event directly (already formatted as SSE)
-                    yield Ok::<_, std::convert::Infallible>(event);
+                Ok(llm_client::SummaryStreamItem::Text(text)) => {
+                    full_text.push_str(&text);
+                    // Forward text as SSE event to client
+                    let text_chunk = serde_json::json!({"type": "text", "text": text});
+                    yield Ok::<_, std::convert::Infallible>(SseEvent::default().data(text_chunk.to_string()));
+                }
+                Ok(llm_client::SummaryStreamItem::Done) => {
+                    yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
                 }
                 Err(e) => {
                     let error_chunk = serde_json::json!({
@@ -1534,10 +1522,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     db::init_database(&pool).await?;
     tracing::info!("Database initialized successfully");
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    // CORS: restrict to known frontend origins
+    let allowed_origins: Vec<String> = std::env::var("FRONTEND_URL")
+        .map(|s| s.split(',').map(|o| o.trim().to_string()).collect())
+        .unwrap_or_else(|_| vec!["http://localhost:5173".to_string()]);
+
+    let cors = if allowed_origins.len() == 1 && allowed_origins[0] == "*" {
+        CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any)
+    } else {
+        let origins: Vec<axum::http::HeaderValue> = allowed_origins
+            .iter()
+            .filter_map(|o| o.parse().ok())
+            .collect();
+        CorsLayer::new()
+            .allow_origin(origins)
+            .allow_methods(Any)
+            .allow_headers(Any)
+    };
 
     let app = Router::new()
         .route("/api/health", get(health))

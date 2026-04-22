@@ -67,7 +67,6 @@ export function EPUBReader({
 
   // Handle location changes
   const locationChanged = useCallback((loc: string) => {
-    console.log('[EPUBReader] locationChanged called with:', loc)
     
     const rendition = renditionRef.current
     if (!rendition) return
@@ -75,12 +74,10 @@ export function EPUBReader({
     // For href navigation (from TOC), we need to handle it ourselves because
     // react-reader's componentDidUpdate might not work correctly with href strings
     if (!loc.includes('epubcfi') && !loc.includes('epubcfi(')) {
-      console.log('[EPUBReader] locationChanged: href detected, attempting navigation:', loc)
       
       // For href navigation (from TOC), use rendition.display() directly
       // Then the CFI-based locationChanged will fire and we can update state from that
       rendition.display(loc).then(() => {
-        console.log('[EPUBReader] display(href) succeeded, location updated')
       }).catch((err) => {
         console.error('[EPUBReader] display(href) failed:', err)
       })
@@ -92,7 +89,6 @@ export function EPUBReader({
         c.href.toLowerCase().includes(loc.toLowerCase())
       )
       if (chapter) {
-        console.log('[EPUBReader] Setting currentChapter to:', chapter.label)
         setCurrentChapter(chapter.label)
       }
       return
@@ -107,16 +103,13 @@ export function EPUBReader({
       const handleLocObj = (result: any) => {
         const currentHref = result?.start?.href
         if (currentHref) {
-          console.log('[EPUBReader] Current location href:', currentHref)
           const chapter = tocRef.current.find((c) => 
             currentHref.toLowerCase().includes(c.href.toLowerCase()) ||
             c.href.toLowerCase().includes(currentHref.toLowerCase())
           )
           if (chapter) {
-            console.log('[EPUBReader] Matched chapter:', chapter.label)
             setCurrentChapter(chapter.label)
           } else {
-            console.log('[EPUBReader] No chapter match for href:', currentHref, 'Available TOC:', tocRef.current.map(c => c.href))
           }
         }
       }
@@ -183,19 +176,13 @@ export function EPUBReader({
   // Handle highlight/chapter navigation from props
   useEffect(() => {
     if (!renditionRef.current || !isRenditionReady) {
-      console.log('[EPUBReader] useEffect skipped: rendition not ready', { 
-        hasRendition: !!renditionRef.current, 
-        isRenditionReady 
-      })
       return
     }
 
     const rendition = renditionRef.current
-    console.log('[EPUBReader] useEffect triggered:', { highlightAnchor, chapterHref, pageNumber })
     
     // Priority: highlightAnchor (CFI) > chapterHref > pageNumber
     if (highlightAnchor) {
-      console.log('[EPUBReader] Navigating via highlightAnchor:', highlightAnchor)
       if (highlightAnchor.includes('epubcfi')) {
         rendition.display(highlightAnchor).then(() => setLocation(highlightAnchor)).catch(console.error)
       } else {
@@ -213,17 +200,29 @@ export function EPUBReader({
         }
       }
     } else if (chapterHref) {
-      console.log('[EPUBReader] Navigating via chapterHref:', chapterHref)
       
       // Use spine.get() to find correct spine item
       const book = (rendition as unknown as { book?: Book }).book
       if (book && book.spine) {
         const spineItem = book.spine.get(chapterHref)
         if (spineItem) {
-          console.log('[EPUBReader] spine.get found index:', spineItem.index)
-          rendition.display(spineItem.index).then(() => setLocation(chapterHref)).catch(console.error)
+          rendition.display(spineItem.index).then(() => {
+            setLocation(chapterHref)
+            // Immediately update currentChapter from tocRef - don't rely on currentLocation()
+            // which can return nav.xhtml instead of the actual chapter
+            const chapter = tocRef.current.find((c) => c.href === chapterHref)
+            if (chapter) {
+              setCurrentChapter(chapter.label)
+            }
+          }).catch(console.error)
         } else {
-          rendition.display(chapterHref).then(() => setLocation(chapterHref)).catch(console.error)
+          rendition.display(chapterHref).then(() => {
+            setLocation(chapterHref)
+            const chapter = tocRef.current.find((c) => c.href === chapterHref)
+            if (chapter) {
+              setCurrentChapter(chapter.label)
+            }
+          }).catch(console.error)
         }
       } else {
         rendition.display(chapterHref).then(() => setLocation(chapterHref)).catch(console.error)

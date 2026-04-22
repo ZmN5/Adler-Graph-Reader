@@ -4,7 +4,6 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::time::Duration;
-use axum::response::sse::Event as SseEvent;
 
 /// Retrieval result for source-grounded summary
 #[derive(Debug, Clone)]
@@ -13,6 +12,14 @@ pub struct RetrievalResult {
     pub content: String,
     pub page_start: i64,
     pub page_end: i64,
+}
+
+/// Stream item for source-grounded summary streaming
+/// Replaces raw SseEvent with structured data to avoid fragile Debug parsing
+#[derive(Debug, Clone)]
+pub enum SummaryStreamItem {
+    Text(String),
+    Done,
 }
 
 /// LLM Client for connecting to LM Studio (OpenAI-compatible API)
@@ -310,12 +317,12 @@ impl LlmClient {
 
     /// Generate a source-grounded summary with true streaming token output
     ///
-    /// Returns a stream of SseEvent (text tokens and done signals)
+    /// Returns a stream of SummaryStreamItem (text tokens and done signals)
     /// Note: Takes `self` by ownership to avoid lifetime issues with async_stream
     pub fn into_summary_stream(
         self,
         request: &SourceGroundedSummaryRequest,
-    ) -> Pin<Box<dyn stream::Stream<Item = Result<SseEvent, LlmError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn stream::Stream<Item = Result<SummaryStreamItem, LlmError>> + Send + 'static>> {
         // Build NotebookLM-style prompt
         let prompt = build_summary_prompt(request);
         let model = self.model.clone();
@@ -379,7 +386,7 @@ impl LlmClient {
                             let data = &line[6..];
                             if data == "[DONE]" {
                                 tracing::debug!("[SourceGroundedSummaryStream] Received [DONE], ending stream");
-                                yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
+                                yield Ok(SummaryStreamItem::Done);
                                 return;
                             }
                             match serde_json::from_str::<ChatResponseStream>(data) {
@@ -388,12 +395,12 @@ impl LlmClient {
                                         // Check for finish_reason to detect stream end
                                         if choice.finish_reason.as_deref() == Some("stop") {
                                             tracing::debug!("[SourceGroundedSummaryStream] Received stop signal");
-                                            yield Ok(SseEvent::default().data(r#"{"type":"done"}"#));
+                                            yield Ok(SummaryStreamItem::Done);
                                             return;
                                         }
                                         let content = choice.delta.content();
                                         if !content.is_empty() {
-                                            yield Ok(SseEvent::default().data(content));
+                                            yield Ok(SummaryStreamItem::Text(content));
                                         }
                                     }
                                 }
@@ -418,7 +425,7 @@ impl LlmClient {
                         for choice in resp.choices {
                             let content = choice.delta.content();
                             if !content.is_empty() {
-                                yield Ok(SseEvent::default().data(content));
+                                yield Ok(SummaryStreamItem::Text(content));
                             }
                         }
                     }

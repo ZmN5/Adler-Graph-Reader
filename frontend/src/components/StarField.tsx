@@ -167,7 +167,20 @@ export function StarField({ className = '' }: { className?: string }) {
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
 
+    let isVisible = true
+    const handleVisibilityChange = () => {
+      isVisible = document.visibilityState === 'visible'
+      if (isVisible && !animationRef.current) {
+        animate()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     const animate = () => {
+      if (!isVisible) {
+        animationRef.current = 0
+        return
+      }
       if (ctx && canvas) {
         draw(ctx, canvas.width, canvas.height)
       }
@@ -178,7 +191,9 @@ export function StarField({ className = '' }: { className?: string }) {
 
     return () => {
       window.removeEventListener('resize', resizeCanvas)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       cancelAnimationFrame(animationRef.current)
+      animationRef.current = 0
     }
   }, [draw, initStars, initMeteors])
 

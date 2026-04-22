@@ -22,12 +22,26 @@ export class ApiError extends Error {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const body = await response.text().catch(() => null)
-    throw new ApiError(
-      `API request failed: ${response.status} ${response.statusText}`,
-      response.status,
-      body
-    )
+    const text = await response.text().catch(() => null)
+    let parsedBody: unknown = text
+    let errorMessage = `API request failed: ${response.status} ${response.statusText}`
+
+    // Try to parse error body as JSON for more specific messages
+    if (text) {
+      try {
+        const json = JSON.parse(text)
+        parsedBody = json
+        if (json.error && typeof json.error === 'string') {
+          errorMessage = json.error
+        } else if (json.message && typeof json.message === 'string') {
+          errorMessage = json.message
+        }
+      } catch {
+        // Not JSON, keep raw text as body
+      }
+    }
+
+    throw new ApiError(errorMessage, response.status, parsedBody)
   }
 
   return response.json() as Promise<T>

@@ -4,7 +4,6 @@ use tokio::process::Command;
 
 /// Default embedding model from LM Studio
 const EMBEDDING_MODEL: &str = "text-embedding-qwen3-embedding-0.6b";
-const EMBEDDING_DIMENSIONS: usize = 1024;
 const BATCH_SIZE: usize = 32;
 const LM_STUDIO_EMBEDDING_URL: &str = "http://localhost:1234/v1/embeddings";
 
@@ -225,14 +224,24 @@ pub async fn call_embedding_api(
 
     // Validate dimensions and extract embeddings
     let mut embeddings = Vec::with_capacity(embedding_response.data.len());
+    let mut expected_dim: Option<usize> = None;
     for data in embedding_response.data {
-        if data.embedding.len() != EMBEDDING_DIMENSIONS {
-            return Err(EmbeddingError::DimensionMismatch {
-                expected: EMBEDDING_DIMENSIONS,
-                got: data.embedding.len(),
-            });
+        if let Some(dim) = expected_dim {
+            if data.embedding.len() != dim {
+                tracing::warn!(
+                    "[Embedding] Dimension mismatch within batch: expected {}, got {}",
+                    dim,
+                    data.embedding.len()
+                );
+            }
+        } else {
+            expected_dim = Some(data.embedding.len());
         }
         embeddings.push(data.embedding);
+    }
+
+    if let Some(dim) = expected_dim {
+        tracing::info!("[Embedding] Detected embedding dimension: {}", dim);
     }
 
     tracing::info!(
@@ -330,7 +339,7 @@ pub async fn generate_chunk_embeddings(
             .bind(chunk_id)
             .bind(&embedding_bytes)
             .bind(embedding_model)
-            .bind(EMBEDDING_DIMENSIONS as i32)
+            .bind(embedding.len() as i32)
             .execute(pool)
             .await
             .map_err(|e| {
@@ -430,7 +439,7 @@ pub async fn generate_embeddings_for_chunks(
             .bind(chunk_id)
             .bind(&embedding_bytes)
             .bind(embedding_model)
-            .bind(EMBEDDING_DIMENSIONS as i32)
+            .bind(embedding.len() as i32)
             .execute(pool)
             .await
             .map_err(|e: sqlx::Error| EmbeddingError::DatabaseError(e.to_string()))?;

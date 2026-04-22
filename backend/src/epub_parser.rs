@@ -6,6 +6,7 @@ use zip::ZipArchive;
 
 use crate::config;
 use crate::embedding;
+use crate::text_utils::split_text_with_overlap;
 
 /// Parse an EPUB file and create chunks in the database
 /// Chapters are treated as units, with ~16000 char segments (~4000 tokens) with overlap
@@ -441,29 +442,3 @@ fn clean_chapter_title(file_path: &str) -> String {
         .to_string()
 }
 
-/// Split text into chunks of approximately target_size with overlap
-fn split_text_with_overlap(text: &str, target_size: usize, overlap: usize) -> Vec<String> {
-    let chars: Vec<char> = text.chars().collect();
-    let total_chars = chars.len();
-
-    if total_chars <= target_size {
-        return vec![text.to_string()];
-    }
-
-    let mut chunks: Vec<String> = Vec::new();
-    let mut start = 0;
-
-    while start < total_chars {
-        let end = (start + target_size).min(total_chars);
-        let chunk_text: String = chars[start..end].iter().collect();
-
-        chunks.push(chunk_text);
-
-        if end >= total_chars {
-            break;
-        }
-        start = end - overlap;
-    }
-
-    chunks
-}

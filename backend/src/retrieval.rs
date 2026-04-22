@@ -157,21 +157,31 @@ pub async fn bm25_search(
     Ok(search_results)
 }
 
+/// Maximum embeddings to load for vector search to prevent memory issues
+const MAX_EMBEDDINGS_FOR_SEARCH: usize = 5000;
+
 /// Escape special characters in FTS5 query to prevent syntax errors
 ///
 /// FTS5 special characters: " ( ) * : ^ - OR AND NOT
+/// Each token is wrapped in double quotes with internal quotes doubled.
 fn escape_fts5_query(query: &str) -> String {
-    // Replace double quotes with single quotes
-    let mut escaped = query.replace('"', "'");
-
-    // If the query contains spaces or special characters, wrap in double quotes
-    // for phrase matching
-    if escaped.contains(' ') || escaped.contains('\'') {
-        // For phrase queries, wrap in double quotes
-        escaped = format!("\"{}\"", escaped);
+    // Split on whitespace and common FTS5 punctuation
+    let tokens: Vec<&str> = query.split_whitespace().collect();
+    if tokens.is_empty() {
+        return String::new();
     }
 
-    escaped
+    let escaped_tokens: Vec<String> = tokens
+        .into_iter()
+        .map(|token| {
+            // Escape double quotes by doubling them (FTS5 standard escape)
+            let escaped = token.replace('"', "\"\"");
+            // Wrap each token in double quotes to protect against special characters
+            format!("\"{}\"", escaped)
+        })
+        .collect();
+
+    escaped_tokens.join(" ")
 }
 
 /// Calculate cosine similarity between two vectors
@@ -235,7 +245,7 @@ pub async fn vector_search(
         top_k
     );
 
-    // Fetch all embeddings for the book
+    // Fetch embeddings for the book, with a safety limit to prevent memory issues
     let embeddings: Vec<(String, Vec<u8>)> = if let Some(bid) = book_id {
         sqlx::query_as(
             r#"
@@ -243,9 +253,11 @@ pub async fn vector_search(
             FROM chunk_embeddings ce
             JOIN chunks c ON ce.chunk_id = c.id
             WHERE c.book_id = ?
+            LIMIT ?
             "#,
         )
         .bind(bid)
+        .bind(MAX_EMBEDDINGS_FOR_SEARCH as i64)
         .fetch_all(pool)
         .await
         .map_err(|e| RetrievalError::DatabaseError(e.to_string()))?
@@ -254,8 +266,10 @@ pub async fn vector_search(
             r#"
             SELECT ce.chunk_id, ce.embedding
             FROM chunk_embeddings ce
+            LIMIT ?
             "#,
         )
+        .bind(MAX_EMBEDDINGS_FOR_SEARCH as i64)
         .fetch_all(pool)
         .await
         .map_err(|e| RetrievalError::DatabaseError(e.to_string()))?
@@ -1207,9 +1221,10 @@ mod tests {
 
     #[test]
     fn test_escape_fts5_query() {
-        assert_eq!(escape_fts5_query("hello"), "hello");
-        assert_eq!(escape_fts5_query("hello world"), "\"hello world\"");
-        assert_eq!(escape_fts5_query("test\"quote"), "\"test'quote\"");
+        assert_eq!(escape_fts5_query("hello"), "\"hello\"");
+        assert_eq!(escape_fts5_query("hello world"), "\"hello\" \"world\"");
+        assert_eq!(escape_fts5_query("test\"quote"), "\"test\"\"quote\"");
+        assert_eq!(escape_fts5_query("foo OR bar"), "\"foo\" \"OR\" \"bar\"");
     }
 
     #[test]

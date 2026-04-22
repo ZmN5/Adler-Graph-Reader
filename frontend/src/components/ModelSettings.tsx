@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { getModelConfig, updateModelConfig, ModelConfig } from '@/lib/api-client'
+import { useTranslation } from '@/lib/i18n'
 import { Settings, Save } from 'lucide-react'
 
 interface ModelSettingsProps {
@@ -16,6 +17,7 @@ const CONFIG_FIELDS = [
 ] as const
 
 export function ModelSettings({ className }: ModelSettingsProps) {
+  const { t } = useTranslation()
   const [config, setConfig] = useState<ModelConfig | null>(null)
   const [editValues, setEditValues] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -86,7 +88,7 @@ export function ModelSettings({ className }: ModelSettingsProps) {
           <Settings className="h-5 w-5 text-neon-cyan" />
           <div className="absolute inset-0 blur-sm bg-neon-cyan/30 rounded-full" />
         </div>
-        <h2 className="text-lg font-space font-semibold text-white">Model Configuration</h2>
+        <h2 className="text-lg font-space font-semibold text-white">{t('modelSettings.title')}</h2>
       </div>
 
       {error && (

@@ -382,11 +382,17 @@ pub async fn extract_concepts_from_book(
         .unwrap_or(4);
     let semaphore = Arc::new(Semaphore::new(extract_concurrency));
 
-    // Get LLM API base URL and model from environment variable with defaults
-    let llm_api_url = std::env::var("LLM_API_BASE_URL")
-        .unwrap_or_else(|_| "http://localhost:1234/v1".to_string());
-    let llm_model = std::env::var("LLM_MODEL")
-        .unwrap_or_else(|_| "qwen3.5-9b".to_string());
+    // Get LLM config from centralized config system
+    let model_config = crate::config::get_model_config(&pool).await
+        .unwrap_or_else(|_| crate::config::ModelConfig {
+            embedding_model: "text-embedding-qwen3-embedding-0.6b".to_string(),
+            embedding_url: "http://localhost:1234/v1/embeddings".to_string(),
+            llm_model: "qwen3.5-9b".to_string(),
+            llm_api_url: "http://localhost:1234/v1".to_string(),
+            reranker_model: "qwen3.5-9b".to_string(),
+        });
+    let llm_api_url = model_config.llm_api_url;
+    let llm_model = model_config.llm_model;
 
     let mut handles = Vec::new();
 
@@ -477,6 +483,7 @@ mod tests {
     fn test_concept_structure() {
         let concept = ExtractedConcept {
             name: "Test".to_string(),
+            native_term: Some("测试".to_string()),
             description: "A test concept".to_string(),
             examples: vec!["example1".to_string()],
             category: Some("test".to_string()),

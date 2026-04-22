@@ -326,21 +326,21 @@ export function PDFReader({
       >
         {isLoading && (
           <div className="flex items-center justify-center h-full">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <span className="ml-3 text-muted-foreground">Loading PDF...</span>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-neon-cyan/30 border-t-neon-cyan" />
+            <span className="ml-3 text-slate-400 font-space">Loading PDF...</span>
           </div>
         )}
         {error && (
-          <div className="flex flex-col items-center justify-center h-full text-destructive">
+          <div className="flex flex-col items-center justify-center h-full text-red-400">
             <FileText className="h-12 w-12 opacity-50" />
-            <p className="mt-4">Failed to load PDF</p>
-            <p className="text-sm">{error}</p>
+            <p className="mt-4 font-space">Failed to load PDF</p>
+            <p className="text-sm font-space">{error}</p>
           </div>
         )}
         {!isLoading && !error && pageInfos.length === 0 && pdfDoc && (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-full text-slate-400">
             <FileText className="h-12 w-12 opacity-50" />
-            <p className="mt-4">No PDF document</p>
+            <p className="mt-4 font-space">No PDF document</p>
           </div>
         )}
         <div style={{ height: totalHeight, position: 'relative' }}>

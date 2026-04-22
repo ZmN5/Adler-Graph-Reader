@@ -49,6 +49,9 @@ const translations = {
     // Graph
     'graph.nodes': '个节点',
     'graph.edges': '条边',
+    'graph.expand': '展开',
+    'graph.legend': '图例',
+    'graph.filter': '筛选',
 
     // Book List
     'bookList.empty': '您的图书馆是空的',
@@ -139,6 +142,9 @@ const translations = {
     // Graph
     'graph.nodes': 'nodes',
     'graph.edges': 'edges',
+    'graph.expand': 'Expand',
+    'graph.legend': 'Legend',
+    'graph.filter': 'Filter',
 
     // Book List
     'bookList.empty': 'Your library is empty',
