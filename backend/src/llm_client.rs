@@ -311,8 +311,38 @@ impl LlmClient {
 
         tracing::trace!("[SourceGroundedSummary] Raw response: {}", content);
 
-        // Parse the summary and extract citations
-        parse_summary_response(&content, request)
+        // Extract citations from the summary text using [Source: X] pattern
+        let citation_pattern = regex::Regex::new(r"\[Source:\s*(\d+)\]").unwrap();
+        let mut seen_indices = std::collections::HashSet::new();
+        let mut citations = Vec::new();
+
+        for caps in citation_pattern.captures_iter(&content) {
+            if let Ok(idx) = caps[1].parse::<usize>() {
+                if idx > 0 && idx <= request.retrieval_results.len() && seen_indices.insert(idx) {
+                    let result = &request.retrieval_results[idx - 1];
+                    let excerpt = result.content.chars().take(200).collect::<String>();
+                    citations.push(Citation {
+                        index: idx,
+                        chunk_id: result.chunk_id.clone(),
+                        page_start: result.page_start,
+                        page_end: result.page_end,
+                        excerpt,
+                    });
+                }
+            }
+        }
+
+        citations.sort_by_key(|c| c.index);
+
+        tracing::info!(
+            "[SourceGroundedSummary] Generated summary with {} citations",
+            citations.len()
+        );
+
+        Ok(SourceGroundedSummary {
+            summary: content.trim().to_string(),
+            citations,
+        })
     }
 
     /// Generate a source-grounded summary with true streaming token output
@@ -814,15 +844,16 @@ INSTRUCTIONS:
 5. Focus on the most relevant and important information from the sources.
 
 OUTPUT FORMAT:
-- Output a JSON object with two fields: "summary" (the summary text with inline [Source: X] citations) and "citations" (an array of citation objects).
-- Each citation in the citations array should have: "index" (the source number, 1-based), "pages" (page range like "10-12" or "5" if single page).
+- Output the summary text directly. Do NOT output JSON.
+- Include inline citations using [Source: X] format where X is the source number.
 - Do NOT wrap the output in markdown code blocks or any other formatting.
+- Output ONLY the summary text, nothing else.
 
 Example output:
-{"summary": "This is the summary text with [Source: 1] citations inline. Another point with [Source: 2] more information.", "citations": [{"index": 1, "pages": "10-12"}, {"index": 2, "pages": "5"}]}
+Key-Value Cache is a foundational technique for efficient LLM inference [Source: 1]. It stores key-value pairs derived from previous tokens, allowing the model to avoid redundant calculations when generating new tokens [Source: 2]. However, this approach introduces a significant memory cost [Source: 3].
 
 Important:
-- Output ONLY valid JSON, no markdown code blocks
+- Output ONLY plain text, no JSON, no markdown code blocks
 - Every major claim must have a citation
 - Summary should be 200-500 words
 "#,

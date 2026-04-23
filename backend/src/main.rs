@@ -1412,7 +1412,7 @@ async fn node_summary_stream(
                 Ok(llm_client::SummaryStreamItem::Text(text)) => {
                     full_text.push_str(&text);
                     // Forward text as SSE event to client
-                    let text_chunk = serde_json::json!({"type": "text", "text": text});
+                    let text_chunk = serde_json::json!({"type": "content", "text": text});
                     yield Ok::<_, std::convert::Infallible>(SseEvent::default().data(text_chunk.to_string()));
                 }
                 Ok(llm_client::SummaryStreamItem::Done) => {
