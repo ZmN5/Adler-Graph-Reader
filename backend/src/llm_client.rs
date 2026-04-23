@@ -401,7 +401,7 @@ impl LlmClient {
 
             // Stream tokens as they arrive
             let mut stream = response.bytes_stream();
-            let mut current_line = String::new();
+            let mut current_line: Vec<u8> = Vec::new();
 
             while let Some(item) = stream.next().await {
                 let chunk = match item {
@@ -415,7 +415,7 @@ impl LlmClient {
 
                 for byte in chunk {
                     if byte == b'\n' {
-                        let line = current_line.trim();
+                        let line = String::from_utf8_lossy(&current_line).trim().to_string();
                         if line.starts_with("data: ") {
                             let data = &line[6..];
                             if data == "[DONE]" {
@@ -444,12 +444,12 @@ impl LlmClient {
                         }
                         current_line.clear();
                     } else if byte != b'\r' {
-                        current_line.push(byte as char);
+                        current_line.push(byte);
                     }
                 }
             }
 
-            let line = current_line.trim();
+            let line = String::from_utf8_lossy(&current_line).trim().to_string();
             if !line.is_empty() && line.starts_with("data: ") {
                 let data = &line[6..];
                 if data != "[DONE]" {
@@ -519,7 +519,7 @@ impl LlmClient {
 
             // Stream tokens as they arrive
             let mut stream = response.bytes_stream();
-            let mut current_line = String::new();
+            let mut current_line: Vec<u8> = Vec::new();
 
             while let Some(item) = stream.next().await {
                 let chunk = match item {
@@ -533,7 +533,7 @@ impl LlmClient {
 
                 for byte in chunk {
                     if byte == b'\n' {
-                        let line = current_line.trim();
+                        let line = String::from_utf8_lossy(&current_line).trim().to_string();
                         if line.starts_with("data: ") {
                             let data = &line[6..];
                             if data == "[DONE]" {
@@ -563,13 +563,13 @@ impl LlmClient {
                         }
                         current_line.clear();
                     } else if byte != b'\r' {
-                        current_line.push(byte as char);
+                        current_line.push(byte);
                     }
                 }
             }
 
             // Handle any remaining data in buffer (SSE lines without trailing newline)
-            let line = current_line.trim();
+            let line = String::from_utf8_lossy(&current_line).trim().to_string();
             if !line.is_empty() && line.starts_with("data: ") {
                 let data = &line[6..];
                 if data != "[DONE]" {
