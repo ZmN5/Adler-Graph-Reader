@@ -1,3 +1,4 @@
+mod chat;
 mod config;
 mod core_concept;
 mod db;
@@ -1499,6 +1500,68 @@ fn parse_citations_from_summary(
     citations
 }
 
+// Chat handlers
+
+async fn create_conversation(
+    Path(book_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+    Json(req): Json<chat::CreateConversationRequest>,
+) -> Result<(StatusCode, Json<chat::Conversation>), AppError> {
+    let title = req.title.as_deref();
+    let conversation = chat::create_conversation(&pool, &book_id, title)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to create conversation: {}", e)))?;
+    Ok((StatusCode::CREATED, Json(conversation)))
+}
+
+async fn list_conversations(
+    Path(book_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<Vec<chat::Conversation>>, AppError> {
+    let conversations = chat::list_conversations(&pool, &book_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to list conversations: {}", e)))?;
+    Ok(Json(conversations))
+}
+
+async fn get_conversation(
+    Path(conversation_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<chat::ConversationWithMessages>, AppError> {
+    let conversation = chat::get_conversation(&pool, &conversation_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to get conversation: {}", e)))?;
+    Ok(Json(conversation))
+}
+
+async fn delete_conversation(
+    Path(conversation_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    chat::delete_conversation(&pool, &conversation_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to delete conversation: {}", e)))?;
+    Ok(Json(serde_json::json!({ "deleted": true })))
+}
+
+async fn send_message_stream(
+    Path(conversation_id): Path<String>,
+    pool: axum::extract::State<SqlitePool>,
+    Json(req): Json<chat::SendMessageRequest>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    tracing::info!(
+        "[API] Chat stream request: conversation_id={}, content_len={}",
+        conversation_id,
+        req.content.len()
+    );
+
+    let stream = chat::stream_chat_response(pool.0, conversation_id, req.content).await;
+
+    Ok(Sse::new(stream)
+        .keep_alive(KeepAlive::default())
+        .into_response())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Filter out pdf-extract glyph warnings (they're informational, not errors)
@@ -1567,6 +1630,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/books/{id}/extract", post(extract_book))
         .route("/api/books/{id}/core-concepts", get(get_core_concepts))
         .route("/api/books/{id}/identify-core-concepts", post(identify_core_concepts))
+        .route("/api/books/{id}/conversations", post(create_conversation))
+        .route("/api/books/{id}/conversations", get(list_conversations))
+        .route("/api/conversations/{id}", get(get_conversation))
+        .route("/api/conversations/{id}", delete(delete_conversation))
+        .route("/api/conversations/{id}/messages/stream", post(send_message_stream))
         .layer(
             ServiceBuilder::new()
                 .layer(cors)

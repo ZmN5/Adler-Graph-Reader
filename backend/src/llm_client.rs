@@ -30,20 +30,29 @@ pub struct LlmClient {
 }
 
 /// OpenAI-compatible chat message
-#[derive(Debug, Serialize)]
-struct ChatMessage {
-    role: String,
-    content: String,
+#[derive(Debug, Serialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
+impl ChatMessage {
+    pub fn new(role: &str, content: &str) -> Self {
+        Self {
+            role: role.to_string(),
+            content: content.to_string(),
+        }
+    }
 }
 
 /// OpenAI-compatible request structure
-#[derive(Debug, Serialize)]
-struct ChatRequest {
-    model: String,
-    messages: Vec<ChatMessage>,
-    temperature: f32,
+#[derive(Debug, Serialize, Clone)]
+pub struct ChatRequest {
+    pub model: String,
+    pub messages: Vec<ChatMessage>,
+    pub temperature: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
-    stream: Option<bool>,
+    pub stream: Option<bool>,
 }
 
 /// OpenAI-compatible response structure
@@ -342,6 +351,119 @@ impl LlmClient {
         Ok(SourceGroundedSummary {
             summary: content.trim().to_string(),
             citations,
+        })
+    }
+
+    /// Generate a chat response with true streaming token output
+    ///
+    /// Returns a stream of SummaryStreamItem (text tokens and done signals)
+    /// Note: Takes `self` by ownership to avoid lifetime issues with async_stream
+    pub fn into_chat_stream(
+        self,
+        messages: Vec<ChatMessage>,
+    ) -> Pin<Box<dyn stream::Stream<Item = Result<SummaryStreamItem, LlmError>> + Send + 'static>> {
+        let model = self.model.clone();
+        let base_url = self.base_url.clone();
+
+        Box::pin(async_stream::stream! {
+            let chat_request = ChatRequest {
+                model: model.clone(),
+                messages,
+                temperature: 0.3,
+                stream: Some(true),
+            };
+
+            let url = format!("{}/chat/completions", base_url);
+            tracing::debug!("[ChatStream] Sending streaming request to {}", url);
+
+            let response = match self.client
+                .post(&url)
+                .header("Authorization", "Bearer lm-studio")
+                .json(&chat_request)
+                .send()
+                .await
+            {
+                Ok(resp) => resp,
+                Err(e) => {
+                    tracing::error!("[ChatStream] Connection error: {}", e);
+                    yield Err(LlmError::ConnectionError(e.to_string()));
+                    return;
+                }
+            };
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                tracing::error!("[ChatStream] API error {}: {}", status, body);
+                yield Err(LlmError::ApiError(format!("API error {}: {}", status, body)));
+                return;
+            }
+
+            // Stream tokens as they arrive
+            let mut stream = response.bytes_stream();
+            let mut current_line = String::new();
+
+            while let Some(item) = stream.next().await {
+                let chunk = match item {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        tracing::error!("[ChatStream] Read error: {}", e);
+                        yield Err(LlmError::ConnectionError(e.to_string()));
+                        return;
+                    }
+                };
+
+                for byte in chunk {
+                    if byte == b'\n' {
+                        let line = current_line.trim();
+                        if line.starts_with("data: ") {
+                            let data = &line[6..];
+                            if data == "[DONE]" {
+                                tracing::debug!("[ChatStream] Received [DONE], ending stream");
+                                yield Ok(SummaryStreamItem::Done);
+                                return;
+                            }
+                            match serde_json::from_str::<ChatResponseStream>(data) {
+                                Ok(resp) => {
+                                    for choice in resp.choices {
+                                        if choice.finish_reason.as_deref() == Some("stop") {
+                                            tracing::debug!("[ChatStream] Received stop signal");
+                                            yield Ok(SummaryStreamItem::Done);
+                                            return;
+                                        }
+                                        let content = choice.delta.content();
+                                        if !content.is_empty() {
+                                            yield Ok(SummaryStreamItem::Text(content));
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!("[ChatStream] Failed to parse SSE data: {}", e);
+                                }
+                            }
+                        }
+                        current_line.clear();
+                    } else if byte != b'\r' {
+                        current_line.push(byte as char);
+                    }
+                }
+            }
+
+            let line = current_line.trim();
+            if !line.is_empty() && line.starts_with("data: ") {
+                let data = &line[6..];
+                if data != "[DONE]" {
+                    if let Ok(resp) = serde_json::from_str::<ChatResponseStream>(data) {
+                        for choice in resp.choices {
+                            let content = choice.delta.content();
+                            if !content.is_empty() {
+                                yield Ok(SummaryStreamItem::Text(content));
+                            }
+                        }
+                    }
+                }
+            }
+            tracing::debug!("[ChatStream] Stream completed");
         })
     }
 

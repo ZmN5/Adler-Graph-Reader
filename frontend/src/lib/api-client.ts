@@ -401,6 +401,145 @@ export function getNodeSummaryStream(
   })
 }
 
+// Chat types
+export interface Conversation {
+  id: string
+  book_id: string
+  title: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Message {
+  id: string
+  conversation_id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  citations?: string | null
+  created_at: string
+}
+
+export interface ConversationWithMessages extends Conversation {
+  messages: Message[]
+}
+
+export async function createConversation(
+  bookId: string,
+  title?: string
+): Promise<Conversation> {
+  return apiPost<{ title?: string }, Conversation>(
+    `/api/books/${bookId}/conversations`,
+    { title }
+  )
+}
+
+export async function listConversations(bookId: string): Promise<Conversation[]> {
+  return apiGet<Conversation[]>(`/api/books/${bookId}/conversations`)
+}
+
+export async function getConversation(
+  conversationId: string
+): Promise<ConversationWithMessages> {
+  return apiGet<ConversationWithMessages>(`/api/conversations/${conversationId}`)
+}
+
+export async function deleteConversation(conversationId: string): Promise<void> {
+  await apiDelete<void>(`/api/conversations/${conversationId}`)
+}
+
+export async function sendMessageStream(
+  conversationId: string,
+  content: string,
+  signal?: AbortSignal
+): Promise<AsyncGenerator<StreamChunk, void, unknown>> {
+  return new Promise(async (resolve, reject) => {
+    const API_BASE_URL = import.meta.env.PROD
+      ? (import.meta.env.VITE_API_BASE_URL || '')
+      : ''
+
+    const controller = new AbortController()
+    const fetchSignal = signal || controller.signal
+
+    if (signal) {
+      signal.addEventListener('abort', () => controller.abort())
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/conversations/${conversationId}/messages/stream`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+          },
+          body: JSON.stringify({ content }),
+          signal: fetchSignal,
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('Response body is not readable')
+      }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      async function* generate(): AsyncGenerator<StreamChunk, void, unknown> {
+        try {
+          while (true) {
+            const { done, value } = await reader!.read()
+            if (done) {
+              if (buffer.startsWith('data: ')) {
+                const data = buffer.slice(6)
+                try {
+                  const chunk: StreamChunk = JSON.parse(data)
+                  yield chunk
+                } catch (e) {
+                  console.error('Failed to parse final SSE data:', data)
+                }
+              }
+              break
+            }
+
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6)
+                try {
+                  const chunk: StreamChunk = JSON.parse(data)
+                  yield chunk
+                  if (chunk.type === 'done' || chunk.type === 'error') {
+                    return
+                  }
+                } catch (e) {
+                  console.error('Failed to parse SSE data:', data)
+                }
+              }
+            }
+          }
+        } finally {
+          if (reader) {
+            reader.releaseLock()
+          }
+        }
+      }
+
+      resolve(generate())
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
 export type BookLanguage = 'auto' | 'zh' | 'en'
 
 export interface UploadBookResponse {

@@ -6,7 +6,7 @@ import { PDFReader } from '@/components/PDFReader'
 import { EPUBReader } from '@/components/EPUBReader'
 import { GraphCanvas } from '@/components/GraphCanvas'
 import { ThreeColumnLayout } from '@/components/ThreeColumnLayout'
-import { NodeDetailPanel } from '@/components/NodeDetailPanel'
+import { ChatPanel } from '@/components/ChatPanel'
 import { CoreConceptsList } from '@/components/CoreConceptsList'
 import { ModelSettings } from '@/components/ModelSettings'
 import { useAppStore } from '@/stores/app-store'
@@ -66,10 +66,6 @@ function App() {
 
   const handleViewInPDF = useCallback((pageNumber: number) => {
     setPdfPageNumber(pageNumber)
-  }, [])
-
-  const handleCloseDetailPanel = useCallback(() => {
-    setSelectedNode(null)
   }, [])
 
   const handleCitationClick = useCallback(async (chunkId: string) => {
@@ -144,6 +140,14 @@ function App() {
                 </div>
               }
               centerPanel={
+                <ChatPanel
+                  bookId={selectedBook.id}
+                  selectedNode={selectedNode}
+                  onCitationClick={handleCitationClick}
+                  className="h-full"
+                />
+              }
+              rightPanel={
                 <div className="h-full flex flex-col overflow-hidden">
                   {/* Tab navigation */}
                   <div className="flex items-center border-b bg-white border-gray-200 flex-shrink-0">
@@ -199,19 +203,7 @@ function App() {
                   </div>
                 </div>
               }
-              rightPanel={
-                <NodeDetailPanel
-                  node={selectedNode}
-                  bookId={selectedBook.id}
-                  onClose={handleCloseDetailPanel}
-                  onViewInBook={handleViewInPDF}
-                  onCitationClick={handleCitationClick}
-                  onRelatedNodeClick={handleNodeClick}
-                  bookFormat={isPdf ? 'pdf' : 'epub'}
-                  className="h-full"
-                />
-              }
-              showRightPanel={selectedNode !== null}
+              showRightPanel={true}
             />
           </div>
         </div>

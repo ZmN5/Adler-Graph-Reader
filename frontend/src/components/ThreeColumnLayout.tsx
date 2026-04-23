@@ -22,7 +22,7 @@ interface ThreeColumnLayoutProps {
   leftPanelTitle?: string
 }
 
-const DEFAULT_RIGHT_PANEL_WIDTH = 320
+const DEFAULT_RIGHT_PANEL_WIDTH = 400
 const MIN_LEFT_PANEL_WIDTH = 320
 const MAX_LEFT_PANEL_WIDTH_PERCENT = 60
 

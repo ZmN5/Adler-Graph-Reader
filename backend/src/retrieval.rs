@@ -845,6 +845,55 @@ impl HybridRetriever {
         }
     }
 
+    /// Retrieve relevant chunks for a query string using the full pipeline:
+    /// 1. Vector search
+    /// 2. BM25 search
+    /// 3. RRF fusion
+    /// 4. Fetch chunk contents and return top_k
+    pub async fn retrieve_for_query(
+        &self,
+        query: &str,
+        book_id: Option<&str>,
+        top_k: Option<usize>,
+    ) -> Result<Vec<RetrievalOutput>, RetrievalError> {
+        let top_k = top_k.unwrap_or(10);
+
+        tracing::info!(
+            "[HybridRetriever] Query: '{}', book_id: {:?}, top_k: {}",
+            query.chars().take(100).collect::<String>(),
+            book_id,
+            top_k
+        );
+
+        // Step 1: Vector search
+        let vector_results = self.perform_vector_search(query, book_id).await?;
+
+        // Step 2: BM25 search
+        let bm25_results = self.perform_bm25_search(query, book_id).await?;
+
+        // Step 3: RRF fusion
+        let fused_results: Vec<_> = reciprocal_rank_fusion(&vector_results, &bm25_results, Some(RRF_K))
+            .into_iter()
+            .take(top_k)
+            .collect();
+
+        if fused_results.is_empty() {
+            tracing::warn!("[HybridRetriever] No fused results found for query");
+            return Ok(Vec::new());
+        }
+
+        // Step 4: Build retrieval outputs
+        let final_results = fused_to_retrieval_results(fused_results);
+        let outputs = self.build_retrieval_outputs(&final_results).await?;
+
+        tracing::info!(
+            "[HybridRetriever] Retrieved {} chunks for query",
+            outputs.len()
+        );
+
+        Ok(outputs)
+    }
+
     /// Retrieve relevant chunks for a given node using the full pipeline:
     /// 1. Get node info
     /// 2. Vector search
