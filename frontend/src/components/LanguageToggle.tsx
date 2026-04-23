@@ -39,7 +39,7 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
 
   if (isLoading) {
     return (
-      <div className={cn('h-9 w-16 animate-pulse rounded-full bg-white/10', className)} />
+      <div className={cn('h-9 w-16 animate-pulse rounded-full bg-gray-100', className)} />
     )
   }
 
@@ -47,14 +47,14 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
     <button
       onClick={handleToggle}
       className={cn(
-        'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-space font-medium transition-all',
-        'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20',
-        'text-slate-300 hover:text-white',
+        'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-sans font-medium transition-all',
+        'bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-gray-300',
+        'text-gray-600 hover:text-gray-900',
         className
       )}
       title="Toggle language"
     >
-      <Globe className="h-4 w-4 text-neon-cyan" />
+      <Globe className="h-4 w-4 text-blue-600" />
       <span>{localLanguage === 'zh' ? '中文' : 'EN'}</span>
     </button>
   )

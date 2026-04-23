@@ -94,15 +94,15 @@ export function CoreConceptsList({
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <div className="h-8 w-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
-        <span className="ml-3 text-slate-400 font-space">{t('coreConcepts.loading')}</span>
+        <div className="h-8 w-8 border-2 border-gray-200 border-t-apple-blue rounded-full animate-spin" />
+        <span className="ml-3 text-gray-500 font-sans">{t('coreConcepts.loading')}</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className={cn('text-center text-red-400 py-8 font-space', className)}>
+      <div className={cn('text-center text-red-500 py-8 font-sans', className)}>
         <p>{error}</p>
       </div>
     )
@@ -110,15 +110,12 @@ export function CoreConceptsList({
 
   if (coreConcepts.length === 0) {
     return (
-      <div className={cn('text-center text-slate-400 py-12', className)}>
+      <div className={cn('text-center text-gray-500 py-12', className)}>
         <div className="relative">
-          <Sparkles className="mx-auto h-16 w-16 text-neon-purple/50" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-neon-cyan animate-ping" />
-          </div>
+          <Sparkles className="mx-auto h-16 w-16 text-gray-300" />
         </div>
-        <p className="mt-4 text-slate-300 font-space">{t('coreConcepts.empty')}</p>
-        <p className="text-sm text-slate-500 mt-1 font-space">{t('coreConcepts.emptyHint')}</p>
+        <p className="mt-4 text-gray-600 font-sans">{t('coreConcepts.empty')}</p>
+        <p className="text-sm text-gray-400 mt-1 font-sans">{t('coreConcepts.emptyHint')}</p>
       </div>
     )
   }
@@ -127,11 +124,10 @@ export function CoreConceptsList({
     <div className={cn('space-y-4', className)}>
       <div className="flex items-center gap-3 mb-6">
         <div className="relative">
-          <Star className="h-6 w-6 text-neon-cyan" />
-          <div className="absolute inset-0 blur-md bg-neon-cyan/30 rounded-full" />
+          <Star className="h-6 w-6 text-apple-blue" />
         </div>
-        <h2 className="text-xl font-space font-bold text-white">{t('coreConcepts.title')}</h2>
-        <span className="badge-neon">({coreConcepts.length})</span>
+        <h2 className="text-xl font-sans font-bold text-gray-900">{t('coreConcepts.title')}</h2>
+        <span className="apple-badge apple-badge-blue">({coreConcepts.length})</span>
       </div>
 
       <div className="grid gap-4">
@@ -144,43 +140,42 @@ export function CoreConceptsList({
               key={concept.id}
               onClick={() => handleConceptClick(concept)}
               className={cn(
-                'group rounded-lg border bg-space-deep/60 backdrop-blur-sm p-5 transition-all cursor-pointer',
-                'hover:border-neon-cyan/40 hover:bg-space-deep/80',
-                'border-white/10 hover:shadow-[0_0_20px_rgba(0,245,255,0.1)]'
+                'group rounded-xl border bg-white p-5 transition-all cursor-pointer',
+                'hover:border-gray-300 hover:shadow-apple-md hover:bg-slate-50',
+                'border-gray-200'
               )}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <Star className="h-5 w-5 text-neon-cyan fill-neon-cyan" />
-                      <div className="absolute inset-0 blur-sm bg-neon-cyan/40 rounded-full animate-pulse" />
+                      <Star className="h-5 w-5 text-apple-blue fill-apple-blue" />
                     </div>
-                    <h3 className="font-space font-semibold text-lg text-white truncate">{concept.name}</h3>
+                    <h3 className="font-sans font-semibold text-lg text-gray-900 truncate">{concept.name}</h3>
                   </div>
 
                   {concept.description && (
-                    <p className="mt-3 text-sm text-slate-300 line-clamp-2 font-space leading-relaxed">
+                    <p className="mt-3 text-sm text-gray-600 line-clamp-2 font-sans leading-relaxed">
                       {concept.description}
                     </p>
                   )}
 
                   <div className="mt-4 flex items-center gap-4">
                     {hasPageNumber && (
-                      <span className="text-xs text-slate-500 font-space flex items-center gap-1">
-                        <span className="text-neon-purple">◆</span>
+                      <span className="text-xs text-gray-400 font-sans flex items-center gap-1">
+                        <span className="text-apple-purple">◆</span>
                         {bookFormat === 'epub' ? `${t('nodeDetail.chapter')} ${details.page_number}` : `${t('nodeDetail.page')} ${details.page_number}`}
                       </span>
                     )}
 
                     {loadingDetails[concept.id] && (
-                      <span className="text-xs text-slate-500 font-space flex items-center gap-1">
-                        <div className="h-2 w-2 border border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
+                      <span className="text-xs text-gray-400 font-sans flex items-center gap-1">
+                        <div className="h-2 w-2 border border-gray-300 border-t-apple-blue rounded-full animate-spin" />
                         {t('common.loading')}
                       </span>
                     )}
 
-                    <span className="text-xs text-neon-cyan/70 font-space">
+                    <span className="text-xs text-apple-blue/70 font-sans">
                       {concept.source_chunk_ids.length} {t('coreConcepts.references')}
                     </span>
                   </div>
@@ -190,10 +185,9 @@ export function CoreConceptsList({
                   <button
                     onClick={(e) => handleViewInBook(e, concept.id)}
                     className={cn(
-                      'flex items-center gap-2 text-sm px-4 py-2 rounded-md font-space flex-shrink-0',
-                      'bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan',
-                      'hover:bg-neon-cyan/20 hover:border-neon-cyan/50 transition-all',
-                      'group-hover:shadow-[0_0_15px_rgba(0,245,255,0.3)]'
+                      'flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-sans flex-shrink-0',
+                      'bg-blue-50 border border-blue-200 text-blue-600',
+                      'hover:bg-blue-100 hover:border-blue-300 transition-all'
                     )}
                     title={`View on ${bookFormat === 'epub' ? 'chapter' : 'page'} ${details.page_number}`}
                   >
@@ -204,17 +198,17 @@ export function CoreConceptsList({
               </div>
 
               {concept.examples && concept.examples.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <p className="text-xs text-slate-500 mb-2 font-space uppercase tracking-wider">{t('coreConcepts.examples')}</p>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-400 mb-2 font-sans uppercase tracking-wider">{t('coreConcepts.examples')}</p>
                   <ul className="space-y-1.5">
                     {concept.examples.slice(0, 2).map((example, idx) => (
-                      <li key={idx} className="text-xs text-slate-400 line-clamp-1 font-space flex items-start gap-2">
-                        <span className="text-neon-purple/60 mt-0.5">→</span>
+                      <li key={idx} className="text-xs text-gray-500 line-clamp-1 font-sans flex items-start gap-2">
+                        <span className="text-apple-purple/60 mt-0.5">→</span>
                         <span>{example}</span>
                       </li>
                     ))}
                     {concept.examples.length > 2 && (
-                      <li className="text-xs text-slate-500 font-space">
+                      <li className="text-xs text-gray-400 font-sans">
                         +{concept.examples.length - 2} more examples
                       </li>
                     )}

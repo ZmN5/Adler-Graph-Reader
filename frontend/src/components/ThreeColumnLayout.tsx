@@ -22,7 +22,7 @@ interface ThreeColumnLayoutProps {
   leftPanelTitle?: string
 }
 
-const DEFAULT_RIGHT_PANEL_WIDTH = 280
+const DEFAULT_RIGHT_PANEL_WIDTH = 320
 const MIN_LEFT_PANEL_WIDTH = 320
 const MAX_LEFT_PANEL_WIDTH_PERCENT = 60
 
@@ -30,10 +30,10 @@ const MAX_LEFT_PANEL_WIDTH_PERCENT = 60
  * A three-column layout component that shows:
  * - Left panel: Book reader (resizable, collapsible to 48px)
  * - Center panel: Graph view (adapts to left/right panel sizes)
- * - Right panel: Detail panel (280px fixed width)
+ * - Right panel: Detail panel (320px fixed width)
  *
  * Layout structure:
- * | Left (resizable) | Center | Right 280px (or hidden) |
+ * | Left (resizable) | Center | Right 320px (or hidden) |
  */
 export function ThreeColumnLayout({
   leftPanel,
@@ -113,7 +113,7 @@ export function ThreeColumnLayout({
       <div
         className={cn(
           'relative overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0',
-          'bg-space-deep/50 border-r border-white/10',
+          'bg-white border-r border-gray-200',
           isLeftPanelCollapsed ? 'w-12' : 'min-w-0'
         )}
         style={isLeftPanelCollapsed ? undefined : { width: leftPanelWidth, flex: 'none' }}
@@ -123,14 +123,14 @@ export function ThreeColumnLayout({
           <div className="h-full flex flex-col items-center py-3">
             <button
               onClick={() => onLeftPanelCollapseChange?.(false)}
-              className="p-2 rounded-md hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-900"
               title="Expand reader panel"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
             {leftPanelTitle && (
               <div
-                className="mt-4 text-xs text-slate-500"
+                className="mt-4 text-xs text-gray-400"
                 style={{
                   writingMode: 'vertical-rl',
                   textOrientation: 'mixed',
@@ -149,7 +149,7 @@ export function ThreeColumnLayout({
             {/* Collapse button - positioned at right edge of panel */}
             <button
               onClick={() => onLeftPanelCollapseChange?.(true)}
-              className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-space-deep/80 hover:bg-white/10 transition-colors shadow-sm border border-white/10 text-slate-400 hover:text-white"
+              className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-apple-sm border border-gray-200 text-gray-500 hover:text-gray-900"
               title="Collapse reader panel"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -159,16 +159,16 @@ export function ThreeColumnLayout({
               onMouseDown={handleResizeStart}
               className={cn(
                 'absolute top-0 right-0 bottom-0 w-2 cursor-col-resize z-20',
-                'hover:bg-neon-cyan/20 active:bg-neon-cyan/30 transition-colors',
-                isDragging && 'bg-neon-cyan/30'
+                'hover:bg-apple-blue/20 active:bg-apple-blue/30 transition-colors',
+                isDragging && 'bg-apple-blue/30'
               )}
               title="Drag to resize panel"
             >
               {/* Visual indicator line */}
               <div className={cn(
                 'absolute top-1/2 right-0 -translate-y-1/2 w-0.5 h-8 rounded-full',
-                'bg-white/20 hover:bg-neon-cyan/50',
-                isDragging && 'bg-neon-cyan'
+                'bg-gray-300 hover:bg-apple-blue/50',
+                isDragging && 'bg-apple-blue'
               )} />
             </div>
           </>
@@ -179,7 +179,7 @@ export function ThreeColumnLayout({
       <div
         className={cn(
           'min-w-0 overflow-hidden transition-all duration-300 ease-in-out flex-1',
-          'bg-space-void'
+          'bg-slate-50'
         )}
       >
         {centerPanel}
@@ -188,7 +188,7 @@ export function ThreeColumnLayout({
       {/* Right Panel - Detail Panel */}
       {showRightPanel && (
         <div
-          className="border-l border-neon-cyan/20 overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0"
+          className="border-l border-gray-200 overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0 bg-white"
           style={{ width: rightPanelWidth }}
         >
           {rightPanel}

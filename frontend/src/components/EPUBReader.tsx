@@ -67,14 +67,14 @@ export function EPUBReader({
 
   // Handle location changes
   const locationChanged = useCallback((loc: string) => {
-    
+
     const rendition = renditionRef.current
     if (!rendition) return
 
     // For href navigation (from TOC), we need to handle it ourselves because
     // react-reader's componentDidUpdate might not work correctly with href strings
     if (!loc.includes('epubcfi') && !loc.includes('epubcfi(')) {
-      
+
       // For href navigation (from TOC), use rendition.display() directly
       // Then the CFI-based locationChanged will fire and we can update state from that
       rendition.display(loc).then(() => {
@@ -84,7 +84,7 @@ export function EPUBReader({
       // Update location state immediately - don't wait for display() to complete
       setLocation(loc)
       // Also find and set the current chapter label right away
-      const chapter = tocRef.current.find((c) => 
+      const chapter = tocRef.current.find((c) =>
         loc.toLowerCase().includes(c.href.toLowerCase()) ||
         c.href.toLowerCase().includes(loc.toLowerCase())
       )
@@ -93,7 +93,7 @@ export function EPUBReader({
       }
       return
     }
-    
+
     // For CFI navigation, just update the location state
     setLocation(loc)
 
@@ -103,7 +103,7 @@ export function EPUBReader({
       const handleLocObj = (result: any) => {
         const currentHref = result?.start?.href
         if (currentHref) {
-          const chapter = tocRef.current.find((c) => 
+          const chapter = tocRef.current.find((c) =>
             currentHref.toLowerCase().includes(c.href.toLowerCase()) ||
             c.href.toLowerCase().includes(currentHref.toLowerCase())
           )
@@ -128,15 +128,25 @@ export function EPUBReader({
     renditionRef.current = rendition
     setIsRenditionReady(true)
 
-    // Inject CSS to fix scrolling in scrolled mode
+    // Inject CSS to fix scrolling and apply Apple light theme
     rendition.hooks.content.register((contents: Contents) => {
       contents.addStylesheetCss(`
         body, html {
           overflow-y: auto !important;
           overflow-x: hidden !important;
           height: auto !important;
+          background: #FFFFFF !important;
+          color: #1E293B !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          line-height: 1.6 !important;
         }
-      `, 'scroll-fix')
+        body * {
+          background-color: transparent !important;
+        }
+        a {
+          color: #007AFF !important;
+        }
+      `, 'apple-theme-fix')
     })
 
     // Extract TOC from book
@@ -180,7 +190,7 @@ export function EPUBReader({
     }
 
     const rendition = renditionRef.current
-    
+
     // Priority: highlightAnchor (CFI) > chapterHref > pageNumber
     if (highlightAnchor) {
       if (highlightAnchor.includes('epubcfi')) {
@@ -200,7 +210,7 @@ export function EPUBReader({
         }
       }
     } else if (chapterHref) {
-      
+
       // Use spine.get() to find correct spine item
       const book = (rendition as unknown as { book?: Book }).book
       if (book && book.spine) {
@@ -239,13 +249,13 @@ export function EPUBReader({
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header showing current chapter - fixed at top */}
-      <div className="flex items-center justify-center p-3 border-b bg-muted/50 flex-shrink-0">
+      <div className="flex items-center justify-center p-3 border-b border-gray-200 bg-slate-50 flex-shrink-0">
         <div className="flex-1 min-w-0 text-center">
-          <p className="text-sm font-medium truncate">
+          <p className="text-sm font-medium text-gray-700 truncate">
             {isLoading ? 'Loading...' : currentChapter}
           </p>
           {chapters.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-gray-500 mt-0.5">
               {chapters.findIndex((c) => c.label === currentChapter) + 1} / {chapters.length} chapters
             </p>
           )}
@@ -253,8 +263,8 @@ export function EPUBReader({
       </div>
 
       {/* EPUB Viewer */}
-      <div className="flex-1 min-h-0 relative" style={{ overflow: 'hidden' }}>
-        <div className="absolute inset-0 overflow-auto">
+      <div className="flex-1 min-h-0 relative bg-white" style={{ overflow: 'hidden' }}>
+        <div className="absolute inset-0 overflow-auto bg-white">
           <ReactReader
             url={bookUrl}
             location={location}
@@ -283,9 +293,9 @@ export function EPUBReader({
               openAs: 'epub',
             }}
             loadingView={
-              <div className="flex items-center justify-center h-full">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                <span className="ml-3 text-muted-foreground">Loading EPUB...</span>
+              <div className="flex items-center justify-center h-full bg-white">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-apple-blue" />
+                <span className="ml-3 text-gray-500 font-sans">Loading EPUB...</span>
               </div>
             }
           />

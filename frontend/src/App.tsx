@@ -9,7 +9,6 @@ import { ThreeColumnLayout } from '@/components/ThreeColumnLayout'
 import { NodeDetailPanel } from '@/components/NodeDetailPanel'
 import { CoreConceptsList } from '@/components/CoreConceptsList'
 import { ModelSettings } from '@/components/ModelSettings'
-import { StarField } from '@/components/StarField'
 import { useAppStore } from '@/stores/app-store'
 import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -104,32 +103,28 @@ function App() {
   if (selectedBook) {
     const isPdf = selectedBook.format.toLowerCase() === 'pdf'
     return (
-      <div className="h-screen flex flex-col overflow-hidden starfield-bg">
-        <StarField />
-        
+      <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
         {/* Header bar */}
-        <div className="relative z-10 flex items-center justify-between border-b border-white/10 px-4 py-2 flex-shrink-0 glass-panel">
-          <h1 className="text-lg font-space font-semibold text-white truncate">{selectedBook.title}</h1>
+        <div className="relative z-10 flex items-center justify-between border-b border-gray-200 px-4 py-2 flex-shrink-0 bg-white shadow-apple-sm">
+          <h1 className="text-base font-sans font-semibold text-gray-900 truncate">{selectedBook.title}</h1>
           <button
             onClick={handleCloseBook}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-space font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-sans font-medium bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <X className="h-4 w-4" />
             {t('app.close')}
           </button>
         </div>
-        
-        {/* Main content with starfield background */}
+
+        {/* Main content */}
         <div className="relative z-0 flex-1 overflow-hidden">
-          <StarField />
-          
           <div className="relative z-10 h-full">
             <ThreeColumnLayout
               isLeftPanelCollapsed={isReaderCollapsed}
               onLeftPanelCollapseChange={setIsReaderCollapsed}
               leftPanelTitle={selectedBook.title}
               leftPanel={
-                <div className="h-full bg-space-void/80">
+                <div className="h-full bg-white">
                   {isPdf ? (
                     <PDFReader
                       bookId={selectedBook.id}
@@ -150,13 +145,13 @@ function App() {
               }
               centerPanel={
                 <div className="h-full flex flex-col overflow-hidden">
-                  {/* Tab navigation - space themed */}
-                  <div className="flex items-center border-b bg-space-deep/50 border-white/10 flex-shrink-0">
+                  {/* Tab navigation */}
+                  <div className="flex items-center border-b bg-white border-gray-200 flex-shrink-0">
                     <button
                       onClick={() => setActiveTab('graph')}
                       className={cn(
-                        'space-tab',
-                        activeTab === 'graph' && 'space-tab-active'
+                        'apple-tab',
+                        activeTab === 'graph' && 'apple-tab-active'
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -167,8 +162,8 @@ function App() {
                     <button
                       onClick={() => setActiveTab('core-concepts')}
                       className={cn(
-                        'space-tab',
-                        activeTab === 'core-concepts' && 'space-tab-active'
+                        'apple-tab',
+                        activeTab === 'core-concepts' && 'apple-tab-active'
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -179,8 +174,7 @@ function App() {
                   </div>
 
                   {/* Tab content */}
-                  <div className="flex-1 overflow-hidden relative">
-                    <StarField className="opacity-50" />
+                  <div className="flex-1 overflow-hidden relative bg-slate-50">
                     <div className="relative z-10 h-full">
                       {activeTab === 'graph' ? (
                         <GraphCanvas
@@ -226,19 +220,17 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen starfield-bg relative overflow-hidden">
-      <StarField />
-      
+    <div className="min-h-screen bg-white relative overflow-hidden">
       <div className="relative z-10">
         <Header onSettingsClick={() => setShowSettings(true)} />
         <MainContent>
           {showSettings ? (
             <div className="flex flex-col h-full">
-              <div className="border-b border-white/10 px-4 py-3 flex items-center justify-between flex-shrink-0 glass-panel">
-                <h1 className="text-lg font-space font-semibold text-white">Settings</h1>
+              <div className="border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0 bg-white shadow-apple-sm">
+                <h1 className="text-base font-sans font-semibold text-gray-900">Settings</h1>
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-space font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-sans font-medium bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   <X className="h-4 w-4" />
                   {t('app.close')}
@@ -251,11 +243,11 @@ function App() {
           ) : (
             <>
               {error && (
-                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400 backdrop-blur-sm">
-                  <p className="font-space">{error}</p>
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
+                  <p className="font-sans">{error}</p>
                   <button
                     onClick={clearError}
-                    className="mt-2 text-sm underline hover:text-white transition-colors"
+                    className="mt-2 text-sm underline hover:text-red-800 transition-colors"
                   >
                     Dismiss
                   </button>
@@ -263,34 +255,34 @@ function App() {
               )}
               {isLoading && (
                 <div className="flex items-center justify-center py-12">
-                  <div className="h-8 w-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
+                  <div className="h-8 w-8 border-2 border-gray-200 border-t-apple-blue rounded-full animate-spin" />
                 </div>
               )}
               <div className="flex flex-col items-center py-12">
                 {/* Hero section */}
-                <div className="text-center mb-12 animate-fade-in-up">
-                  <h1 className="text-4xl font-orbitron font-bold text-white glow-text mb-4">
-                    {t('app.hero.title')} <span className="text-gradient-cyan">{t('app.hero.subtitle')}</span>
+                <div className="text-center mb-12 animate-fade-in">
+                  <h1 className="text-3xl font-sans font-bold text-gray-900 mb-4 tracking-tight">
+                    {t('app.hero.title')} <span className="text-apple-blue">{t('app.hero.subtitle')}</span>
                   </h1>
-                  <p className="text-lg text-slate-400 font-space max-w-xl mx-auto">
+                  <p className="text-base text-gray-500 font-sans max-w-xl mx-auto leading-relaxed">
                     {t('app.hero.description')}
                   </p>
                 </div>
-                
+
                 <div className="w-full max-w-2xl">
                   <div className="mb-8">
                     <UploadButton onUploadSuccess={handleUploadSuccess} />
                   </div>
-                  
+
                   <div className="mt-12">
-                    <h2 className="text-lg font-space font-semibold mb-4 text-white flex items-center gap-2">
-                      <span className="text-neon-cyan">◆</span>
+                    <h2 className="text-base font-sans font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                      <span className="text-apple-blue">◆</span>
                       {t('app.library.title')}
                     </h2>
-                    <BookList 
-                      key={refreshKey} 
+                    <BookList
+                      key={refreshKey}
                       onSelectBook={handleSelectBook}
-                      className="max-w-2xl mx-auto" 
+                      className="max-w-2xl mx-auto"
                     />
                   </div>
                 </div>

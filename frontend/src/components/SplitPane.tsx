@@ -134,17 +134,17 @@ export function SplitPane({
           onMouseDown={handleMouseDown}
           className={cn(
             'group flex shrink-0 items-center justify-center transition-colors',
-            isHorizontal 
-              ? 'w-1 cursor-col-resize hover:bg-neon-cyan/20' 
-              : 'h-1 cursor-row-resize hover:bg-neon-cyan/20',
-            isDragging && 'bg-neon-cyan/40'
+            isHorizontal
+              ? 'w-1 cursor-col-resize hover:bg-blue-100'
+              : 'h-1 cursor-row-resize hover:bg-blue-100',
+            isDragging && 'bg-blue-200'
           )}
         >
           <div
             className={cn(
               'rounded-full transition-colors',
               isHorizontal ? 'h-12 w-1' : 'h-1 w-12',
-              'bg-white/10 group-hover:bg-neon-cyan/50'
+              'bg-gray-200 group-hover:bg-blue-300'
             )}
           />
         </div>

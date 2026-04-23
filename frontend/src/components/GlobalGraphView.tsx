@@ -190,8 +190,8 @@ export function GlobalGraphView({
           node.x, node.y, finalSize * 0.8,
           node.x, node.y, glowRadius
         )
-        glowGradient.addColorStop(0, `rgba(0, 245, 255, ${glowIntensity})`)
-        glowGradient.addColorStop(1, 'rgba(0, 245, 255, 0)')
+        glowGradient.addColorStop(0, `rgba(0, 122, 255, ${glowIntensity})`)
+        glowGradient.addColorStop(1, 'rgba(0, 122, 255, 0)')
         ctx.fillStyle = glowGradient
         ctx.beginPath()
         ctx.arc(node.x, node.y, glowRadius, 0, 2 * Math.PI)
@@ -230,7 +230,7 @@ export function GlobalGraphView({
       if (isSelected) {
         ctx.beginPath()
         ctx.arc(node.x, node.y, finalSize + 3 / globalScale, 0, 2 * Math.PI)
-        ctx.strokeStyle = '#ff00aa'
+        ctx.strokeStyle = '#007AFF'
         ctx.lineWidth = 2 / globalScale
         ctx.stroke()
 
@@ -239,8 +239,8 @@ export function GlobalGraphView({
           node.x, node.y, finalSize,
           node.x, node.y, finalSize + 8 / globalScale
         )
-        selectionGlow.addColorStop(0, 'rgba(255, 0, 170, 0.5)')
-        selectionGlow.addColorStop(1, 'rgba(255, 0, 170, 0)')
+        selectionGlow.addColorStop(0, 'rgba(0, 122, 255, 0.5)')
+        selectionGlow.addColorStop(1, 'rgba(0, 122, 255, 0)')
         ctx.fillStyle = selectionGlow
         ctx.fill()
       } else if (isHovered || extNode.is_core) {
@@ -271,7 +271,7 @@ export function GlobalGraphView({
 
         // Badge glow
         const badgeGlow = ctx.createRadialGradient(badgeX, badgeY, 0, badgeX, badgeY, badgeRadius * 2)
-        badgeGlow.addColorStop(0, 'rgba(255, 107, 53, 0.6)')
+        badgeGlow.addColorStop(0, 'rgba(255, 149, 0, 0.6)')
         badgeGlow.addColorStop(1, 'transparent')
         ctx.fillStyle = badgeGlow
         ctx.beginPath()
@@ -280,11 +280,11 @@ export function GlobalGraphView({
 
         ctx.beginPath()
         ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI)
-        ctx.fillStyle = '#ff6b35'
+        ctx.fillStyle = '#FF9500'
         ctx.fill()
 
         if (globalScale >= 0.6) {
-          ctx.font = `bold ${Math.max(8 / globalScale, 4)}px 'Space Grotesk', sans-serif`
+          ctx.font = `bold ${Math.max(8 / globalScale, 4)}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           ctx.fillStyle = '#ffffff'
@@ -294,14 +294,14 @@ export function GlobalGraphView({
 
       // Draw label
       if (globalScale >= 0.5) {
-        ctx.font = extNode.is_core ? `bold ${fontSize}px 'Space Grotesk', sans-serif` : `${fontSize}px 'Space Grotesk', sans-serif`
+        ctx.font = extNode.is_core ? `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif` : `${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
 
         // Label background
         const textMetrics = ctx.measureText(label)
         const padding = 3 / globalScale
-        ctx.fillStyle = 'rgba(10, 14, 23, 0.85)'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
         ctx.beginPath()
         ctx.roundRect(
           node.x! - textMetrics.width / 2 - padding,
@@ -313,7 +313,7 @@ export function GlobalGraphView({
         ctx.fill()
 
         // Label text
-        ctx.fillStyle = extNode.is_core ? '#00f5ff' : '#f8fafc'
+        ctx.fillStyle = extNode.is_core ? '#007AFF' : '#0F172A'
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
         ctx.shadowBlur = 3
         ctx.fillText(label, node.x!, node.y! + finalSize + 2 / globalScale + padding)
@@ -347,8 +347,8 @@ export function GlobalGraphView({
       
       if (isHighlighted) {
         const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y)
-        gradient.addColorStop(0, 'rgba(0, 245, 255, 0.6)')
-        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.6)')
+        gradient.addColorStop(0, 'rgba(0, 122, 255, 0.6)')
+        gradient.addColorStop(1, 'rgba(88, 86, 214, 0.6)')
         ctx.strokeStyle = gradient
         ctx.lineWidth = 1.5 / globalScale
       } else {
@@ -370,7 +370,7 @@ export function GlobalGraphView({
           const py = source.y + (target.y - source.y) * t
 
           const particleGradient = ctx.createRadialGradient(px, py, 0, px, py, 4 / globalScale)
-          particleGradient.addColorStop(0, 'rgba(0, 245, 255, 0.8)')
+          particleGradient.addColorStop(0, 'rgba(0, 122, 255, 0.8)')
           particleGradient.addColorStop(1, 'transparent')
 
           ctx.beginPath()
@@ -386,31 +386,31 @@ export function GlobalGraphView({
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <div className="h-8 w-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
-        <span className="ml-3 text-slate-400 font-space">Loading global constellation...</span>
+        <div className="h-8 w-8 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin" />
+        <span className="ml-3 text-gray-500 font-sans">Loading global graph...</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-red-400', className)}>
+      <div className={cn('flex flex-col items-center justify-center py-12 text-red-500', className)}>
         <p>Failed to load global graph</p>
-        <p className="text-sm text-red-400/70">{error}</p>
+        <p className="text-sm text-red-500/70">{error}</p>
       </div>
     )
   }
 
   if (graphData.nodes.length === 0) {
     return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-slate-400', className)}>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-16 w-16 opacity-40 text-neon-cyan">
+      <div className={cn('flex flex-col items-center justify-center py-12 text-gray-500', className)}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-16 w-16 opacity-40 text-blue-600">
           <circle cx="12" cy="12" r="10" />
           <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
           <path d="M2 12h20" />
         </svg>
-        <p className="mt-4 text-slate-300 font-space">No concepts in global graph</p>
-        <p className="text-sm text-slate-500 mt-1">Extract concepts from books to build the cosmic map</p>
+        <p className="mt-4 text-gray-600 font-sans">No concepts in global graph</p>
+        <p className="text-sm text-gray-400 mt-1">Extract concepts from books to build the knowledge map</p>
       </div>
     )
   }
@@ -436,25 +436,25 @@ export function GlobalGraphView({
         d3AlphaDecay={0.02}
         d3VelocityDecay={0.3}
       />
-      
+
       {/* Stats */}
-      <div className="absolute bottom-3 left-3 text-xs text-slate-400 bg-space-deep/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/10 font-space">
-        {graphData.nodes.length} planets, {graphData.links.length} connections (global)
+      <div className="absolute bottom-3 left-3 text-xs text-gray-500 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-gray-200 font-sans shadow-apple-sm">
+        {graphData.nodes.length} nodes, {graphData.links.length} connections (global)
       </div>
-      
+
       {/* Legend */}
-      <div className="absolute top-3 right-3 glass-panel rounded-lg px-4 py-3">
-        <div className="text-xs font-space font-medium text-neon-cyan mb-2">{t('graph.legend')}</div>
+      <div className="absolute top-3 right-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-apple-md">
+        <div className="text-xs font-sans font-medium text-blue-600 mb-2">{t('graph.legend')}</div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-neon-cyan to-planet-core shadow-[0_0_10px_rgba(0,245,255,0.6)]" />
-            <span className="text-xs text-slate-300 font-space">
+            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-md" />
+            <span className="text-xs text-gray-600 font-sans">
               Core ({coreConceptCount})
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-planet-other" />
-            <span className="text-xs text-slate-400 font-space">
+            <div className="w-3 h-3 rounded-full bg-gray-400" />
+            <span className="text-xs text-gray-500 font-sans">
               Regular ({graphData.nodes.length - coreConceptCount})
             </span>
           </div>

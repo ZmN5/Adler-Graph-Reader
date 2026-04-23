@@ -310,8 +310,8 @@ export function PDFReader({
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header showing current page */}
-      <div className="flex items-center justify-center p-3 border-b bg-muted/50 flex-shrink-0">
-        <div className="text-sm">
+      <div className="flex items-center justify-center p-3 border-b border-gray-200 bg-slate-50 flex-shrink-0">
+        <div className="text-sm text-gray-500">
           {isLoading ? 'Loading...' : error ? 'Error' : `Page ${currentVisiblePage} of ${pageInfos.length || '?'}`}
         </div>
       </div>
@@ -322,25 +322,25 @@ export function PDFReader({
           scrollContainerRef.current = el
           setContainerElement(el)
         }}
-        className="flex-1 min-h-0 overflow-y-auto"
+        className="flex-1 min-h-0 overflow-y-auto bg-white"
       >
         {isLoading && (
           <div className="flex items-center justify-center h-full">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-neon-cyan/30 border-t-neon-cyan" />
-            <span className="ml-3 text-slate-400 font-space">Loading PDF...</span>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-apple-blue" />
+            <span className="ml-3 text-gray-500 font-sans">Loading PDF...</span>
           </div>
         )}
         {error && (
-          <div className="flex flex-col items-center justify-center h-full text-red-400">
+          <div className="flex flex-col items-center justify-center h-full text-red-500">
             <FileText className="h-12 w-12 opacity-50" />
-            <p className="mt-4 font-space">Failed to load PDF</p>
-            <p className="text-sm font-space">{error}</p>
+            <p className="mt-4 font-sans">Failed to load PDF</p>
+            <p className="text-sm font-sans">{error}</p>
           </div>
         )}
         {!isLoading && !error && pageInfos.length === 0 && pdfDoc && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400">
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <FileText className="h-12 w-12 opacity-50" />
-            <p className="mt-4 font-space">No PDF document</p>
+            <p className="mt-4 font-sans">No PDF document</p>
           </div>
         )}
         <div style={{ height: totalHeight, position: 'relative' }}>
@@ -354,8 +354,9 @@ export function PDFReader({
                 transform: 'translateX(-50%)',
                 width: pageInfo.width,
                 height: pageInfo.height,
-                backgroundColor: '#f5f5f5',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                borderRadius: '4px',
               }}
             >
               <canvas

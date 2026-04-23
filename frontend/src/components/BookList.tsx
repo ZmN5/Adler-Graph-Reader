@@ -108,10 +108,10 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium font-space',
-          isPdf 
-            ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-            : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium font-sans',
+          isPdf
+            ? 'bg-red-50 text-red-600 border border-red-200'
+            : 'bg-blue-50 text-blue-600 border border-blue-200'
         )}
       >
         {isPdf ? <FileText className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
@@ -123,17 +123,17 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <div className="h-8 w-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
-        <span className="ml-3 text-slate-400 font-space">Scanning cosmic library...</span>
+        <div className="h-8 w-8 border-2 border-gray-200 border-t-apple-blue rounded-full animate-spin" />
+        <span className="ml-3 text-gray-500 font-sans">Loading library...</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className={cn('text-center text-red-400 py-8 font-space', className)}>
+      <div className={cn('text-center text-red-500 py-8 font-sans', className)}>
         <p>{error}</p>
-        <button onClick={loadBooks} className="mt-2 text-sm text-slate-400 hover:text-white transition-colors">
+        <button onClick={loadBooks} className="mt-2 text-sm text-gray-500 hover:text-gray-900 transition-colors">
           Try again
         </button>
       </div>
@@ -142,15 +142,12 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
 
   if (books.length === 0) {
     return (
-      <div className={cn('text-center text-slate-400 py-12', className)}>
+      <div className={cn('text-center text-gray-500 py-12', className)}>
         <div className="relative inline-block">
-          <Book className="mx-auto h-14 w-14 text-slate-600" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-neon-cyan/50 animate-ping" />
-          </div>
+          <Book className="mx-auto h-14 w-14 text-gray-300" />
         </div>
-        <p className="mt-4 text-slate-300 font-space">No books in your cosmic library</p>
-        <p className="text-sm text-slate-500 mt-1 font-space">Upload a book to begin your journey</p>
+        <p className="mt-4 text-gray-600 font-sans">No books in your library</p>
+        <p className="text-sm text-gray-400 mt-1 font-sans">Upload a book to begin your journey</p>
       </div>
     )
   }
@@ -162,41 +159,41 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
           key={book.id}
           onClick={() => onSelectBook?.(book)}
           className={cn(
-            'group flex items-center gap-4 rounded-lg border bg-space-deep/60 backdrop-blur-sm p-4 transition-all cursor-pointer',
-            'hover:border-neon-cyan/30 hover:bg-space-deep/80',
-            'border-white/10 hover:shadow-[0_0_20px_rgba(0,245,255,0.1)]'
+            'group flex items-center gap-4 rounded-xl border bg-white p-4 transition-all cursor-pointer',
+            'hover:border-gray-300 hover:shadow-apple-md hover:bg-slate-50',
+            'border-gray-200'
           )}
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-space-nebula/50 border border-white/10">
-            <Book className="h-6 w-6 text-neon-cyan/70" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 border border-gray-200">
+            <Book className="h-6 w-6 text-gray-400" />
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-space font-semibold text-white truncate">{book.title}</h3>
+              <h3 className="font-sans font-semibold text-gray-900 truncate">{book.title}</h3>
               {formatBadge(book.format)}
               {extractingBookId === book.id && (
-                <span className="inline-flex items-center gap-1 text-xs text-neon-purple font-space">
-                  <div className="h-3 w-3 border border-neon-purple/30 border-t-neon-purple rounded-full animate-spin" />
+                <span className="inline-flex items-center gap-1 text-xs text-apple-purple font-sans">
+                  <div className="h-3 w-3 border border-apple-purple/30 border-t-apple-purple rounded-full animate-spin" />
                   Extracting...
                 </span>
               )}
               {extractionResult?.bookId === book.id && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/30 font-space">
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600 border border-green-200 font-sans">
                   <CheckCircle className="h-3 w-3" />
                   {extractionResult.nodesCount} nodes, {extractionResult.edgesCount} edges
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-4 mt-1.5 text-sm text-slate-400 font-space">
+            <div className="flex items-center gap-4 mt-1.5 text-sm text-gray-500 font-sans">
               {book.author && <span>{book.author}</span>}
               {book.total_pages && <span>{book.total_pages} pages</span>}
               {!book.total_pages && (
-                <span className="text-neon-orange/70 text-xs">Not parsed yet</span>
+                <span className="text-amber-600 text-xs">Not parsed yet</span>
               )}
             </div>
             {extractionError?.bookId === book.id && (
-              <p className="mt-1 text-xs text-red-400 font-space">{extractionError.message}</p>
+              <p className="mt-1 text-xs text-red-500 font-sans">{extractionError.message}</p>
             )}
           </div>
 
@@ -206,8 +203,8 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
                 onClick={(e) => handleParse(e, book)}
                 disabled={parsingBookId === book.id}
                 className={cn(
-                  'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-space font-medium transition-all',
-                  'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/60',
+                  'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-sans font-medium transition-all',
+                  'bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 hover:border-blue-300',
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
                 title="Parse book to extract concepts"
@@ -224,8 +221,8 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
                 onClick={(e) => handleExtract(e, book)}
                 disabled={extractingBookId === book.id}
                 className={cn(
-                  'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-space font-medium transition-all',
-                  'bg-neon-purple/20 border border-neon-purple/40 text-neon-purple hover:bg-neon-purple/30 hover:border-neon-purple/60',
+                  'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-sans font-medium transition-all',
+                  'bg-purple-50 border border-purple-200 text-purple-600 hover:bg-purple-100 hover:border-purple-300',
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
                 title="Extract concepts"
@@ -241,8 +238,8 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
             <button
               onClick={(e) => handleDelete(e, book.id, book.title)}
               className={cn(
-                'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-space font-medium transition-all',
-                'bg-red-500/10 border border-red-500/30 text-red-400/70 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400'
+                'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-sans font-medium transition-all',
+                'bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 hover:border-red-300'
               )}
               title="Delete book"
             >

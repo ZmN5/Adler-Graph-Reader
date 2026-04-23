@@ -317,9 +317,9 @@ export function GraphCanvas({
           node.x, node.y, finalSize * 0.8,
           node.x, node.y, glowRadius
         )
-        glowGradient.addColorStop(0, `rgba(0, 245, 255, ${glowIntensity})`)
-        glowGradient.addColorStop(0.5, `rgba(0, 245, 255, ${glowIntensity * 0.4})`)
-        glowGradient.addColorStop(1, 'rgba(0, 245, 255, 0)')
+        glowGradient.addColorStop(0, planetColor.atmosphere.replace(/[\d.]+\)$/, `${glowIntensity})`))
+        glowGradient.addColorStop(0.5, planetColor.atmosphere.replace(/[\d.]+\)$/, `${glowIntensity * 0.4})`))
+        glowGradient.addColorStop(1, 'rgba(0, 122, 255, 0)')
         ctx.fillStyle = glowGradient
         ctx.beginPath()
         ctx.arc(node.x, node.y, glowRadius, 0, 2 * Math.PI)
@@ -361,7 +361,7 @@ export function GraphCanvas({
         ctx.scale(1, 0.3)
         ctx.beginPath()
         ctx.arc(0, 0, finalSize * 1.8, 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(0, 245, 255, ${isSelected ? 0.7 : 0.4})`
+        ctx.strokeStyle = `rgba(0, 122, 255, ${isSelected ? 0.7 : 0.4})`
         ctx.lineWidth = 2 / globalScale
         ctx.stroke()
         ctx.restore()
@@ -371,7 +371,7 @@ export function GraphCanvas({
       if (isSelected) {
         ctx.beginPath()
         ctx.arc(node.x, node.y, finalSize + 3 / globalScale, 0, 2 * Math.PI)
-        ctx.strokeStyle = '#ff00aa'
+        ctx.strokeStyle = '#007AFF'
         ctx.lineWidth = 2 / globalScale
         ctx.stroke()
 
@@ -380,15 +380,15 @@ export function GraphCanvas({
           node.x, node.y, finalSize,
           node.x, node.y, finalSize + 8 / globalScale
         )
-        selectionGlow.addColorStop(0, 'rgba(255, 0, 170, 0.5)')
-        selectionGlow.addColorStop(1, 'rgba(255, 0, 170, 0)')
+        selectionGlow.addColorStop(0, 'rgba(0, 122, 255, 0.5)')
+        selectionGlow.addColorStop(1, 'rgba(0, 122, 255, 0)')
         ctx.fillStyle = selectionGlow
         ctx.fill()
       } else if (isHovered || extNode.is_core) {
         // Normal hover or core border
         ctx.beginPath()
         ctx.arc(node.x, node.y, finalSize + 2 / globalScale, 0, 2 * Math.PI)
-        ctx.strokeStyle = extNode.is_core ? planetColor.glow : 'rgba(255, 255, 255, 0.5)'
+        ctx.strokeStyle = extNode.is_core ? planetColor.glow : 'rgba(100, 116, 139, 0.5)'
         ctx.lineWidth = extNode.is_core ? 2 / globalScale : 1.5 / globalScale
         ctx.stroke()
       }
@@ -408,34 +408,34 @@ export function GraphCanvas({
       // Draw label based on zoom level
       if (globalScale >= 0.3) {
         const MAX_FONT_SIZE = 14
-        const fontSize = globalScale >= 0.8 
+        const fontSize = globalScale >= 0.8
           ? Math.min(12 / globalScale, MAX_FONT_SIZE)
           : Math.min(10 / globalScale, MAX_FONT_SIZE)
-        
+
         const labelText = globalScale >= 0.8 ? label : shortLabel
-        
+
         // Draw label background
-        ctx.font = extNode.is_core ? `bold ${fontSize}px 'Space Grotesk', sans-serif` : `${fontSize}px 'Space Grotesk', sans-serif`
+        ctx.font = extNode.is_core ? `bold ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif` : `${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`
         const textMetrics = ctx.measureText(labelText)
         const padding = 4 / globalScale
         const labelWidth = textMetrics.width + padding * 2
         const labelHeight = fontSize + padding * 2
 
-        // Label background
-        ctx.fillStyle = 'rgba(10, 14, 23, 0.85)'
+        // Label background - white for light theme
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
         ctx.beginPath()
         ctx.roundRect(
           node.x! - labelWidth / 2,
           node.y! + finalSize + 4 / globalScale,
           labelWidth,
           labelHeight,
-          4 / globalScale
+          6 / globalScale
         )
         ctx.fill()
 
         // Label border glow for core concepts
         if (extNode.is_core) {
-          ctx.strokeStyle = 'rgba(0, 245, 255, 0.5)'
+          ctx.strokeStyle = 'rgba(0, 122, 255, 0.3)'
           ctx.lineWidth = 1 / globalScale
           ctx.stroke()
         }
@@ -443,10 +443,10 @@ export function GraphCanvas({
         // Draw label text
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillStyle = extNode.is_core ? '#00f5ff' : '#f8fafc'
-        
+        ctx.fillStyle = extNode.is_core ? '#007AFF' : '#0F172A'
+
         // Text shadow for better readability
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.06)'
         ctx.shadowBlur = 4
         ctx.fillText(labelText, node.x!, node.y! + finalSize + 4 / globalScale + labelHeight / 2)
         ctx.shadowColor = 'transparent'
@@ -467,23 +467,23 @@ export function GraphCanvas({
       // Get source and target colors for gradient
       const sourceNode = source as ExtendedNode
       const targetNode = target as ExtendedNode
-      
+
       let sourceColor = DEFAULT_PLANET_COLOR.base
       let targetColor = DEFAULT_PLANET_COLOR.base
-      
+
       if (sourceNode.is_core) sourceColor = CORE_COLOR.base
       else if (sourceNode.category && PLANET_COLORS[sourceNode.category]) {
         sourceColor = PLANET_COLORS[sourceNode.category].base
       }
-      
+
       if (targetNode.is_core) targetColor = CORE_COLOR.base
       else if (targetNode.category && PLANET_COLORS[targetNode.category]) {
         targetColor = PLANET_COLORS[targetNode.category].base
       }
 
       // Check if link is connected to selected or hovered node
-      const isHighlighted = 
-        selectedNodeId === sourceNode.id || 
+      const isHighlighted =
+        selectedNodeId === sourceNode.id ||
         selectedNodeId === targetNode.id ||
         hoveredNode?.id === sourceNode.id ||
         hoveredNode?.id === targetNode.id
@@ -491,7 +491,7 @@ export function GraphCanvas({
       // Draw cosmic connection with gradient
       const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y)
       gradient.addColorStop(0, `${sourceColor}80`)
-      gradient.addColorStop(0.5, isHighlighted ? 'rgba(0, 245, 255, 0.6)' : 'rgba(150, 170, 200, 0.3)')
+      gradient.addColorStop(0.5, isHighlighted ? 'rgba(0, 122, 255, 0.6)' : 'rgba(150, 170, 200, 0.3)')
       gradient.addColorStop(1, `${targetColor}80`)
 
       ctx.beginPath()
@@ -507,16 +507,16 @@ export function GraphCanvas({
       if (isHighlighted && globalScale >= 0.5) {
         const particleCount = 3
         const time = Date.now() / 1000
-        
+
         for (let i = 0; i < particleCount; i++) {
           const t = ((time * 0.5 + i / particleCount) % 1)
           const px = source.x + (target.x - source.x) * t
           const py = source.y + (target.y - source.y) * t
-          
+
           const particleGradient = ctx.createRadialGradient(px, py, 0, px, py, 4 / globalScale)
-          particleGradient.addColorStop(0, 'rgba(0, 245, 255, 0.8)')
+          particleGradient.addColorStop(0, 'rgba(0, 122, 255, 0.8)')
           particleGradient.addColorStop(1, 'transparent')
-          
+
           ctx.beginPath()
           ctx.arc(px, py, 4 / globalScale, 0, 2 * Math.PI)
           ctx.fillStyle = particleGradient
@@ -531,15 +531,15 @@ export function GraphCanvas({
         const fontSize = Math.max(8 / globalScale, 3)
 
         // Background for label
-        ctx.fillStyle = 'rgba(10, 14, 23, 0.9)'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
         ctx.beginPath()
         ctx.roundRect(midX - 20, midY - 8, 40, 16, 4)
         ctx.fill()
 
-        ctx.font = `${fontSize}px 'Space Grotesk', sans-serif`
+        ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillStyle = '#00f5ff'
+        ctx.fillStyle = '#007AFF'
         ctx.fillText(extLink.relation_type, midX, midY)
       }
     },
@@ -549,32 +549,32 @@ export function GraphCanvas({
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <div className="h-8 w-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
-        <span className="ml-3 text-slate-400 font-space">Loading constellation...</span>
+        <div className="h-8 w-8 border-2 border-gray-200 border-t-apple-blue rounded-full animate-spin" />
+        <span className="ml-3 text-gray-500 font-sans">Loading graph...</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-red-400', className)}>
-        <p className="text-red-400">Failed to load graph</p>
-        <p className="text-sm text-red-400/70">{error}</p>
+      <div className={cn('flex flex-col items-center justify-center py-12 text-red-500', className)}>
+        <p className="text-red-500">Failed to load graph</p>
+        <p className="text-sm text-red-400">{error}</p>
       </div>
     )
   }
 
   if (graphData.nodes.length === 0) {
     return (
-      <div className={cn('flex flex-col items-center justify-center py-12 text-slate-400', className)}>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-16 w-16 opacity-40 text-neon-cyan">
+      <div className={cn('flex flex-col items-center justify-center py-12 text-gray-500', className)}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-16 w-16 opacity-40 text-gray-400">
           <circle cx="12" cy="12" r="10" />
           <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
           <path d="M2 12h20" />
           <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" opacity="0.5" />
         </svg>
-        <p className="mt-4 text-slate-300 font-space">No concepts extracted yet</p>
-        <p className="text-sm text-slate-500 mt-1">Extract concepts from your book to build the constellation</p>
+        <p className="mt-4 text-gray-600 font-sans">No concepts extracted yet</p>
+        <p className="text-sm text-gray-400 mt-1">Extract concepts from your book to build the graph</p>
       </div>
     )
   }
@@ -604,33 +604,33 @@ export function GraphCanvas({
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute pointer-events-none tooltip-space rounded-lg px-3 py-2 z-10 max-w-[200px]"
+          className="absolute pointer-events-none bg-white border border-gray-200 rounded-xl px-3 py-2 z-10 max-w-[200px] shadow-apple-lg"
           style={{
             left: Math.min(tooltip.x + 15, dimensions.width - 220),
             top: Math.max(tooltip.y - 60, 10),
             transform: 'translateY(-100%)',
           }}
         >
-          <div className="font-space font-medium text-sm text-white">{tooltip.node.name}</div>
+          <div className="font-sans font-medium text-sm text-gray-900">{tooltip.node.name}</div>
           {tooltip.node.category && (
-            <div className="text-xs text-neon-cyan mt-0.5">
+            <div className="text-xs text-apple-blue mt-0.5">
               {tooltip.node.category}
             </div>
           )}
           {tooltip.node.is_core && (
-            <div className="text-xs text-neon-pink mt-0.5 font-medium">★ Core Concept</div>
+            <div className="text-xs text-apple-purple mt-0.5 font-medium">Core Concept</div>
           )}
         </div>
       )}
 
       {/* Stats bar */}
-      <div className="absolute bottom-3 left-3 text-xs text-slate-400 bg-space-deep/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/10 flex flex-col gap-1 font-space">
-        <span>{visibleNodes.length} / {graphData.nodes.length} planets visible</span>
+      <div className="absolute bottom-3 left-3 text-xs text-gray-500 bg-white/85 backdrop-blur-md px-3 py-2 rounded-xl border border-gray-200 flex flex-col gap-1 font-sans shadow-apple-sm">
+        <span>{visibleNodes.length} / {graphData.nodes.length} nodes visible</span>
         <span>{visibleLinks.length} connections</span>
         {hasMoreNodes && (
           <button
             onClick={handleLoadMore}
-            className="mt-1 px-2 py-1 bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan rounded text-xs hover:bg-neon-cyan/30 transition-colors"
+            className="mt-1 px-2 py-1 bg-blue-50 border border-blue-200 text-blue-600 rounded-lg text-xs hover:bg-blue-100 transition-colors"
           >
             {t('graph.expand')} (+{Math.min(NODE_INCREMENT, graphData.nodes.length - visibleNodeCount)})
           </button>
@@ -638,33 +638,33 @@ export function GraphCanvas({
       </div>
 
       {/* Legend */}
-      <div className="absolute top-3 right-3 glass-panel rounded-lg px-4 py-3 max-w-[200px]">
-        <div className="text-xs font-space font-medium text-neon-cyan mb-2">{t('graph.legend')}</div>
+      <div className="absolute top-3 right-3 bg-white/85 backdrop-blur-md border border-gray-200 rounded-xl px-4 py-3 max-w-[200px] shadow-apple-sm">
+        <div className="text-xs font-sans font-medium text-apple-blue mb-2">{t('graph.legend')}</div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-neon-cyan to-planet-core shadow-[0_0_10px_rgba(0,245,255,0.6)]" />
-            <span className="text-xs text-slate-300 font-space">
+            <div className="w-4 h-4 rounded-full bg-apple-blue shadow-sm" />
+            <span className="text-xs text-gray-600 font-sans">
               Core Concept ({coreConceptCount})
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-planet-philosophy" />
-            <span className="text-xs text-slate-400 font-space">Philosophy</span>
+            <div className="w-3 h-3 rounded-full bg-apple-indigo" />
+            <span className="text-xs text-gray-500 font-sans">Philosophy</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-planet-science" />
-            <span className="text-xs text-slate-400 font-space">Science</span>
+            <div className="w-3 h-3 rounded-full bg-apple-green" />
+            <span className="text-xs text-gray-500 font-sans">Science</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-planet-technology" />
-            <span className="text-xs text-slate-400 font-space">Technology</span>
+            <div className="w-3 h-3 rounded-full bg-apple-teal" />
+            <span className="text-xs text-gray-500 font-sans">Technology</span>
           </div>
         </div>
       </div>
 
       {/* Search box */}
-      <div className="absolute top-3 left-3 glass-panel rounded-lg px-3 py-2 z-20">
-        <div className="text-xs font-space font-medium text-neon-cyan mb-2">Search</div>
+      <div className="absolute top-3 left-3 bg-white/85 backdrop-blur-md border border-gray-200 rounded-xl px-3 py-2 z-20 shadow-apple-sm">
+        <div className="text-xs font-sans font-medium text-apple-blue mb-2">Search</div>
         <div className="relative">
           <input
             type="text"
@@ -672,17 +672,17 @@ export function GraphCanvas({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search nodes..."
             className={cn(
-              'w-[180px] px-2 py-1 text-xs rounded font-space',
-              'bg-space-deep/80 border border-white/20',
-              'text-slate-200 placeholder:text-slate-500',
-              'focus:outline-none focus:border-neon-cyan/50',
+              'w-[180px] px-2 py-1 text-xs rounded-lg font-sans',
+              'bg-white border border-gray-300',
+              'text-gray-700 placeholder:text-gray-400',
+              'focus:outline-none focus:border-apple-blue',
               'transition-colors'
             )}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 text-xs"
             >
               ×
             </button>
@@ -692,18 +692,18 @@ export function GraphCanvas({
 
       {/* Category filters */}
       {allCategories.length > 0 && (
-        <div className="absolute top-[75px] left-3 glass-panel rounded-lg px-3 py-2 z-10">
-          <div className="text-xs font-space font-medium text-neon-cyan mb-2">{t('graph.filter')}</div>
+        <div className="absolute top-[75px] left-3 bg-white/85 backdrop-blur-md border border-gray-200 rounded-xl px-3 py-2 z-10 shadow-apple-sm">
+          <div className="text-xs font-sans font-medium text-apple-blue mb-2">{t('graph.filter')}</div>
           <div className="flex flex-wrap gap-1 max-w-[180px]">
             {allCategories.slice(0, 6).map((category) => (
               <button
                 key={category}
                 onClick={() => toggleCategory(category)}
                 className={cn(
-                  'px-2 py-0.5 text-xs rounded font-space transition-all',
+                  'px-2 py-0.5 text-xs rounded-lg font-sans transition-all',
                   selectedCategories.has(category)
-                    ? 'bg-neon-cyan/30 border border-neon-cyan/60 text-neon-cyan'
-                    : 'bg-white/5 border border-white/20 text-slate-400 hover:text-white'
+                    ? 'bg-blue-50 border border-blue-300 text-blue-600'
+                    : 'bg-gray-50 border border-gray-200 text-gray-500 hover:text-gray-900'
                 )}
               >
                 {category}
@@ -712,7 +712,7 @@ export function GraphCanvas({
             {selectedCategories.size > 0 && (
               <button
                 onClick={clearCategoryFilter}
-                className="px-2 py-0.5 text-xs rounded font-space text-red-400 hover:text-red-300"
+                className="px-2 py-0.5 text-xs rounded-lg font-sans text-red-500 hover:text-red-600"
               >
                 Clear
               </button>
@@ -722,15 +722,15 @@ export function GraphCanvas({
       )}
 
       {/* Core concepts toggle */}
-      <div className="absolute left-3 top-[110px] glass-panel rounded-lg px-3 py-2">
+      <div className="absolute left-3 top-[110px] bg-white/85 backdrop-blur-md border border-gray-200 rounded-xl px-3 py-2 shadow-apple-sm">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={showOnlyCore}
             onChange={(e) => setShowOnlyCore(e.target.checked)}
-            className="w-4 h-4 rounded border-white/30 bg-space-deep text-neon-cyan focus:ring-neon-cyan/50"
+            className="w-4 h-4 rounded border-gray-300 bg-white text-apple-blue focus:ring-apple-blue/30"
           />
-          <span className="text-xs text-slate-300 font-space">Core only</span>
+          <span className="text-xs text-gray-600 font-sans">Core only</span>
         </label>
       </div>
     </div>

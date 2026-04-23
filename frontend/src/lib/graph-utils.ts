@@ -1,20 +1,20 @@
-// Space theme category colors mapping - planet colors with glow
+// Apple-style category colors mapping - adapted for light backgrounds
 export const PLANET_COLORS: Record<string, { base: string; glow: string; atmosphere: string }> = {
-  Philosophy: { base: '#6366f1', glow: '#818cf8', atmosphere: 'rgba(99, 102, 241, 0.4)' },
-  Science: { base: '#10b981', glow: '#34d399', atmosphere: 'rgba(16, 185, 129, 0.4)' },
-  History: { base: '#f59e0b', glow: '#fbbf24', atmosphere: 'rgba(245, 158, 11, 0.4)' },
-  Art: { base: '#ec4899', glow: '#f472b6', atmosphere: 'rgba(236, 72, 153, 0.4)' },
-  Technology: { base: '#06b6d4', glow: '#22d3ee', atmosphere: 'rgba(6, 182, 212, 0.4)' },
-  Politics: { base: '#ef4444', glow: '#f87171', atmosphere: 'rgba(239, 68, 68, 0.4)' },
-  Economics: { base: '#84cc16', glow: '#a3e635', atmosphere: 'rgba(132, 204, 22, 0.4)' },
-  Psychology: { base: '#a855f7', glow: '#c084fc', atmosphere: 'rgba(168, 85, 247, 0.4)' },
-  Other: { base: '#64748b', glow: '#94a3b8', atmosphere: 'rgba(100, 116, 139, 0.4)' },
+  Philosophy: { base: '#5856D6', glow: '#7A78E0', atmosphere: 'rgba(88, 86, 214, 0.25)' },
+  Science: { base: '#34C759', glow: '#5DD47A', atmosphere: 'rgba(52, 199, 89, 0.25)' },
+  History: { base: '#FF9500', glow: '#FFAA33', atmosphere: 'rgba(255, 149, 0, 0.25)' },
+  Art: { base: '#FF2D55', glow: '#FF5C7F', atmosphere: 'rgba(255, 45, 85, 0.25)' },
+  Technology: { base: '#5AC8FA', glow: '#7DD4FB', atmosphere: 'rgba(90, 200, 250, 0.25)' },
+  Politics: { base: '#FF3B30', glow: '#FF6B63', atmosphere: 'rgba(255, 59, 48, 0.25)' },
+  Economics: { base: '#A2845E', glow: '#B59D7E', atmosphere: 'rgba(162, 132, 94, 0.25)' },
+  Psychology: { base: '#AF52DE', glow: '#C27DE6', atmosphere: 'rgba(175, 82, 222, 0.25)' },
+  Other: { base: '#8E8E93', glow: '#A5A5AA', atmosphere: 'rgba(142, 142, 147, 0.25)' },
 }
 
-// Core concepts get special cyan glow
-export const CORE_COLOR = { base: '#00f5ff', glow: '#67e8f9', atmosphere: 'rgba(0, 245, 255, 0.5)' }
+// Core concepts get Apple system blue
+export const CORE_COLOR = { base: '#007AFF', glow: '#3395FF', atmosphere: 'rgba(0, 122, 255, 0.3)' }
 
-export const DEFAULT_PLANET_COLOR = { base: '#64748b', glow: '#94a3b8', atmosphere: 'rgba(100, 116, 139, 0.3)' }
+export const DEFAULT_PLANET_COLOR = { base: '#8E8E93', glow: '#A5A5AA', atmosphere: 'rgba(142, 142, 147, 0.2)' }
 
 export function lightenColor(hex: string, percent: number): string {
   const num = parseInt(hex.replace('#', ''), 16)

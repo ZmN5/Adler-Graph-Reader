@@ -50,7 +50,7 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-space-void/80 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -58,7 +58,7 @@ export function ConfirmDialog({
       {/* Dialog */}
       <div
         className={cn(
-          'relative z-10 w-full max-w-md mx-4 rounded-xl shadow-2xl glass-panel border border-white/20',
+          'relative z-10 w-full max-w-md mx-4 rounded-2xl shadow-2xl bg-white border border-gray-200',
           'animate-in fade-in-0 zoom-in-95 duration-200'
         )}
         role="dialog"
@@ -66,18 +66,18 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
       >
         {/* Header */}
-        <div className="flex items-center gap-3 p-5 border-b border-white/10">
+        <div className="flex items-center gap-3 p-5 border-b border-gray-200">
           {variant === 'danger' && (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 border border-red-500/30">
-              <AlertTriangle className="h-5 w-5 text-red-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 border border-red-200">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
             </div>
           )}
-          <h2 id="confirm-dialog-title" className="text-lg font-space font-semibold text-white">
+          <h2 id="confirm-dialog-title" className="text-lg font-sans font-semibold text-gray-900">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="ml-auto rounded-md p-1.5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+            className="ml-auto rounded-lg p-1.5 hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-900"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -86,16 +86,16 @@ export function ConfirmDialog({
 
         {/* Content */}
         <div className="p-5">
-          <p className="text-slate-300 font-space">{message}</p>
+          <p className="text-gray-600 font-sans">{message}</p>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10 bg-space-deep/30 rounded-b-xl">
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-200 bg-slate-50 rounded-b-2xl">
           <button
             onClick={onClose}
             className={cn(
-              'px-4 py-2 rounded-lg font-space font-medium transition-colors',
-              'bg-white/5 border border-white/20 text-slate-300 hover:bg-white/10 hover:text-white'
+              'px-4 py-2 rounded-lg font-sans font-medium transition-colors',
+              'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             )}
           >
             {cancelText}
@@ -103,10 +103,10 @@ export function ConfirmDialog({
           <button
             onClick={handleConfirm}
             className={cn(
-              'px-4 py-2 rounded-lg font-space font-medium transition-all',
+              'px-4 py-2 rounded-lg font-sans font-medium transition-all',
               variant === 'danger'
-                ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 hover:border-red-500/60'
-                : 'bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/30 hover:border-neon-cyan/60'
+                ? 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300'
+                : 'bg-apple-blue text-white hover:bg-blue-600'
             )}
           >
             {confirmText}
