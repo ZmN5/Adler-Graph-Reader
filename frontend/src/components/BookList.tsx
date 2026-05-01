@@ -187,7 +187,11 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
             </div>
             <div className="flex items-center gap-4 mt-1.5 text-sm text-gray-500 font-sans">
               {book.author && <span>{book.author}</span>}
-              {book.total_pages && <span>{book.total_pages} pages</span>}
+              {book.total_pages && (
+                <span>
+                  {book.total_pages} {book.format.toLowerCase() === 'epub' ? 'chapters' : 'pages'}
+                </span>
+              )}
               {!book.total_pages && (
                 <span className="text-amber-600 text-xs">Not parsed yet</span>
               )}

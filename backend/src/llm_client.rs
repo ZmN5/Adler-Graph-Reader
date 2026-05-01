@@ -1,9 +1,53 @@
-use bytes::Bytes;
-use futures::{StreamExt, stream};
+use futures::{Stream, StreamExt};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::time::Duration;
+
+/// Retry an async operation with exponential backoff for transient errors.
+/// Retries on connection errors and HTTP 502/503/504.
+async fn with_retry<T, F, Fut>(
+    operation: F,
+    max_retries: u32,
+) -> Result<T, LlmError>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T, LlmError>>,
+{
+    let mut last_error = None;
+    for attempt in 0..=max_retries {
+        if attempt > 0 {
+            let delay = Duration::from_millis(500 * (1 << (attempt - 1)));
+            tracing::warn!(
+                "[LLM Retry] Attempt {} failed, retrying in {:?}...",
+                attempt,
+                delay
+            );
+            tokio::time::sleep(delay).await;
+        }
+        match operation().await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let should_retry = match &e {
+                    LlmError::ConnectionError(_) => true,
+                    LlmError::ApiError(msg) => {
+                        msg.contains("502")
+                            || msg.contains("503")
+                            || msg.contains("504")
+                    }
+                    _ => false,
+                };
+                if !should_retry || attempt == max_retries {
+                    return Err(e);
+                }
+                last_error = Some(e);
+            }
+        }
+    }
+    Err(last_error.unwrap_or(LlmError::ApiError(
+        "Retry exhausted".to_string(),
+    )))
+}
 
 /// Retrieval result for source-grounded summary
 #[derive(Debug, Clone)]
@@ -204,29 +248,39 @@ impl LlmClient {
         tracing::debug!("[LM Client] Sending request to {}", url);
         tracing::trace!("[LM Client] Request: {:?}", request);
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Authorization", "Bearer lm-studio")
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| {
-                tracing::error!("[LM Client] Connection error: {}", e);
-                LlmError::ConnectionError(e.to_string())
-            })?;
+        let client = self.client.clone();
+        let response = with_retry(
+            || {
+                let client = client.clone();
+                let url = url.clone();
+                let request = request.clone();
+                async move {
+                    let resp = client
+                        .post(&url)
+                        .header("Authorization", "Bearer lm-studio")
+                        .json(&request)
+                        .send()
+                        .await
+                        .map_err(|e| {
+                            tracing::error!("[LM Client] Connection error: {}", e);
+                            LlmError::ConnectionError(e.to_string())
+                        })?;
 
-        tracing::debug!("[LM Client] Response status: {}", response.status());
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            tracing::error!("[LM Client] API error {}: {}", status, body);
-            return Err(LlmError::ApiError(format!(
-                "API error {}: {}",
-                status, body
-            )));
-        }
+                    if !resp.status().is_success() {
+                        let status = resp.status();
+                        let body = resp.text().await.unwrap_or_default();
+                        tracing::error!("[LM Client] API error {}: {}", status, body);
+                        return Err(LlmError::ApiError(format!(
+                            "API error {}: {}",
+                            status, body
+                        )));
+                    }
+                    Ok(resp)
+                }
+            },
+            3,
+        )
+        .await?;
 
         let chat_response: ChatResponse = response
             .json()
@@ -279,29 +333,39 @@ impl LlmClient {
         let url = format!("{}/chat/completions", self.base_url);
         tracing::debug!("[SourceGroundedSummary] Sending request to {}", url);
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Authorization", "Bearer lm-studio")
-            .json(&chat_request)
-            .send()
-            .await
-            .map_err(|e| {
-                tracing::error!("[SourceGroundedSummary] Connection error: {}", e);
-                LlmError::ConnectionError(e.to_string())
-            })?;
+        let client = self.client.clone();
+        let response = with_retry(
+            || {
+                let client = client.clone();
+                let url = url.clone();
+                let chat_request = chat_request.clone();
+                async move {
+                    let resp = client
+                        .post(&url)
+                        .header("Authorization", "Bearer lm-studio")
+                        .json(&chat_request)
+                        .send()
+                        .await
+                        .map_err(|e| {
+                            tracing::error!("[SourceGroundedSummary] Connection error: {}", e);
+                            LlmError::ConnectionError(e.to_string())
+                        })?;
 
-        tracing::debug!("[SourceGroundedSummary] Response status: {}", response.status());
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            tracing::error!("[SourceGroundedSummary] API error {}: {}", status, body);
-            return Err(LlmError::ApiError(format!(
-                "API error {}: {}",
-                status, body
-            )));
-        }
+                    if !resp.status().is_success() {
+                        let status = resp.status();
+                        let body = resp.text().await.unwrap_or_default();
+                        tracing::error!("[SourceGroundedSummary] API error {}: {}", status, body);
+                        return Err(LlmError::ApiError(format!(
+                            "API error {}: {}",
+                            status, body
+                        )));
+                    }
+                    Ok(resp)
+                }
+            },
+            3,
+        )
+        .await?;
 
         let chat_response: ChatResponse = response
             .json()
@@ -361,7 +425,7 @@ impl LlmClient {
     pub fn into_chat_stream(
         self,
         messages: Vec<ChatMessage>,
-    ) -> Pin<Box<dyn stream::Stream<Item = Result<SummaryStreamItem, LlmError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<SummaryStreamItem, LlmError>> + Send + 'static>> {
         let model = self.model.clone();
         let base_url = self.base_url.clone();
 
@@ -376,28 +440,47 @@ impl LlmClient {
             let url = format!("{}/chat/completions", base_url);
             tracing::debug!("[ChatStream] Sending streaming request to {}", url);
 
-            let response = match self.client
-                .post(&url)
-                .header("Authorization", "Bearer lm-studio")
-                .json(&chat_request)
-                .send()
-                .await
+            // Retry transient errors on the initial request
+            let client = self.client.clone();
+            let response = match with_retry(
+                || {
+                    let client = client.clone();
+                    let url = url.clone();
+                    let chat_request = chat_request.clone();
+                    async move {
+                        let resp = client
+                            .post(&url)
+                            .header("Authorization", "Bearer lm-studio")
+                            .json(&chat_request)
+                            .send()
+                            .await
+                            .map_err(|e| {
+                                tracing::error!("[ChatStream] Connection error: {}", e);
+                                LlmError::ConnectionError(e.to_string())
+                            })?;
+
+                        if !resp.status().is_success() {
+                            let status = resp.status();
+                            let body = resp.text().await.unwrap_or_default();
+                            tracing::error!("[ChatStream] API error {}: {}", status, body);
+                            return Err(LlmError::ApiError(format!(
+                                "API error {}: {}",
+                                status, body
+                            )));
+                        }
+                        Ok(resp)
+                    }
+                },
+                3,
+            )
+            .await
             {
                 Ok(resp) => resp,
                 Err(e) => {
-                    tracing::error!("[ChatStream] Connection error: {}", e);
-                    yield Err(LlmError::ConnectionError(e.to_string()));
+                    yield Err(e);
                     return;
                 }
             };
-
-            if !response.status().is_success() {
-                let status = response.status();
-                let body = response.text().await.unwrap_or_default();
-                tracing::error!("[ChatStream] API error {}: {}", status, body);
-                yield Err(LlmError::ApiError(format!("API error {}: {}", status, body)));
-                return;
-            }
 
             // Stream tokens as they arrive
             let mut stream = response.bytes_stream();
@@ -474,7 +557,7 @@ impl LlmClient {
     pub fn into_summary_stream(
         self,
         request: &SourceGroundedSummaryRequest,
-    ) -> Pin<Box<dyn stream::Stream<Item = Result<SummaryStreamItem, LlmError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<SummaryStreamItem, LlmError>> + Send + 'static>> {
         // Build NotebookLM-style prompt
         let prompt = build_summary_prompt(request);
         let model = self.model.clone();
@@ -494,28 +577,47 @@ impl LlmClient {
             let url = format!("{}/chat/completions", base_url);
             tracing::debug!("[SourceGroundedSummaryStream] Sending streaming request to {}", url);
 
-            let response = match self.client
-                .post(&url)
-                .header("Authorization", "Bearer lm-studio")
-                .json(&chat_request)
-                .send()
-                .await
+            // Retry transient errors on the initial request
+            let client = self.client.clone();
+            let response = match with_retry(
+                || {
+                    let client = client.clone();
+                    let url = url.clone();
+                    let chat_request = chat_request.clone();
+                    async move {
+                        let resp = client
+                            .post(&url)
+                            .header("Authorization", "Bearer lm-studio")
+                            .json(&chat_request)
+                            .send()
+                            .await
+                            .map_err(|e| {
+                                tracing::error!("[SourceGroundedSummaryStream] Connection error: {}", e);
+                                LlmError::ConnectionError(e.to_string())
+                            })?;
+
+                        if !resp.status().is_success() {
+                            let status = resp.status();
+                            let body = resp.text().await.unwrap_or_default();
+                            tracing::error!("[SourceGroundedSummaryStream] API error {}: {}", status, body);
+                            return Err(LlmError::ApiError(format!(
+                                "API error {}: {}",
+                                status, body
+                            )));
+                        }
+                        Ok(resp)
+                    }
+                },
+                3,
+            )
+            .await
             {
                 Ok(resp) => resp,
                 Err(e) => {
-                    tracing::error!("[SourceGroundedSummaryStream] Connection error: {}", e);
-                    yield Err(LlmError::ConnectionError(e.to_string()));
+                    yield Err(e);
                     return;
                 }
             };
-
-            if !response.status().is_success() {
-                let status = response.status();
-                let body = response.text().await.unwrap_or_default();
-                tracing::error!("[SourceGroundedSummaryStream] API error {}: {}", status, body);
-                yield Err(LlmError::ApiError(format!("API error {}: {}", status, body)));
-                return;
-            }
 
             // Stream tokens as they arrive
             let mut stream = response.bytes_stream();
@@ -940,9 +1042,9 @@ RETRIEVED SOURCE MATERIALS:
             format!("Pages {}-{}", result.page_start, result.page_end)
         };
 
-        // Truncate content to stay within context limits
-        let truncated_content = if result.content.len() > MAX_SOURCE_CHARS {
-            format!("{}...[content truncated]", &result.content[..MAX_SOURCE_CHARS])
+        // Truncate content to stay within context limits (char-safe for multi-byte UTF-8)
+        let truncated_content = if result.content.chars().count() > MAX_SOURCE_CHARS {
+            format!("{}...[content truncated]", result.content.chars().take(MAX_SOURCE_CHARS).collect::<String>())
         } else {
             result.content.clone()
         };

@@ -6,6 +6,7 @@ use zip::ZipArchive;
 
 use crate::config;
 use crate::embedding;
+use crate::epub_utils::{get_content_opf_path, parse_content_opf, is_non_content_spine_item};
 use crate::text_utils::split_text_with_overlap;
 
 /// Parse an EPUB file and create chunks in the database
@@ -74,8 +75,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
     for itemref in &spine {
         if let Some(href) = manifest.get(itemref.as_str()) {
             // Skip non-content files (like nav.xhtml which is navigation)
-            let href_lower = href.to_lowercase();
-            if href_lower.contains("nav.xhtml") || href_lower.contains("toc.xhtml") || href_lower.contains("cover.") {
+            if is_non_content_spine_item(href) {
                 continue;
             }
             chapter_num += 1;
@@ -83,15 +83,8 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
         }
     }
 
-    let total_chapters = chapter_num;
-
-    // Update total_pages in books table (using chapters as "pages" for EPUB)
-    sqlx::query("UPDATE books SET total_pages = ? WHERE id = ?")
-        .bind(total_chapters)
-        .bind(book_id)
-        .execute(pool)
-        .await
-        .map_err(|e| format!("Failed to update total_pages: {}", e))?;
+    // Note: total_pages for EPUB is set during upload via count_epub_chapters().
+    // We do NOT update it here to avoid upload-vs-parse inconsistency.
 
     // Delete existing chunks for this book (in case of re-parsing)
     sqlx::query("DELETE FROM chunks WHERE book_id = ?")
@@ -107,8 +100,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
     for itemref in &spine {
         if let Some(href) = manifest.get(itemref.as_str()) {
             // Skip non-content files
-            let href_lower = href.to_lowercase();
-            if href_lower.contains("nav.xhtml") || href_lower.contains("toc.xhtml") || href_lower.contains("cover.") {
+            if is_non_content_spine_item(href) {
                 continue;
             }
 
@@ -122,7 +114,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
             let full_path = format!("{}{}", base_dir, href);
 
             // Get content from file_contents (using full_path since ZIP keys include base dir)
-            let (chapter_title, chapter_content) = match file_contents.get(&full_path) {
+            let (_chapter_title, chapter_content) = match file_contents.get(&full_path) {
                 Some(c) => c,
                 None => continue,
             };
@@ -237,132 +229,6 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
     });
 
     Ok(chunks_created)
-}
-
-/// Get the path to content.opf from container.xml
-fn get_content_opf_path(archive: &mut ZipArchive<BufReader<std::fs::File>>) -> Result<String, String> {
-    // Read container.xml
-    let mut container_file = archive.by_name("META-INF/container.xml")
-        .map_err(|e| format!("Failed to find container.xml: {}", e))?;
-
-    let mut container_xml = String::new();
-    container_file.read_to_string(&mut container_xml)
-        .map_err(|e| format!("Failed to read container.xml: {}", e))?;
-
-    // Parse rootfile full-path attribute
-    // <rootfile media-type="application/oebps-package+xml" full-path="EPUB/content.opf"/>
-    let start = container_xml.find("full-path=\"").ok_or("Could not find full-path in container.xml")?;
-    let start = start + "full-path=\"".len();
-    let end = container_xml[start..].find('"').ok_or("Could not find end of full-path")?;
-    let opf_path = container_xml[start..start + end].to_string();
-
-    Ok(opf_path)
-}
-
-/// Parse content.opf to get manifest and spine
-fn parse_content_opf(
-    archive: &mut ZipArchive<BufReader<std::fs::File>>,
-    opf_path: &str,
-) -> Result<(std::collections::HashMap<String, String>, Vec<String>), String> {
-    // Read content.opf
-    let mut opf_file = archive.by_name(opf_path)
-        .map_err(|e| format!("Failed to find content.opf at {}: {}", opf_path, e))?;
-
-    let mut opf_xml = String::new();
-    opf_file.read_to_string(&mut opf_xml)
-        .map_err(|e| format!("Failed to read content.opf: {}", e))?;
-
-    // Parse manifest: build id -> href map
-    // Find the manifest section and extract all <item> elements
-    let mut manifest: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-
-    let manifest_start = opf_xml.find("<manifest>").ok_or("Could not find <manifest>")?;
-    let manifest_end = opf_xml.find("</manifest>").ok_or("Could not find </manifest>")?;
-    let manifest_section = &opf_xml[manifest_start..manifest_end];
-
-    // Extract all id and href from manifest items
-    // Note: href comes before id in the manifest, so we must search for href first
-    let mut pos = 0;
-    while let Some(item_start) = manifest_section[pos..].find("<item") {
-        let item_start = pos + item_start;
-        let item_end = manifest_section[item_start..].find("/>")
-            .map(|p| item_start + p + 2)
-            .or_else(|| manifest_section[item_start..].find("</item>")
-                .map(|p| item_start + p + 7))
-            .ok_or("Could not parse manifest item")?;
-
-        let item_xml = &manifest_section[item_start..item_end];
-
-        // Extract href FIRST (because it comes before id in the XML)
-        let href = if let Some(href_start) = item_xml.find("href=\"") {
-            let href_start = href_start + 6;
-            let href_end = item_xml[href_start..].find('"').ok_or("Could not find href value")?;
-            item_xml[href_start..href_start + href_end].to_string()
-        } else {
-            pos = item_end;
-            continue;
-        };
-
-        // Extract id
-        let id = if let Some(id_start) = item_xml.find("id=\"") {
-            let id_start = id_start + 4;
-            let id_end = item_xml[id_start..].find('"').ok_or("Could not find id value")?;
-            item_xml[id_start..id_start + id_end].to_string()
-        } else {
-            pos = item_end;
-            continue;
-        };
-
-        manifest.insert(id, href);
-
-        // Move past this item
-        pos = item_end;
-    }
-
-    // Parse spine: extract ordered list of idref values
-    let mut spine: Vec<String> = Vec::new();
-
-    let spine_start = opf_xml.find("<spine").ok_or("Could not find <spine>")?;
-    let spine_end = opf_xml[spine_start..].find(">")
-        .map(|p| spine_start + p + 1)
-        .unwrap_or(spine_start + "<spine".len());
-
-    // Handle both <spine ...> and <spine .../>
-    let after_spine_tag = if &opf_xml[spine_end - 1..spine_end] == "/" {
-        spine_end
-    } else if let Some(closing) = opf_xml[spine_start..].find("</spine>") {
-        spine_start + closing
-    } else {
-        return Err("Could not find end of spine".to_string());
-    };
-
-    let spine_section = &opf_xml[spine_end..after_spine_tag];
-
-    // Extract all itemref idref values
-    let mut pos = 0;
-    while let Some(itemref_start) = spine_section[pos..].find("<itemref") {
-        let itemref_start = pos + itemref_start;
-        let itemref_end = spine_section[itemref_start..].find("/>")
-            .map(|p| itemref_start + p + 2)
-            .or_else(|| spine_section[itemref_start..].find(">")
-                .map(|p| itemref_start + p + 1))
-            .ok_or("Could not parse itemref")?;
-
-        let itemref_xml = &spine_section[itemref_start..itemref_end];
-
-        // Extract idref
-        if let Some(idref_start) = itemref_xml.find("idref=\"") {
-            let idref_start = idref_start + 7;
-            let idref_end = itemref_xml[idref_start..].find('"').ok_or("Could not find idref value")?;
-            let idref = itemref_xml[idref_start..idref_start + idref_end].to_string();
-            spine.push(idref);
-        }
-
-        // Move past this itemref
-        pos = itemref_end;
-    }
-
-    Ok((manifest, spine))
 }
 
 /// Extract plain text from HTML content

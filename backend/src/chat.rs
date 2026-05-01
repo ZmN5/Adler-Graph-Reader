@@ -180,9 +180,9 @@ fn build_chat_user_message(content: &str, retrieval_outputs: &[crate::retrieval:
             } else {
                 format!("Pages {}-{}", result.page_start, result.page_end)
             };
-            // Truncate content
-            let truncated = if result.content.len() > 1500 {
-                format!("{}...[content truncated]", &result.content[..1500])
+            // Truncate content (char-safe for multi-byte UTF-8)
+            let truncated = if result.content.chars().count() > 1500 {
+                format!("{}...[content truncated]", result.content.chars().take(1500).collect::<String>())
             } else {
                 result.content.clone()
             };

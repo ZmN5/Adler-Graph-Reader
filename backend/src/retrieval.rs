@@ -164,24 +164,87 @@ const MAX_EMBEDDINGS_FOR_SEARCH: usize = 5000;
 ///
 /// FTS5 special characters: " ( ) * : ^ - OR AND NOT
 /// Each token is wrapped in double quotes with internal quotes doubled.
+/// For CJK text without whitespace, splits into individual characters joined by OR.
 fn escape_fts5_query(query: &str) -> String {
-    // Split on whitespace and common FTS5 punctuation
-    let tokens: Vec<&str> = query.split_whitespace().collect();
+    // Strip decorative quotes and brackets that are not searchable punctuation
+    let cleaned: String = query
+        .replace('「', " ")
+        .replace('」', " ")
+        .replace('『', " ")
+        .replace('』', " ")
+        .replace('【', " ")
+        .replace('】', " ")
+        .replace('〖', " ")
+        .replace('〗', " ")
+        .replace('《', " ")
+        .replace('》', " ")
+        .replace('〈', " ")
+        .replace('〉', " ")
+        .replace('（', " ")
+        .replace('）', " ")
+        .replace('、', " ")
+        .replace('。', " ")
+        .replace('，', " ")
+        .replace('？', " ")
+        .replace('！', " ")
+        .replace('：', " ")
+        .replace('；', " ")
+        .replace('·', " ")
+        .replace('…', " ")
+        .replace('—', " ")
+        .replace('–', " ");
+
+    let tokens: Vec<&str> = cleaned.split_whitespace().collect();
     if tokens.is_empty() {
         return String::new();
     }
 
-    let escaped_tokens: Vec<String> = tokens
-        .into_iter()
-        .map(|token| {
-            // Escape double quotes by doubling them (FTS5 standard escape)
+    // Check if any token contains CJK characters without internal whitespace.
+    // FTS5 default tokenizers split on whitespace only, so CJK strings become
+    // a single token and exact-phrase match rarely hits. Split them into
+    // individual characters joined by OR.
+    let mut all_escaped: Vec<String> = Vec::new();
+    for token in tokens {
+        if token.chars().any(is_cjk) && !token.contains(' ') {
+            // Split CJK token into individual characters
+            let chars: Vec<String> = token
+                .chars()
+                .filter(|c| !c.is_whitespace() && !is_ascii_punctuation(*c))
+                .map(|c| format!("\"{}\"", c))
+                .collect();
+            if chars.len() > 1 {
+                all_escaped.push(chars.join(" OR "));
+            } else if chars.len() == 1 {
+                all_escaped.push(chars.into_iter().next().unwrap());
+            }
+        } else {
             let escaped = token.replace('"', "\"\"");
-            // Wrap each token in double quotes to protect against special characters
-            format!("\"{}\"", escaped)
-        })
-        .collect();
+            all_escaped.push(format!("\"{}\"", escaped));
+        }
+    }
 
-    escaped_tokens.join(" ")
+    all_escaped.join(" ")
+}
+
+/// Returns true for CJK Unified Ideographs and extensions.
+fn is_cjk(c: char) -> bool {
+    matches!(
+        c as u32,
+        0x4E00..=0x9FFF |   // CJK Unified Ideographs
+        0x3400..=0x4DBF |   // CJK Extension A
+        0x20000..=0x2A6DF | // CJK Extension B
+        0x2A700..=0x2B73F | // CJK Extension C
+        0x2B740..=0x2B81F | // CJK Extension D
+        0x2B820..=0x2CEAF | // CJK Extension E
+        0x2CEB0..=0x2EBEF | // CJK Extension F
+        0x30000..=0x3134F | // CJK Extension G
+        0xF900..=0xFAFF |   // CJK Compatibility Ideographs
+        0x2F800..=0x2FA1F   // CJK Compatibility Supplement
+    )
+}
+
+fn is_ascii_punctuation(c: char) -> bool {
+    c.is_ascii_punctuation()
 }
 
 /// Calculate cosine similarity between two vectors

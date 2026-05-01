@@ -4,6 +4,7 @@ mod core_concept;
 mod db;
 mod embedding;
 mod epub_parser;
+mod epub_utils;
 mod extractor;
 mod llm_client;
 mod pdf_parser;
@@ -22,7 +23,7 @@ use axum::{
     response::IntoResponse,
 };
 use axum::response::sse::{Sse, Event as SseEvent, KeepAlive};
-use futures::{stream, StreamExt};
+use futures::StreamExt;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 use std::net::SocketAddr;
@@ -304,6 +305,19 @@ async fn upload_book(
     // Save file
     std::fs::write(&file_path, &file_data).map_err(|e| AppError::Internal(e.to_string()))?;
 
+    // For EPUB, count chapters immediately so total_pages is available right after upload
+    let total_pages = if format == "epub" {
+        match epub_utils::count_epub_chapters(file_path.to_str().unwrap_or("")) {
+            Ok(count) => Some(count),
+            Err(e) => {
+                tracing::warn!("Failed to count EPUB chapters: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Insert into database
     let created_at = chrono::Utc::now().to_rfc3339();
     let title_for_db = if title.is_empty() {
@@ -313,13 +327,14 @@ async fn upload_book(
     };
 
     sqlx::query(
-        "INSERT INTO books (id, title, author, file_path, format, total_pages, language, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?)"
+        "INSERT INTO books (id, title, author, file_path, format, total_pages, language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(&book_id)
     .bind(&title_for_db)
     .bind(&author)
     .bind(file_path.to_str().unwrap_or(""))
     .bind(format)
+    .bind(total_pages)
     .bind(&language)
     .bind(&created_at)
     .execute(&*pool)
