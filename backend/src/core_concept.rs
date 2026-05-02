@@ -69,12 +69,10 @@ fn detect_communities(
     node_indices: &HashMap<String, NodeIndex>,
 ) -> HashMap<String, usize> {
     let mut communities: HashMap<String, usize> = HashMap::new();
-    let mut next_community_id = 0usize;
 
     // Initialize each node to its own community
-    for node_id in node_indices.keys() {
+    for (next_community_id, node_id) in node_indices.keys().enumerate() {
         communities.insert(node_id.clone(), next_community_id);
-        next_community_id += 1;
     }
 
     // Simple greedy community detection based on edge connectivity
@@ -471,6 +469,7 @@ pub struct CoreConcept {
 /// Fetch core concepts with their details for a book.
 /// Reserved for future API endpoint - currently unused but kept for planned concept browsing feature.
 #[allow(dead_code)]
+#[allow(clippy::type_complexity)]
 pub async fn get_core_concepts(
     pool: &SqlitePool,
     book_id: &str,

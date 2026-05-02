@@ -32,6 +32,7 @@ struct ChunkForEmbedding {
 
 /// Errors that can occur during embedding operations
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum EmbeddingError {
     ConnectionError(String),
     ApiError(String),

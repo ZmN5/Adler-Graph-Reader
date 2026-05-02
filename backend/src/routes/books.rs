@@ -158,6 +158,7 @@ pub async fn upload_book(
     Ok((StatusCode::CREATED, Json(UploadResponse { book_id, title: title_for_db })))
 }
 
+#[allow(clippy::type_complexity)]
 pub async fn list_books(pool: State<SqlitePool>) -> Result<Json<Vec<BookSummary>>, AppError> {
     let rows: Vec<(String, String, Option<String>, String, Option<i32>)> = sqlx::query_as(
         "SELECT id, title, author, format, total_pages FROM books ORDER BY created_at DESC"

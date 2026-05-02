@@ -55,6 +55,7 @@ pub struct RerankResult {
 
 /// Errors that can occur during retrieval operations
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum RetrievalError {
     DatabaseError(String),
     EmbeddingError(String),
@@ -734,10 +735,12 @@ async fn call_reranker_api(
     parse_reranker_response(&content, candidates)
 }
 
-/// Parse reranker response into RerankResult structs
+/// Parse reranker response into RerankResult structs.
+///
 /// Supports two formats:
-/// 1. Standard: [{"index": 1, "score": 0.95}, ...] (1-based index)
-/// 2. Simple array: [0, 3, 1, ...] (0-based index, score derived from position)
+/// 1. Standard: `[{"index": 1, "score": 0.95}, ...]` (1-based index)
+/// 2. Simple array: `[0, 3, 1, ...]` (0-based index, score derived from position)
+///
 /// Reserved for future LLM-based reranking feature.
 #[allow(dead_code)]
 fn parse_reranker_response(

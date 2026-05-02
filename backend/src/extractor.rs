@@ -5,6 +5,7 @@ use tokio::sync::Semaphore;
 
 /// Errors that can occur during concept extraction operations
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum ExtractorError {
     DatabaseError(String),
     LlmError(String),

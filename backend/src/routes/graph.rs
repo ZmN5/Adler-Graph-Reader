@@ -49,6 +49,7 @@ pub async fn get_book_graph(
     }
 
     // Fetch all nodes for this book
+    #[allow(clippy::type_complexity)]
     let node_rows: Vec<(String, String, Option<String>, String, String, bool, Option<String>)> = sqlx::query_as(
         "SELECT id, name, description, examples, source_chunk_ids, is_core, category FROM nodes WHERE book_id = ?"
     )
@@ -118,6 +119,7 @@ pub async fn get_global_graph(
     pool: State<SqlitePool>,
 ) -> Result<Json<GraphResponse>, AppError> {
     // Fetch all nodes
+    #[allow(clippy::type_complexity)]
     let node_rows: Vec<(String, String, Option<String>, String, String, bool, Option<String>)> = sqlx::query_as(
         "SELECT id, name, description, examples, source_chunk_ids, is_core, category FROM nodes"
     )
@@ -183,6 +185,7 @@ pub async fn get_node(
     Path(node_id): Path<String>,
     pool: State<SqlitePool>,
 ) -> Result<Json<NodeDetails>, AppError> {
+    #[allow(clippy::type_complexity)]
     let row: (String, Option<String>, String, Option<String>, Option<String>, String, String, String, Option<String>, Option<i32>) = sqlx::query_as(
         "SELECT id, book_id, name, native_term, description, examples, source_chunk_ids, language, category, page_number FROM nodes WHERE id = ?"
     )
@@ -330,6 +333,7 @@ pub async fn get_core_concepts(
     }
 
     // Get core concepts - query returns nodes with is_core = TRUE
+    #[allow(clippy::type_complexity)]
     let node_rows: Vec<(String, String, Option<String>, String, String, bool, Option<String>)> = sqlx::query_as(
         "SELECT id, name, description, examples, source_chunk_ids, is_core, category FROM nodes WHERE book_id = ? AND is_core = TRUE ORDER BY name"
     )
