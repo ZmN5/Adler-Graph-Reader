@@ -7,9 +7,13 @@ import {
   SummaryResponse, RetrievalResponse, Citation, getNodeSummaryStream
 } from '@/lib/api-client'
 import { useTranslation } from '@/lib/i18n'
-import { X, ExternalLink, BookOpen, FileText, ChevronDown, ChevronRight, RefreshCw, Sparkles } from 'lucide-react'
+import { X, FileText } from 'lucide-react'
+import { NodeSummary } from './node-detail/NodeSummary'
+import { NodeCitations } from './node-detail/NodeCitations'
+import { NodeEdges } from './node-detail/NodeEdges'
+import { NodeRetrieval } from './node-detail/NodeRetrieval'
 
-interface NodeDetailPanelProps {
+export interface NodeDetailPanelProps {
   node: GraphNode | null
   bookId?: string
   className?: string
@@ -48,7 +52,6 @@ export function NodeDetailPanel({
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [retrievalResults, setRetrievalResults] = useState<RetrievalResponse | null>(null)
-  const [showRetrievalDetails, setShowRetrievalDetails] = useState(false)
 
   // Streaming summary states
   const [streamingText, setStreamingText] = useState('')
@@ -256,11 +259,6 @@ export function NodeDetailPanel({
     }
   }, [node])
 
-  // Sort retrieval results by final_score descending
-  const sortedRetrievalChunks = retrievalResults?.chunks
-    ? [...retrievalResults.chunks].sort((a, b) => b.final_score - a.final_score)
-    : []
-
   // Render summary with clickable citation markers
   const renderSummaryWithCitations = useCallback((summaryText: string) => {
     // Use streamingCitations if available, otherwise use summary.citations
@@ -333,82 +331,17 @@ export function NodeDetailPanel({
         {!isLoading && !error && (
           <>
             {/* Source-Grounded Summary Section */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 bg-slate-50">
-                <Sparkles className="h-4 w-4 text-apple-blue" />
-                <h3 className="text-sm font-sans font-medium text-gray-700">{t('nodeDetail.aiAnalysis')}</h3>
-              </div>
-              <div className="p-4">
-                {(summaryLoading || isStreaming) && streamingText === '' && (
-                  <div className="flex items-center gap-3 py-4">
-                    <div className="h-5 w-5 border-2 border-gray-200 border-t-apple-blue rounded-full animate-spin" />
-                    <span className="text-sm text-gray-500 font-sans">{t('nodeDetail.scanning')}</span>
-                  </div>
-                )}
-
-                {summaryError && (
-                  <div className="py-4">
-                    <p className="text-sm text-red-500 mb-3 font-sans">{summaryError}</p>
-                    <button
-                      onClick={handleRetrySummary}
-                      className={cn(
-                        'flex items-center gap-2 text-sm px-3 py-2 rounded-lg font-sans',
-                        'bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors'
-                      )}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      {t('nodeDetail.retry')}
-                    </button>
-                  </div>
-                )}
-
-                {((!summaryLoading && summary) || streamingText !== '') && (
-                  <div className="space-y-4">
-                    {/* Summary Text - use streaming text or static summary */}
-                    <div className="text-sm leading-relaxed text-gray-700 font-sans">
-                      {streamingText !== '' ? (
-                        renderSummaryWithCitations(streamingText)
-                      ) : summary ? (
-                        renderSummaryWithCitations(summary.summary)
-                      ) : null}
-                    </div>
-
-                    {/* Citations List - use streaming citations or static citations */}
-                    {(streamingCitations.length > 0 || (summary && summary.citations.length > 0)) && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h4 className="text-xs font-sans font-medium text-gray-500 mb-2">Sources</h4>
-                        <div className="space-y-2">
-                          {(streamingCitations.length > 0 ? streamingCitations : summary?.citations || []).map((citation) => (
-                            <button
-                              key={citation.index}
-                              onClick={() => handleCitationClick(citation.chunk_id)}
-                              className={cn(
-                                'w-full text-left text-xs p-3 rounded-lg font-sans',
-                                'bg-slate-50 hover:bg-gray-100 border border-gray-200 transition-colors'
-                              )}
-                            >
-                              <div className="flex items-start gap-2">
-                                <span className="flex-shrink-0 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-medium border border-blue-200">
-                                  [{citation.index}]
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-gray-600 line-clamp-2">
-                                    {citation.excerpt}
-                                  </p>
-                                  <p className="text-[10px] text-gray-400 mt-1">
-                                    Page {citation.page_start}{citation.page_start !== citation.page_end ? `-${citation.page_end}` : ''}
-                                  </p>
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+            <NodeSummary
+              summaryLoading={summaryLoading}
+              isStreaming={isStreaming}
+              streamingText={streamingText}
+              streamingCitations={streamingCitations}
+              summary={summary}
+              summaryError={summaryError}
+              onRetrySummary={handleRetrySummary}
+              onCitationClick={handleCitationClick}
+              renderSummaryWithCitations={renderSummaryWithCitations}
+            />
 
             {/* Description */}
             {node.description && (
@@ -457,135 +390,26 @@ export function NodeDetailPanel({
             )}
 
             {/* Source Citations */}
-            {node.source_chunk_ids.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <h3 className="text-sm font-sans font-medium text-gray-500 mb-2">
-                  <span className="text-apple-blue">⬡</span> {t('nodeDetail.sourceCitations')} ({node.source_chunk_ids.length})
-                </h3>
-                <div className="space-y-1">
-                  {node.source_chunk_ids.slice(0, 10).map((chunkId) => {
-                    const chunk = chunkContents.get(chunkId)
-                    const isLoadingChunk = loadingChunks.has(chunkId)
-                    // Get summary text: first 50 chars of content or placeholder
-                    const summary = chunk
-                      ? chunk.content.slice(0, 50).replace(/\n/g, ' ') + (chunk.content.length > 50 ? '...' : '')
-                      : isLoadingChunk
-                      ? 'Loading...'
-                      : `${chunkId.substring(0, 8)}...`
-
-                    return (
-                      <button
-                        key={chunkId}
-                        onClick={() => handleCitationClick(chunkId)}
-                        className={cn(
-                          'flex items-center gap-2 w-full text-left text-sm rounded-lg px-2 py-1.5 font-sans',
-                          'hover:bg-gray-100 transition-colors text-blue-600 hover:text-blue-700'
-                        )}
-                      >
-                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate" title={chunk?.content || chunkId}>
-                          {summary}
-                        </span>
-                      </button>
-                    )
-                  })}
-                  {node.source_chunk_ids.length > 10 && (
-                    <p className="text-xs text-gray-400 pl-2 font-sans">
-                      +{node.source_chunk_ids.length - 10} more citations
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+            <NodeCitations
+              sourceChunkIds={node.source_chunk_ids}
+              chunkContents={chunkContents}
+              loadingChunks={loadingChunks}
+              onCitationClick={handleCitationClick}
+            />
 
             {/* Retrieval Results Section */}
-            {sortedRetrievalChunks.length > 0 && (
-              <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-                <button
-                  onClick={() => setShowRetrievalDetails(!showRetrievalDetails)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors border-b border-gray-200"
-                >
-                  <h3 className="text-sm font-sans font-medium text-gray-700">Retrieval Details</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 font-sans">
-                      {sortedRetrievalChunks.length} related chunks
-                    </span>
-                    {showRetrievalDetails ? (
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    )}
-                  </div>
-                </button>
-
-                {showRetrievalDetails && (
-                  <div className="p-4 space-y-3">
-                    {sortedRetrievalChunks.map((chunk, index) => (
-                      <button
-                        key={chunk.chunk_id}
-                        onClick={() => handleCitationClick(chunk.chunk_id)}
-                        className={cn(
-                          'w-full text-left p-3 rounded-lg font-sans',
-                          'bg-slate-50 hover:bg-gray-100 border border-gray-200 transition-colors'
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="flex-shrink-0 text-xs text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
-                            #{index + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-700 line-clamp-3 mb-2">
-                              {chunk.content}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-sans">
-                              <span className="text-gray-400">Page {chunk.page_start}-{chunk.page_end}</span>
-                              <span className="text-green-600">Score: {chunk.final_score.toFixed(3)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <NodeRetrieval
+              retrievalResults={retrievalResults}
+              onCitationClick={handleCitationClick}
+            />
 
             {/* Connected Edges */}
-            {edges.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <h3 className="text-sm font-sans font-medium text-gray-500 mb-3">
-                  Related Concepts ({edges.length})
-                </h3>
-                <div className="space-y-2">
-                  {edges.map((edge) => {
-                    const isSource = edge.source_node_id === node.id
-                    const otherNodeId = isSource ? edge.target_node_id : edge.source_node_id
-                    const otherNode = relatedNodes.get(otherNodeId)
-                    const otherNodeName = otherNode?.name || otherNodeId.substring(0, 8)
-
-                    return (
-                      <button
-                        key={edge.id}
-                        onClick={() => otherNode && handleRelatedNodeClick(otherNode)}
-                        disabled={!otherNode}
-                        className={cn(
-                          'flex items-center gap-2 text-sm bg-slate-50 rounded-lg p-2 w-full text-left font-sans',
-                          otherNode && 'hover:bg-gray-100 border border-gray-200 cursor-pointer transition-colors',
-                          !otherNode && 'opacity-70 cursor-not-allowed'
-                        )}
-                      >
-                        <BookOpen className="h-4 w-4 flex-shrink-0 text-apple-purple" />
-                        <span className="flex-1 truncate">
-                          <span className="text-gray-600">{edge.relation_type}</span>
-                          {' → '}
-                          <span className="text-apple-blue">{otherNodeName}</span>
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            <NodeEdges
+              edges={edges}
+              currentNodeId={node.id}
+              relatedNodes={relatedNodes}
+              onRelatedNodeClick={handleRelatedNodeClick}
+            />
 
             {/* Metadata */}
             <div className="text-xs text-gray-400 font-sans border-t border-gray-200 pt-3">

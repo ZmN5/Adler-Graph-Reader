@@ -20,7 +20,23 @@ export default defineConfig({
             proxyRes.headers['cache-control'] = 'no-cache'
             proxyRes.headers['x-accel-buffering'] = 'no'
           })
-        }
+        },
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React framework
+          react: ['react', 'react-dom'],
+          // Graph visualization libraries (heavy)
+          graph: ['react-force-graph-2d'],
+          // EPUB reading
+          epub: ['epubjs', 'react-reader'],
+          // PDF rendering
+          pdf: ['pdfjs-dist'],
+        },
       },
     },
   },

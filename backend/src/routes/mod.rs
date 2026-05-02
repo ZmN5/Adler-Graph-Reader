@@ -11,6 +11,8 @@ use serde::Serialize;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 
+use crate::rate_limit::RateLimitLayer;
+
 mod settings;
 mod books;
 mod graph;
@@ -116,12 +118,20 @@ pub fn create_router(pool: SqlitePool) -> Router {
             axum::http::header::AUTHORIZATION,
         ]);
 
+    // Rate limiters
+    // Strict limit for expensive LLM endpoints
+    let llm_rate_limit = RateLimitLayer::new(5, 60);
+    // General limit for all other endpoints
+    let general_rate_limit = RateLimitLayer::new(60, 10);
+
     Router::new()
+        // Health & settings (no rate limit)
         .route("/api/health", get(settings::health))
         .route("/api/settings/language", get(settings::get_language))
         .route("/api/settings/language", put(settings::put_language))
         .route("/api/settings/model-config", get(settings::get_model_config))
         .route("/api/settings/model-config", put(settings::put_model_config))
+        // Books (general rate limit)
         .route("/api/books/upload", post(books::upload_book))
         .route("/api/books", get(books::list_books))
         .route("/api/books/{id}", get(books::get_book))
@@ -131,24 +141,58 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route("/api/books/{id}/rebuild-indexes", post(books::rebuild_indexes))
         .route("/api/books/{id}/chunks", get(books::get_book_chunks))
         .route("/api/chunks/{id}", get(books::get_chunk))
+        // Graph views (general rate limit)
         .route("/api/books/{id}/graph", get(graph::get_book_graph))
         .route("/api/graph/global", get(graph::get_global_graph))
         .route("/api/nodes/{id}", get(graph::get_node))
-        .route("/api/nodes/{id}/retrieval", get(retrieval::node_retrieval))
-        .route("/api/nodes/{id}/summary", get(retrieval::node_summary))
-        .route("/api/nodes/{id}/summary/stream", get(retrieval::node_summary_stream))
-        .route("/api/books/{id}/extract", post(graph::extract_book))
         .route("/api/books/{id}/core-concepts", get(graph::get_core_concepts))
-        .route("/api/books/{id}/identify-core-concepts", post(graph::identify_core_concepts))
-        .route("/api/books/{id}/conversations", post(chat::create_conversation))
-        .route("/api/books/{id}/conversations", get(chat::list_conversations))
-        .route("/api/conversations/{id}", get(chat::get_conversation))
-        .route("/api/conversations/{id}", delete(chat::delete_conversation))
-        .route("/api/conversations/{id}/messages/stream", post(chat::send_message_stream))
+        // LLM endpoints (strict rate limit)
+        .route(
+            "/api/books/{id}/extract",
+            post(graph::extract_book).layer(llm_rate_limit.clone()),
+        )
+        .route(
+            "/api/books/{id}/identify-core-concepts",
+            post(graph::identify_core_concepts).layer(llm_rate_limit.clone()),
+        )
+        .route(
+            "/api/nodes/{id}/retrieval",
+            get(retrieval::node_retrieval).layer(llm_rate_limit.clone()),
+        )
+        .route(
+            "/api/nodes/{id}/summary",
+            get(retrieval::node_summary).layer(llm_rate_limit.clone()),
+        )
+        .route(
+            "/api/nodes/{id}/summary/stream",
+            get(retrieval::node_summary_stream).layer(llm_rate_limit.clone()),
+        )
+        // Chat (strict rate limit on message stream, general on CRUD)
+        .route(
+            "/api/books/{id}/conversations",
+            post(chat::create_conversation).layer(general_rate_limit.clone()),
+        )
+        .route(
+            "/api/books/{id}/conversations",
+            get(chat::list_conversations).layer(general_rate_limit.clone()),
+        )
+        .route(
+            "/api/conversations/{id}",
+            get(chat::get_conversation).layer(general_rate_limit.clone()),
+        )
+        .route(
+            "/api/conversations/{id}",
+            delete(chat::delete_conversation).layer(general_rate_limit.clone()),
+        )
+        .route(
+            "/api/conversations/{id}/messages/stream",
+            post(chat::send_message_stream).layer(llm_rate_limit.clone()),
+        )
         .layer(
             ServiceBuilder::new()
                 .layer(cors)
                 .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // 100MB limit for file uploads
+                .layer(general_rate_limit)
         )
         .with_state(pool)
 }

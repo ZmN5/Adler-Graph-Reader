@@ -8,6 +8,7 @@ mod epub_utils;
 mod extractor;
 mod llm_client;
 mod pdf_parser;
+mod rate_limit;
 mod retrieval;
 mod routes;
 mod text_utils;
