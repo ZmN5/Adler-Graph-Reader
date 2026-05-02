@@ -18,6 +18,7 @@ frontend/.next/
 frontend/.nuxt/
 frontend/dist/
 frontend/build/
+frontend/tsconfig.tsbuildinfo
 
 # IDE
 .idea/
