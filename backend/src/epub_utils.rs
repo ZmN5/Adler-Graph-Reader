@@ -1,8 +1,8 @@
-use std::io::{Read, BufReader};
+use std::io::{Read, Seek};
 use zip::ZipArchive;
 
 /// Get the path to content.opf from container.xml
-pub fn get_content_opf_path(archive: &mut ZipArchive<BufReader<std::fs::File>>) -> Result<String, String> {
+pub fn get_content_opf_path<R: Read + Seek>(archive: &mut ZipArchive<R>) -> Result<String, String> {
     let mut container_file = archive.by_name("META-INF/container.xml")
         .map_err(|e| format!("Failed to find container.xml: {}", e))?;
 
@@ -19,8 +19,8 @@ pub fn get_content_opf_path(archive: &mut ZipArchive<BufReader<std::fs::File>>) 
 }
 
 /// Parse content.opf to get manifest (id -> href) and spine (ordered idref list)
-pub fn parse_content_opf(
-    archive: &mut ZipArchive<BufReader<std::fs::File>>,
+pub fn parse_content_opf<R: Read + Seek>(
+    archive: &mut ZipArchive<R>,
     opf_path: &str,
 ) -> Result<(std::collections::HashMap<String, String>, Vec<String>), String> {
     let mut opf_file = archive.by_name(opf_path)
@@ -141,15 +141,12 @@ pub fn is_non_content_spine_item(href: &str) -> bool {
 
 /// Count the number of content chapters in an EPUB file
 /// Returns the count of spine items that are actual content (excluding nav, toc, cover)
-pub fn count_epub_chapters(file_path: &str) -> Result<i32, String> {
-    let path = std::path::Path::new(file_path);
-    if !path.exists() {
-        return Err(format!("EPUB file not found: {}", file_path));
-    }
+pub async fn count_epub_chapters(file_path: &str) -> Result<i32, String> {
+    let path = std::path::Path::new(file_path).to_path_buf();
 
-    let file = std::fs::File::open(path)
-        .map_err(|e| format!("Failed to open EPUB file: {}", e))?;
-    let reader = BufReader::new(file);
+    let file_data = tokio::fs::read(&path).await
+        .map_err(|e| format!("Failed to read EPUB file: {}", e))?;
+    let reader = std::io::Cursor::new(file_data);
     let mut archive = ZipArchive::new(reader)
         .map_err(|e| format!("Failed to read EPUB as ZIP: {}", e))?;
 

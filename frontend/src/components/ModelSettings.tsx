@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { getModelConfig, updateModelConfig, ModelConfig } from '@/lib/api-client'
 import { useTranslation } from '@/lib/i18n'
@@ -24,6 +24,15 @@ export function ModelSettings({ className }: ModelSettingsProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     getModelConfig()
@@ -57,7 +66,8 @@ export function ModelSettings({ className }: ModelSettingsProps) {
       const updated = await updateModelConfig(key, editValues[key])
       setConfig(updated)
       setSaveSuccess(`Updated ${key}`)
-      setTimeout(() => setSaveSuccess(null), 2000)
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = setTimeout(() => setSaveSuccess(null), 2000)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update config')
     } finally {

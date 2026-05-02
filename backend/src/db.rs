@@ -199,6 +199,7 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
         ("llm_model", "qwen3.5-9b", "LLM model for summarization and extraction"),
         ("llm_api_url", "http://localhost:1234/v1", "LM Studio LLM API base URL"),
         ("reranker_model", "qwen3.5-9b", "Reranker model for result ranking"),
+        ("api_key", "lm-studio", "API key for LLM and embedding services"),
     ];
 
     for (key, value, description) in default_configs {

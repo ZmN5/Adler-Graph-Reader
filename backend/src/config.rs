@@ -9,6 +9,7 @@ pub struct ModelConfig {
     pub llm_model: String,
     pub llm_api_url: String,
     pub reranker_model: String,
+    pub api_key: String,
 }
 
 /// Get a single config value from the database, with fallback to default
@@ -34,6 +35,7 @@ pub async fn get_model_config(pool: &SqlitePool) -> Result<ModelConfig, sqlx::Er
     let llm_model = get_config_value(pool, "llm_model", "qwen3.5-9b").await?;
     let llm_api_url = get_config_value(pool, "llm_api_url", "http://localhost:1234/v1").await?;
     let reranker_model = get_config_value(pool, "reranker_model", "qwen3.5-9b").await?;
+    let api_key = get_config_value(pool, "api_key", "lm-studio").await?;
 
     Ok(ModelConfig {
         embedding_model,
@@ -41,6 +43,7 @@ pub async fn get_model_config(pool: &SqlitePool) -> Result<ModelConfig, sqlx::Er
         llm_model,
         llm_api_url,
         reranker_model,
+        api_key,
     })
 }
 

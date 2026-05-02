@@ -10,9 +10,9 @@ const DEFAULT_TOP_K: usize = 50;
 /// RRF fusion constant
 const RRF_K: f64 = 60.0;
 /// Default number of candidates for reranking
+/// Reserved for future LLM-based reranking feature.
+#[allow(dead_code)]
 const RERANK_TOP_K: usize = 20;
-/// LM Studio completions API URL
-const LM_STUDIO_COMPLETIONS_URL: &str = "http://localhost:1234/v1/chat/completions";
 
 /// Search result from a single retrieval method
 #[derive(Debug, Clone)]
@@ -31,7 +31,9 @@ pub struct FusedResult {
 }
 
 /// Final retrieval result with all scoring details
+/// Used internally by the retrieval pipeline; kept for future reranking integration.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct RetrievalResult {
     pub chunk_id: String,
     pub vector_score: Option<f64>,
@@ -40,7 +42,9 @@ pub struct RetrievalResult {
 }
 
 /// Reranked result with final scores
+/// Reserved for future LLM-based reranking feature.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct RerankResult {
     pub chunk_id: String,
     pub rerank_score: f64,
@@ -54,7 +58,9 @@ pub struct RerankResult {
 pub enum RetrievalError {
     DatabaseError(String),
     EmbeddingError(String),
+    #[allow(dead_code)]
     ApiError(String),
+    #[allow(dead_code)]
     RerankError(String),
 }
 
@@ -168,31 +174,7 @@ const MAX_EMBEDDINGS_FOR_SEARCH: usize = 5000;
 fn escape_fts5_query(query: &str) -> String {
     // Strip decorative quotes and brackets that are not searchable punctuation
     let cleaned: String = query
-        .replace('「', " ")
-        .replace('」', " ")
-        .replace('『', " ")
-        .replace('』', " ")
-        .replace('【', " ")
-        .replace('】', " ")
-        .replace('〖', " ")
-        .replace('〗', " ")
-        .replace('《', " ")
-        .replace('》', " ")
-        .replace('〈', " ")
-        .replace('〉', " ")
-        .replace('（', " ")
-        .replace('）', " ")
-        .replace('、', " ")
-        .replace('。', " ")
-        .replace('，', " ")
-        .replace('？', " ")
-        .replace('！', " ")
-        .replace('：', " ")
-        .replace('；', " ")
-        .replace('·', " ")
-        .replace('…', " ")
-        .replace('—', " ")
-        .replace('–', " ");
+        .replace(['「', '」', '『', '』', '【', '】', '〖', '〗', '《', '》', '〈', '〉', '（', '）', '、', '。', '，', '？', '！', '：', '；', '·', '…', '—', '–'], " ");
 
     let tokens: Vec<&str> = cleaned.split_whitespace().collect();
     if tokens.is_empty() {
@@ -389,11 +371,12 @@ pub async fn vector_search_with_query(
     top_k: Option<usize>,
     embedding_model: &str,
     embedding_url: &str,
+    api_key: &str,
 ) -> Result<Vec<SearchResult>, RetrievalError> {
     tracing::info!("[Vector Search with Query] Query: '{}'", query_text);
 
     // Generate embedding for the query text
-    let query_embedding = generate_query_embedding(query_text, embedding_model, embedding_url).await?;
+    let query_embedding = generate_query_embedding(query_text, embedding_model, embedding_url, api_key).await?;
 
     // Perform vector search with the generated embedding
     vector_search(pool, &query_embedding, book_id, top_k).await
@@ -412,11 +395,13 @@ async fn generate_query_embedding(
     query_text: &str,
     embedding_model: &str,
     embedding_url: &str,
+    api_key: &str,
 ) -> Result<Vec<f32>, RetrievalError> {
     let embeddings = call_embedding_api(
         vec![query_text.to_string()],
         embedding_model,
         embedding_url,
+        api_key,
     )
     .await
     .map_err(|e| RetrievalError::EmbeddingError(e.to_string()))?;
@@ -522,6 +507,7 @@ pub fn reciprocal_rank_fusion(
 }
 
 /// Convert fused results to final retrieval results
+#[allow(dead_code)]
 pub fn fused_to_retrieval_results(fused: Vec<FusedResult>) -> Vec<RetrievalResult> {
     fused
         .into_iter()
@@ -536,6 +522,8 @@ pub fn fused_to_retrieval_results(fused: Vec<FusedResult>) -> Vec<RetrievalResul
 
 /// Rerank results using LM Studio LLM
 ///
+/// Reserved for future LLM-based reranking feature.
+///
 /// # Arguments
 /// * `query` - The search query (node name and description)
 /// * `candidates` - Candidate chunks from RRF fusion (typically top 20)
@@ -543,8 +531,11 @@ pub fn fused_to_retrieval_results(fused: Vec<FusedResult>) -> Vec<RetrievalResul
 ///
 /// # Returns
 /// * `Result<Vec<RerankResult>, RetrievalError>` - Reranked results with LLM scores
+#[allow(dead_code)]
 pub async fn rerank(
     reranker_model: &str,
+    llm_api_url: &str,
+    api_key: &str,
     query: &str,
     candidates: Vec<FusedResult>,
     passages: &HashMap<String, String>,
@@ -576,7 +567,7 @@ pub async fn rerank(
 
     // Call LM Studio API
     tracing::info!("[Rerank] Calling reranker API with model: {}", reranker_model);
-    let reranked = call_reranker_api(reranker_model, &prompt, &candidates_to_rerank).await?;
+    let reranked = call_reranker_api(reranker_model, llm_api_url, api_key, &prompt, &candidates_to_rerank).await?;
 
     tracing::info!(
         "[Rerank] Completed reranking, returned {} results",
@@ -587,6 +578,8 @@ pub async fn rerank(
 }
 
 /// Build prompt for reranker LLM
+/// Reserved for future LLM-based reranking feature.
+#[allow(dead_code)]
 fn build_reranker_prompt(
     query: &str,
     candidates: &[FusedResult],
@@ -616,15 +609,14 @@ Passages:
         ));
     }
 
-    prompt.push_str(&format!(
-        r#"
+    prompt.push_str(r#"
 Rank the passages by relevance to the query. Return a JSON array with the ranked passage indices and relevance scores (0.0-1.0, where 1.0 is most relevant).
 
 Expected JSON format:
 [
-  {{"index": 1, "score": 0.95}},
-  {{"index": 3, "score": 0.82}},
-  {{"index": 2, "score": 0.45}}
+  {"index": 1, "score": 0.95},
+  {"index": 3, "score": 0.82},
+  {"index": 2, "score": 0.45}
 ]
 
 Important:
@@ -632,22 +624,27 @@ Important:
 - Index is 1-based (the first passage is index 1)
 - Score must be between 0.0 and 1.0
 - Sort by score descending (most relevant first)
-"#
-    ));
+"#);
 
     prompt
 }
 
 /// Reranker response item
+/// Reserved for future LLM-based reranking feature.
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct RerankerResponseItem {
     index: usize,
     score: f64,
 }
 
 /// Call LM Studio completions API for reranking
+/// Reserved for future LLM-based reranking feature.
+#[allow(dead_code)]
 async fn call_reranker_api(
     reranker_model: &str,
+    llm_api_url: &str,
+    api_key: &str,
     prompt: &str,
     candidates: &[FusedResult],
 ) -> Result<Vec<RerankResult>, RetrievalError> {
@@ -699,9 +696,10 @@ async fn call_reranker_api(
 
     tracing::debug!("[Rerank] Sending request to LM Studio");
 
+    let url = format!("{}/chat/completions", llm_api_url.trim_end_matches('/'));
     let response = client
-        .post(LM_STUDIO_COMPLETIONS_URL)
-        .header("Authorization", "Bearer lm-studio")
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
         .json(&request)
         .send()
         .await
@@ -740,6 +738,8 @@ async fn call_reranker_api(
 /// Supports two formats:
 /// 1. Standard: [{"index": 1, "score": 0.95}, ...] (1-based index)
 /// 2. Simple array: [0, 3, 1, ...] (0-based index, score derived from position)
+/// Reserved for future LLM-based reranking feature.
+#[allow(dead_code)]
 fn parse_reranker_response(
     content: &str,
     candidates: &[FusedResult],
@@ -790,6 +790,8 @@ fn parse_reranker_response(
 
 /// Parse simple array format [0, 3, 1, ...] where values are 0-based indices
 /// Score is derived from position: 1st item gets 1.0, 2nd gets 0.95, etc.
+/// Reserved for future LLM-based reranking feature.
+#[allow(dead_code)]
 fn parse_simple_array_response(
     indices: &[usize],
     candidates: &[FusedResult],
@@ -798,7 +800,6 @@ fn parse_simple_array_response(
     let candidate_map: HashMap<usize, &FusedResult> = candidates
         .iter()
         .enumerate()
-        .map(|(idx, c)| (idx, c))
         .collect();
 
     let total = indices.len();
@@ -838,6 +839,7 @@ fn parse_simple_array_response(
 }
 
 /// Extract JSON from a string that might have wrapper text
+#[allow(dead_code)]
 fn extract_json(content: &str) -> Result<&str, RetrievalError> {
     // Try to find JSON array
     if let Some(start) = content.find('[') {
@@ -865,10 +867,12 @@ fn extract_json(content: &str) -> Result<&str, RetrievalError> {
 /// Node information for retrieval
 #[derive(Debug, Clone)]
 pub struct NodeInfo {
+    #[allow(dead_code)]
     pub id: String,
     pub book_id: Option<String>,
     pub name: String,
     pub native_term: Option<String>, // Original term from source text, used for retrieval
+    #[allow(dead_code)]
     pub description: Option<String>,
 }
 
@@ -887,9 +891,11 @@ pub struct RetrievalOutput {
 /// Hybrid Retriever that orchestrates the full retrieval pipeline
 pub struct HybridRetriever {
     pool: SqlitePool,
+    #[allow(dead_code)]
     llm_api_url: String,
     embedding_model: String,
     embedding_url: String,
+    api_key: String,
 }
 
 impl HybridRetriever {
@@ -899,12 +905,14 @@ impl HybridRetriever {
         llm_api_url: String,
         embedding_model: String,
         embedding_url: String,
+        api_key: String,
     ) -> Self {
         Self {
             pool,
             llm_api_url,
             embedding_model,
             embedding_url,
+            api_key,
         }
     }
 
@@ -1107,6 +1115,7 @@ impl HybridRetriever {
             Some(DEFAULT_TOP_K),
             &self.embedding_model,
             &self.embedding_url,
+            &self.api_key,
         )
         .await
     }
@@ -1121,6 +1130,7 @@ impl HybridRetriever {
     }
 
     /// Fetch chunk contents for reranking
+    #[allow(dead_code)]
     async fn fetch_chunk_contents(
         &self,
         chunk_ids: &[String],
@@ -1268,6 +1278,7 @@ impl HybridRetriever {
 }
 
 /// Convert reranked results to final retrieval results
+#[allow(dead_code)]
 fn reranked_to_retrieval_results(reranked: Vec<RerankResult>) -> Vec<RetrievalResult> {
     reranked
         .into_iter()
@@ -1350,21 +1361,6 @@ mod tests {
         assert_eq!(f32_vec, restored);
     }
 
-    #[test]
-    fn test_extract_json_array() {
-        let content = r#"Some text before [{"index": 1, "score": 0.9}] and after"#;
-        let json = extract_json(content).unwrap();
-        assert!(json.starts_with('['));
-        assert!(json.ends_with(']'));
-    }
-
-    #[test]
-    fn test_extract_json_object() {
-        let content = r#"Some text before {"key": "value"} and after"#;
-        let json = extract_json(content).unwrap();
-        assert!(json.starts_with('{'));
-        assert!(json.ends_with('}'));
-    }
 
     #[test]
     fn test_parse_reranker_response() {

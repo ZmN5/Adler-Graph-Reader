@@ -71,6 +71,7 @@ pub struct LlmClient {
     client: Client,
     base_url: String,
     model: String,
+    api_key: String,
 }
 
 /// OpenAI-compatible chat message
@@ -132,6 +133,7 @@ struct ChatChoiceStream {
 struct ChatDelta {
     content: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     reasoning_content: Option<String>,
 }
 
@@ -196,18 +198,19 @@ pub struct SourceGroundedSummaryRequest {
 
 impl LlmClient {
     /// Create a new LLM client connecting to the specified URL
-    pub fn new(base_url: &str, model: &str) -> Self {
+    pub fn new(base_url: &str, model: &str, api_key: &str) -> Result<Self, LlmError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(180))
             .http1_only()
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| LlmError::ConnectionError(format!("Failed to create HTTP client: {}", e)))?;
 
-        Self {
+        Ok(Self {
             client,
             base_url: base_url.trim_end_matches('/').to_string(),
             model: model.to_string(),
-        }
+            api_key: api_key.to_string(),
+        })
     }
 
     /// Extract concepts from a chunk of text
@@ -257,7 +260,7 @@ impl LlmClient {
                 async move {
                     let resp = client
                         .post(&url)
-                        .header("Authorization", "Bearer lm-studio")
+                        .header("Authorization", format!("Bearer {}", self.api_key))
                         .json(&request)
                         .send()
                         .await
@@ -342,7 +345,7 @@ impl LlmClient {
                 async move {
                     let resp = client
                         .post(&url)
-                        .header("Authorization", "Bearer lm-studio")
+                        .header("Authorization", format!("Bearer {}", self.api_key))
                         .json(&chat_request)
                         .send()
                         .await
@@ -385,11 +388,10 @@ impl LlmClient {
         tracing::trace!("[SourceGroundedSummary] Raw response: {}", content);
 
         // Extract citations from the summary text using [Source: X] pattern
-        let citation_pattern = regex::Regex::new(r"\[Source:\s*(\d+)\]").unwrap();
         let mut seen_indices = std::collections::HashSet::new();
         let mut citations = Vec::new();
 
-        for caps in citation_pattern.captures_iter(&content) {
+        for caps in crate::utils::CITATION_REGEX.captures_iter(&content) {
             if let Ok(idx) = caps[1].parse::<usize>() {
                 if idx > 0 && idx <= request.retrieval_results.len() && seen_indices.insert(idx) {
                     let result = &request.retrieval_results[idx - 1];
@@ -442,15 +444,17 @@ impl LlmClient {
 
             // Retry transient errors on the initial request
             let client = self.client.clone();
+            let api_key = self.api_key.clone();
             let response = match with_retry(
                 || {
                     let client = client.clone();
                     let url = url.clone();
+                    let api_key = api_key.clone();
                     let chat_request = chat_request.clone();
                     async move {
                         let resp = client
                             .post(&url)
-                            .header("Authorization", "Bearer lm-studio")
+                            .header("Authorization", format!("Bearer {}", api_key))
                             .json(&chat_request)
                             .send()
                             .await
@@ -499,8 +503,7 @@ impl LlmClient {
                 for byte in chunk {
                     if byte == b'\n' {
                         let line = String::from_utf8_lossy(&current_line).trim().to_string();
-                        if line.starts_with("data: ") {
-                            let data = &line[6..];
+                        if let Some(data) = line.strip_prefix("data: ") {
                             if data == "[DONE]" {
                                 tracing::debug!("[ChatStream] Received [DONE], ending stream");
                                 yield Ok(SummaryStreamItem::Done);
@@ -579,15 +582,17 @@ impl LlmClient {
 
             // Retry transient errors on the initial request
             let client = self.client.clone();
+            let api_key = self.api_key.clone();
             let response = match with_retry(
                 || {
                     let client = client.clone();
                     let url = url.clone();
+                    let api_key = api_key.clone();
                     let chat_request = chat_request.clone();
                     async move {
                         let resp = client
                             .post(&url)
-                            .header("Authorization", "Bearer lm-studio")
+                            .header("Authorization", format!("Bearer {}", api_key))
                             .json(&chat_request)
                             .send()
                             .await
@@ -636,8 +641,7 @@ impl LlmClient {
                 for byte in chunk {
                     if byte == b'\n' {
                         let line = String::from_utf8_lossy(&current_line).trim().to_string();
-                        if line.starts_with("data: ") {
-                            let data = &line[6..];
+                        if let Some(data) = line.strip_prefix("data: ") {
                             if data == "[DONE]" {
                                 tracing::debug!("[SourceGroundedSummaryStream] Received [DONE], ending stream");
                                 yield Ok(SummaryStreamItem::Done);
@@ -892,7 +896,8 @@ fn parse_extraction_response(
     language: &str,
 ) -> Result<ConceptExtractionResponse, LlmError> {
     // Try to extract JSON from the content (in case there's any wrapper text)
-    let json_str = extract_json(content)?;
+    let json_str = crate::utils::extract_json(content)
+        .ok_or_else(|| LlmError::ParseError("No JSON found in response".to_string()))?;
 
     tracing::debug!("Parsing JSON response of length: {}", json_str.len());
 
@@ -1087,25 +1092,31 @@ Important:
 }
 
 /// Summary response from LLM
+/// Reserved for future JSON-mode summary parsing.
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct SummaryResponse {
     summary: String,
     citations: Vec<ParsedCitation>,
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct ParsedCitation {
     index: usize,
     pages: Option<String>,
 }
 
 /// Parse the LLM response into a SourceGroundedSummary
+/// Reserved for future JSON-mode summary parsing.
+#[allow(dead_code)]
 fn parse_summary_response(
     content: &str,
     request: &SourceGroundedSummaryRequest,
 ) -> Result<SourceGroundedSummary, LlmError> {
     // Try to extract JSON from the content
-    let json_str = extract_json(content)?;
+    let json_str = crate::utils::extract_json(content)
+        .ok_or_else(|| LlmError::ParseError("No JSON found in response".to_string()))?;
 
     tracing::debug!("[parse_summary_response] Parsing JSON of length: {}", json_str.len());
 
@@ -1153,8 +1164,7 @@ fn parse_summary_response(
 
     // Also extract citations from the summary text by finding [Source: X] patterns
     // and ensuring they're in our citations list
-    let citation_pattern = regex::Regex::new(r"\[Source:\s*(\d+)\]").unwrap();
-    for caps in citation_pattern.captures_iter(&parsed.summary) {
+    for caps in crate::utils::CITATION_REGEX.captures_iter(&parsed.summary) {
         let idx: usize = caps[1].parse().unwrap_or(0);
         if idx > 0 && idx <= request.retrieval_results.len() {
             // Check if this citation is already in the list
@@ -1184,29 +1194,6 @@ fn parse_summary_response(
         summary: parsed.summary,
         citations,
     })
-}
-
-/// Extract JSON from a string that might have wrapper text
-fn extract_json(content: &str) -> Result<&str, LlmError> {
-    // Try to find JSON object
-    if let Some(start) = content.find('{') {
-        if let Some(end) = content.rfind('}') {
-            if end > start {
-                return Ok(&content[start..=end]);
-            }
-        }
-    }
-
-    // Try JSON array
-    if let Some(start) = content.find('[') {
-        if let Some(end) = content.rfind(']') {
-            if end > start {
-                return Ok(&content[start..=end]);
-            }
-        }
-    }
-
-    Err(LlmError::ParseError("No JSON found in response".to_string()))
 }
 
 /// Internal parsed response structure
@@ -1279,7 +1266,7 @@ mod tests {
     #[test]
     fn test_extract_json_with_wrapper() {
         let content = "Here is the JSON: {\"concepts\": [], \"relations\": []}";
-        let json = extract_json(content).unwrap();
+        let json = crate::utils::extract_json(content).unwrap();
         assert!(json.starts_with('{'));
         assert!(json.ends_with('}'));
     }

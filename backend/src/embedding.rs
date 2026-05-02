@@ -2,10 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tokio::process::Command;
 
-/// Default embedding model from LM Studio
-const EMBEDDING_MODEL: &str = "text-embedding-qwen3-embedding-0.6b";
 const BATCH_SIZE: usize = 32;
-const LM_STUDIO_EMBEDDING_URL: &str = "http://localhost:1234/v1/embeddings";
 
 /// OpenAI-compatible embedding request
 #[derive(Debug, Serialize)]
@@ -19,20 +16,11 @@ struct EmbeddingRequest {
 struct EmbeddingResponse {
     data: Vec<EmbeddingData>,
     model: String,
-    usage: Option<Usage>,
 }
 
 #[derive(Debug, Deserialize)]
 struct EmbeddingData {
     embedding: Vec<f32>,
-    index: usize,
-    object: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct Usage {
-    prompt_tokens: usize,
-    total_tokens: usize,
 }
 
 /// Represents a chunk that needs embedding
@@ -49,7 +37,6 @@ pub enum EmbeddingError {
     ApiError(String),
     ParseError(String),
     DatabaseError(String),
-    DimensionMismatch { expected: usize, got: usize },
 }
 
 impl std::fmt::Display for EmbeddingError {
@@ -59,9 +46,6 @@ impl std::fmt::Display for EmbeddingError {
             EmbeddingError::ApiError(msg) => write!(f, "API error: {}", msg),
             EmbeddingError::ParseError(msg) => write!(f, "Parse error: {}", msg),
             EmbeddingError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
-            EmbeddingError::DimensionMismatch { expected, got } => {
-                write!(f, "Dimension mismatch: expected {}, got {}", expected, got)
-            }
         }
     }
 }
@@ -163,6 +147,7 @@ pub async fn call_embedding_api(
     texts: Vec<String>,
     model: &str,
     url: &str,
+    api_key: &str,
 ) -> Result<Vec<Vec<f32>>, EmbeddingError> {
     if texts.is_empty() {
         return Ok(Vec::new());
@@ -183,11 +168,12 @@ pub async fn call_embedding_api(
     tracing::debug!("[Embedding] Request body ({}): {}", texts.len(), &request_body[..request_body.len().min(200)]);
 
     // Use curl subprocess to avoid reqwest/LM Studio compatibility issues
+    let auth_header = format!("Authorization: Bearer {}", api_key);
     let output = Command::new("curl")
         .args([
             "-s", "-m", "60", "-X", "POST", url,
             "-H", "Content-Type: application/json",
-            "-H", "Authorization: Bearer lm-studio",
+            "-H", &auth_header,
             "--data-binary", &request_body,
             "--noproxy", "*",
         ])
@@ -268,6 +254,7 @@ pub async fn generate_chunk_embeddings(
     book_id: &str,
     embedding_model: &str,
     embedding_url: &str,
+    api_key: &str,
 ) -> Result<usize, EmbeddingError> {
     tracing::info!(
         "[Embedding] Starting embedding generation for book: {}",
@@ -312,7 +299,7 @@ pub async fn generate_chunk_embeddings(
         let chunk_ids: Vec<&str> = batch.iter().map(|c| c.id.as_str()).collect();
 
         // Call embedding API
-        let embeddings = call_embedding_api(texts, embedding_model, embedding_url).await?;
+        let embeddings = call_embedding_api(texts, embedding_model, embedding_url, api_key).await?;
 
         if embeddings.len() != batch.len() {
             return Err(EmbeddingError::ApiError(format!(
@@ -374,11 +361,13 @@ pub async fn generate_chunk_embeddings(
 ///
 /// # Returns
 /// * `Result<usize, EmbeddingError>> - Number of chunks processed
+#[allow(dead_code)]
 pub async fn generate_embeddings_for_chunks(
     pool: &SqlitePool,
     chunk_ids: &[String],
     embedding_model: &str,
     embedding_url: &str,
+    api_key: &str,
 ) -> Result<usize, EmbeddingError> {
     if chunk_ids.is_empty() {
         return Ok(0);
@@ -422,7 +411,7 @@ pub async fn generate_embeddings_for_chunks(
         let texts: Vec<String> = batch.iter().map(|c| c.content.clone()).collect();
         let batch_chunk_ids: Vec<&str> = batch.iter().map(|c| c.id.as_str()).collect();
 
-        let embeddings = call_embedding_api(texts, embedding_model, embedding_url).await?;
+        let embeddings = call_embedding_api(texts, embedding_model, embedding_url, api_key).await?;
 
         for (chunk_id, embedding) in batch_chunk_ids.iter().zip(embeddings.iter()) {
             let embedding_bytes: Vec<u8> = embedding

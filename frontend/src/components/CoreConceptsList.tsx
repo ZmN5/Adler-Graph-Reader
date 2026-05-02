@@ -26,6 +26,18 @@ export function CoreConceptsList({
   const [nodeDetails, setNodeDetails] = useState<Record<string, NodeDetails>>({})
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({})
 
+  const loadNodeDetails = useCallback(async (nodeId: string) => {
+    setLoadingDetails((prev) => ({ ...prev, [nodeId]: true }))
+    try {
+      const details = await getNode(nodeId)
+      setNodeDetails((prev) => ({ ...prev, [nodeId]: details }))
+    } catch (err) {
+      console.error('Failed to load node details:', err)
+    } finally {
+      setLoadingDetails((prev) => ({ ...prev, [nodeId]: false }))
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
@@ -59,19 +71,7 @@ export function CoreConceptsList({
     return () => {
       cancelled = true
     }
-  }, [bookId])
-
-  const loadNodeDetails = useCallback(async (nodeId: string) => {
-    setLoadingDetails((prev) => ({ ...prev, [nodeId]: true }))
-    try {
-      const details = await getNode(nodeId)
-      setNodeDetails((prev) => ({ ...prev, [nodeId]: details }))
-    } catch (err) {
-      console.error('Failed to load node details:', err)
-    } finally {
-      setLoadingDetails((prev) => ({ ...prev, [nodeId]: false }))
-    }
-  }, [])
+  }, [bookId, loadNodeDetails])
 
   const handleConceptClick = useCallback(
     (concept: GraphNode) => {

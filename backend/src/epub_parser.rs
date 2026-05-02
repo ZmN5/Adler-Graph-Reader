@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use uuid::Uuid;
 use std::path::Path;
-use std::io::{Read, BufReader};
+use std::io::{Read, Cursor};
 use zip::ZipArchive;
 
 use crate::config;
@@ -9,27 +9,52 @@ use crate::embedding;
 use crate::epub_utils::{get_content_opf_path, parse_content_opf, is_non_content_spine_item};
 use crate::text_utils::split_text_with_overlap;
 
+/// Errors that can occur during EPUB parsing operations
+#[derive(Debug)]
+pub enum EpubParseError {
+    FileNotFound(String),
+    ZipError(String),
+    #[allow(dead_code)]
+    HtmlError(String),
+    DatabaseError(String),
+}
+
+impl std::fmt::Display for EpubParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EpubParseError::FileNotFound(msg) => write!(f, "File not found: {}", msg),
+            EpubParseError::ZipError(msg) => write!(f, "ZIP error: {}", msg),
+            EpubParseError::HtmlError(msg) => write!(f, "HTML error: {}", msg),
+            EpubParseError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for EpubParseError {}
+
 /// Parse an EPUB file and create chunks in the database
 /// Chapters are treated as units, with ~16000 char segments (~4000 tokens) with overlap
-pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Result<usize, String> {
+pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Result<usize, EpubParseError> {
     // Verify file exists
     let path = Path::new(file_path);
     if !path.exists() {
-        return Err(format!("EPUB file not found: {}", file_path));
+        return Err(EpubParseError::FileNotFound(file_path.to_string()));
     }
 
-    // Open the EPUB file (which is a ZIP archive)
-    let file = std::fs::File::open(path)
-        .map_err(|e| format!("Failed to open EPUB file: {}", e))?;
-    let reader = BufReader::new(file);
+    // Read EPUB file asynchronously, then parse in blocking context
+    let file_data = tokio::fs::read(path).await
+        .map_err(|e| EpubParseError::FileNotFound(format!("Failed to read EPUB file: {}", e)))?;
+    let reader = Cursor::new(file_data);
     let mut archive = ZipArchive::new(reader)
-        .map_err(|e| format!("Failed to read EPUB as ZIP: {}", e))?;
+        .map_err(|e| EpubParseError::ZipError(format!("Failed to read EPUB as ZIP: {}", e)))?;
 
     // Step 1: Parse container.xml to find content.opf path
-    let content_opf_path = get_content_opf_path(&mut archive)?;
+    let content_opf_path = get_content_opf_path(&mut archive)
+        .map_err(|e| EpubParseError::ZipError(e.to_string()))?;
 
     // Step 2: Parse content.opf to get manifest and spine
-    let (manifest, spine) = parse_content_opf(&mut archive, &content_opf_path)?;
+    let (manifest, spine) = parse_content_opf(&mut archive, &content_opf_path)
+        .map_err(|e| EpubParseError::ZipError(e.to_string()))?;
 
     // Extract base directory from content.opf path (e.g., "EPUB/" from "EPUB/content.opf")
     let base_dir = if let Some(last_slash) = content_opf_path.rfind('/') {
@@ -44,7 +69,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)
-            .map_err(|e| format!("Failed to read ZIP entry: {}", e))?;
+            .map_err(|e| EpubParseError::ZipError(format!("Failed to read ZIP entry: {}", e)))?;
 
         let file_name = file.name().to_string();
 
@@ -52,7 +77,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
         if file_name.ends_with(".xhtml") || file_name.ends_with(".html") || file_name.ends_with(".htm") {
             let mut content = String::new();
             file.read_to_string(&mut content)
-                .map_err(|e| format!("Failed to read content file: {}", e))?;
+                .map_err(|e| EpubParseError::ZipError(format!("Failed to read content file: {}", e)))?;
 
             // Extract text from HTML
             let text = extract_text_from_html(&content);
@@ -91,7 +116,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
         .bind(book_id)
         .execute(pool)
         .await
-        .map_err(|e| format!("Failed to delete existing chunks: {}", e))?;
+        .map_err(|e| EpubParseError::DatabaseError(format!("Failed to delete existing chunks: {}", e)))?;
 
     // Create chunks from content in spine order
     let created_at = chrono::Utc::now().to_rfc3339();
@@ -137,22 +162,22 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
                 .bind(book_id)
                 .bind(chapter)
                 .bind(chapter)
-                .bind(&content)
+                .bind(content)
                 .bind(&chapter_href)
                 .bind(&created_at)
                 .execute(pool)
                 .await
-                .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+                .map_err(|e| EpubParseError::DatabaseError(format!("Failed to insert chunk: {}", e)))?;
 
                 // Insert into FTS table
                 sqlx::query(
                     "INSERT INTO chunks_fts (chunk_id, content) VALUES (?, ?)"
                 )
                 .bind(&chunk_id)
-                .bind(&content)
+                .bind(content)
                 .execute(pool)
                 .await
-                .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+                .map_err(|e| EpubParseError::DatabaseError(format!("Failed to insert FTS entry: {}", e)))?;
 
                 chunks_created += 1;
             } else {
@@ -172,7 +197,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
                     .bind(&created_at)
                     .execute(pool)
                     .await
-                    .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+                    .map_err(|e| EpubParseError::DatabaseError(format!("Failed to insert chunk: {}", e)))?;
 
                     // Insert into FTS table
                     sqlx::query(
@@ -182,7 +207,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
                     .bind(chunk_content)
                     .execute(pool)
                     .await
-                    .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+                    .map_err(|e| EpubParseError::DatabaseError(format!("Failed to insert FTS entry: {}", e)))?;
 
                     chunks_created += 1;
                 }
@@ -208,6 +233,7 @@ pub async fn parse_epub(book_id: &str, file_path: &str, pool: &SqlitePool) -> Re
             &book_id_clone,
             &model_config.embedding_model,
             &model_config.embedding_url,
+            &model_config.api_key,
         )
         .await
         {
@@ -307,4 +333,3 @@ fn clean_chapter_title(file_path: &str) -> String {
         .trim_end_matches(".htm")
         .to_string()
 }
-

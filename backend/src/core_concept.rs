@@ -2,10 +2,30 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use petgraph::graph::{NodeIndex, UnGraph};
 
+/// Errors that can occur during core concept operations
+#[derive(Debug)]
+pub enum CoreConceptError {
+    DatabaseError(String),
+    #[allow(dead_code)]
+    GraphError(String),
+}
+
+impl std::fmt::Display for CoreConceptError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoreConceptError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+            CoreConceptError::GraphError(msg) => write!(f, "Graph error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for CoreConceptError {}
+
 /// Node information for graph construction
 #[derive(Debug, Clone)]
 struct NodeInfo {
     id: String,
+    #[allow(dead_code)]
     name: String,
     chunk_ids: Vec<String>,
 }
@@ -52,7 +72,7 @@ fn detect_communities(
     let mut next_community_id = 0usize;
 
     // Initialize each node to its own community
-    for (node_id, _) in node_indices {
+    for node_id in node_indices.keys() {
         communities.insert(node_id.clone(), next_community_id);
         next_community_id += 1;
     }
@@ -64,7 +84,7 @@ fn detect_communities(
         let mut changed = false;
 
         for (node_id, node_idx) in node_indices {
-            let current_comm = *communities.get(node_id).unwrap();
+            let current_comm = *communities.get(node_id).unwrap_or(&0);
 
             // Count neighbors in each community
             let mut neighbor_comm_counts: HashMap<usize, usize> = HashMap::new();
@@ -72,7 +92,7 @@ fn detect_communities(
                 // Find which node_id this neighbor corresponds to
                 for (nid, nidx) in node_indices {
                     if *nidx == neighbor && nid != node_id {
-                        let comm = *communities.get(nid).unwrap();
+                        let Some(&comm) = communities.get(nid) else { continue };
                         *neighbor_comm_counts.entry(comm).or_insert(0) += 1;
                         break;
                     }
@@ -124,15 +144,15 @@ fn calculate_community_centrality(
 
     // For each node, calculate its centrality within its community
     for (node_id, node_idx) in node_indices {
-        let comm_id = communities.get(node_id).unwrap();
-        let comm_nodes = community_nodes.get(comm_id).unwrap();
+        let Some(&comm_id) = communities.get(node_id) else { continue };
+        let Some(comm_nodes) = community_nodes.get(&comm_id) else { continue };
 
         // Count connections to other nodes in the same community
         let mut intra_community_degree = 0usize;
         for neighbor in graph.neighbors(*node_idx) {
             for (nid, nidx) in node_indices {
                 if *nidx == neighbor && nid != node_id {
-                    if communities.get(nid).unwrap() == comm_id {
+                    if communities.get(nid) == Some(&comm_id) {
                         intra_community_degree += 1;
                     }
                     break;
@@ -214,7 +234,7 @@ pub async fn identify_core_concepts_v2(
     pool: &SqlitePool,
     book_id: &str,
     top_n_percent: Option<f64>,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, CoreConceptError> {
     // Fetch all nodes for this book
     let node_rows: Vec<(String, String, Option<String>, String)> = sqlx::query_as(
         "SELECT id, name, description, source_chunk_ids FROM nodes WHERE book_id = ?"
@@ -222,7 +242,7 @@ pub async fn identify_core_concepts_v2(
     .bind(book_id)
     .fetch_all(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| CoreConceptError::DatabaseError(e.to_string()))?;
 
     if node_rows.is_empty() {
         tracing::info!("[{}] No nodes found for core concept identification", book_id);
@@ -278,7 +298,7 @@ pub async fn identify_core_concepts_v2(
     let mut scored_nodes: Vec<(String, f64)> = enhanced_scores
         .into_iter()
         .collect();
-    scored_nodes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    scored_nodes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     // Determine how many nodes to mark as core
     let percent = top_n_percent.unwrap_or(0.1); // Default: top 10%
@@ -301,7 +321,7 @@ pub async fn identify_core_concepts_v2(
         .bind(book_id)
         .execute(pool)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| CoreConceptError::DatabaseError(e.to_string()))?;
 
     // Then, mark the selected nodes as core
     for node_id in &core_node_ids {
@@ -309,7 +329,7 @@ pub async fn identify_core_concepts_v2(
             .bind(node_id)
             .execute(pool)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| CoreConceptError::DatabaseError(e.to_string()))?;
     }
 
     Ok(core_node_ids)
@@ -320,11 +340,11 @@ fn calculate_pagerank_petgraph(
     graph: &UnGraph<String, ()>,
     node_indices: &HashMap<String, NodeIndex>,
     node_ids: &[String],
-) -> Result<HashMap<String, f64>, String> {
+) -> Result<HashMap<String, f64>, CoreConceptError> {
     // Build edge list from the graph
     let mut edges: Vec<(String, String)> = Vec::new();
     for edge in graph.edge_indices() {
-        let (a, b) = graph.edge_endpoints(edge).unwrap();
+        let Some((a, b)) = graph.edge_endpoints(edge) else { continue };
         // Find node_ids for these indices
         let node_a = node_indices.iter().find(|(_, idx)| **idx == a).map(|(id, _)| id.clone());
         let node_b = node_indices.iter().find(|(_, idx)| **idx == b).map(|(id, _)| id.clone());
@@ -401,14 +421,14 @@ fn calculate_pagerank(
 async fn get_frequency_scores(
     pool: &SqlitePool,
     book_id: &str,
-) -> Result<HashMap<String, usize>, String> {
+) -> Result<HashMap<String, usize>, CoreConceptError> {
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT id, source_chunk_ids FROM nodes WHERE book_id = ?"
     )
     .bind(book_id)
     .fetch_all(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| CoreConceptError::DatabaseError(e.to_string()))?;
 
     let mut frequencies: HashMap<String, usize> = HashMap::new();
 
@@ -428,14 +448,16 @@ pub async fn identify_core_concepts(
     book_id: &str,
     top_n_percent: Option<f64>,
     _fixed_count: Option<usize>,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, CoreConceptError> {
     // Delegate to the v2 implementation with community detection
     // The fixed_count parameter is deprecated in favor of top_n_percent
     identify_core_concepts_v2(pool, book_id, top_n_percent.or(Some(0.1))).await
 }
 
 /// Get core concepts with their details
+/// Reserved for future API use - returns core concepts with full metadata and scores.
 #[derive(Debug, serde::Serialize)]
+#[allow(dead_code)]
 pub struct CoreConcept {
     pub id: String,
     pub name: String,
@@ -446,10 +468,13 @@ pub struct CoreConcept {
     pub score: f64,
 }
 
+/// Fetch core concepts with their details for a book.
+/// Reserved for future API endpoint - currently unused but kept for planned concept browsing feature.
+#[allow(dead_code)]
 pub async fn get_core_concepts(
     pool: &SqlitePool,
     book_id: &str,
-) -> Result<Vec<CoreConcept>, String> {
+) -> Result<Vec<CoreConcept>, CoreConceptError> {
     let rows: Vec<(String, String, Option<String>, String, Option<i32>, String)> = sqlx::query_as(
         r#"
         SELECT id, name, description, examples, page_number, source_chunk_ids
@@ -461,7 +486,7 @@ pub async fn get_core_concepts(
     .bind(book_id)
     .fetch_all(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| CoreConceptError::DatabaseError(e.to_string()))?;
 
     // Calculate scores for sorting
     let frequency_scores = get_frequency_scores(pool, book_id).await?;

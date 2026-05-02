@@ -58,7 +58,7 @@ export function GlobalGraphView({
   const graphRef = useRef<ForceGraphMethods<ExtendedNode, ExtendedLink> | undefined>()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
-  const [pulseTime, setPulseTime] = useState(0)
+  const pulseTimeRef = useRef(0)
 
   // Load global graph data
   useEffect(() => {
@@ -116,11 +116,12 @@ export function GlobalGraphView({
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
-  // Pulse animation for core concepts
+  // Pulse animation for core concepts (ref-driven to avoid React re-renders)
   useEffect(() => {
     let animationId: number
     const animate = () => {
-      setPulseTime((prev) => prev + 0.016)
+      pulseTimeRef.current += 0.016
+      ;(graphRef.current as unknown as { refresh?: () => void })?.refresh?.()
       animationId = requestAnimationFrame(animate)
     }
     animate()
@@ -179,13 +180,13 @@ export function GlobalGraphView({
       }
 
       // Pulse animation for core concepts
-      const pulseScale = extNode.is_core ? 1 + Math.sin(pulseTime * 2) * 0.08 : 1
+      const pulseScale = extNode.is_core ? 1 + Math.sin(pulseTimeRef.current * 2) * 0.08 : 1
       const finalSize = (isHovered ? nodeSize * 1.2 : nodeSize) * pulseScale
 
       // Draw planetary glow for core concepts
       if (extNode.is_core) {
-        const glowIntensity = 0.3 + Math.sin(pulseTime * 2) * 0.2
-        const glowRadius = finalSize * (2.5 + Math.sin(pulseTime * 1.5) * 0.5)
+        const glowIntensity = 0.3 + Math.sin(pulseTimeRef.current * 2) * 0.2
+        const glowRadius = finalSize * (2.5 + Math.sin(pulseTimeRef.current * 1.5) * 0.5)
         const glowGradient = ctx.createRadialGradient(
           node.x, node.y, finalSize * 0.8,
           node.x, node.y, glowRadius
@@ -321,7 +322,7 @@ export function GlobalGraphView({
         ctx.shadowBlur = 0
       }
     },
-    [selectedNodeId, hoveredNode, pulseTime]
+    [selectedNodeId, hoveredNode]
   )
 
   const linkCanvasObject = useCallback(

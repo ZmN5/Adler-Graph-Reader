@@ -3,6 +3,34 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
+/// Errors that can occur during concept extraction operations
+#[derive(Debug)]
+pub enum ExtractorError {
+    DatabaseError(String),
+    LlmError(String),
+    ConfigError(String),
+    SerializationError(String),
+}
+
+impl std::fmt::Display for ExtractorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExtractorError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+            ExtractorError::LlmError(msg) => write!(f, "LLM error: {}", msg),
+            ExtractorError::ConfigError(msg) => write!(f, "Config error: {}", msg),
+            ExtractorError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ExtractorError {}
+
+impl From<crate::llm_client::LlmError> for ExtractorError {
+    fn from(err: crate::llm_client::LlmError) -> Self {
+        ExtractorError::LlmError(err.to_string())
+    }
+}
+
 /// Process a single chunk through LLM and store results
 async fn process_chunk(
     chunk_id: &str,
@@ -11,7 +39,7 @@ async fn process_chunk(
     language: &str,
     pool: &SqlitePool,
     llm: &LlmClient,
-) -> Result<(usize, usize), String> {
+) -> Result<(usize, usize), ExtractorError> {
     tracing::info!("[{}] Starting concept extraction for chunk (content length: {})", chunk_id, chunk_content.len());
 
     // Call LLM to extract concepts
@@ -21,7 +49,7 @@ async fn process_chunk(
         .await
         .map_err(|e| {
             tracing::error!("[{}] LLM call failed: {}", chunk_id, e);
-            e.to_string()
+            ExtractorError::LlmError(e.to_string())
         })?;
 
     tracing::info!("[{}] LLM returned {} concepts, {} relations",
@@ -41,7 +69,7 @@ async fn process_chunk(
 
     // Process relations and create edges
     for relation in &response.relations {
-        match create_edge_for_relation(pool, &relation, book_id, chunk_id).await {
+        match create_edge_for_relation(pool, relation, book_id, chunk_id).await {
             Ok(_) => edges_created += 1,
             Err(e) => tracing::warn!("Failed to create edge: {}", e),
         }
@@ -57,7 +85,7 @@ async fn create_node_for_concept(
     source_chunk_id: &str,
     book_id: &str,
     language: &str,
-) -> Result<(), String> {
+) -> Result<(), ExtractorError> {
     // Check if similar node exists (case-insensitive substring match)
     if let Some(existing_id) = find_node_by_name(pool, &concept.name, book_id).await? {
         // Merge: update existing node's source_chunk_ids and examples
@@ -68,8 +96,10 @@ async fn create_node_for_concept(
     // No similar node found, create new one
     let node_id = uuid::Uuid::new_v4().to_string();
     let created_at = chrono::Utc::now().to_rfc3339();
-    let examples_json = serde_json::to_string(&concept.examples).map_err(|e| e.to_string())?;
-    let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id]).map_err(|e| e.to_string())?;
+    let examples_json = serde_json::to_string(&concept.examples)
+        .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
+    let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id])
+        .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
 
     sqlx::query(
         r#"
@@ -91,7 +121,7 @@ async fn create_node_for_concept(
     .bind(&created_at)
     .execute(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     Ok(())
 }
@@ -102,7 +132,7 @@ async fn merge_node_sources(
     node_id: &str,
     new_chunk_id: &str,
     new_examples: &[String],
-) -> Result<(), String> {
+) -> Result<(), ExtractorError> {
     // Get existing source_chunk_ids and examples
     let (existing_chunk_ids, existing_examples): (String, String) = sqlx::query_as(
         "SELECT source_chunk_ids, examples FROM nodes WHERE id = ?"
@@ -110,7 +140,7 @@ async fn merge_node_sources(
     .bind(node_id)
     .fetch_one(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     let mut chunk_ids: Vec<String> = serde_json::from_str(&existing_chunk_ids).unwrap_or_default();
     let mut examples: Vec<String> = serde_json::from_str(&existing_examples).unwrap_or_default();
@@ -127,8 +157,10 @@ async fn merge_node_sources(
         }
     }
 
-    let updated_chunk_ids = serde_json::to_string(&chunk_ids).map_err(|e| e.to_string())?;
-    let updated_examples = serde_json::to_string(&examples).map_err(|e| e.to_string())?;
+    let updated_chunk_ids = serde_json::to_string(&chunk_ids)
+        .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
+    let updated_examples = serde_json::to_string(&examples)
+        .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
 
     sqlx::query("UPDATE nodes SET source_chunk_ids = ?, examples = ? WHERE id = ?")
         .bind(&updated_chunk_ids)
@@ -136,7 +168,7 @@ async fn merge_node_sources(
         .bind(node_id)
         .execute(pool)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     Ok(())
 }
@@ -146,7 +178,7 @@ async fn find_node_by_name(
     pool: &SqlitePool,
     name: &str,
     book_id: &str,
-) -> Result<Option<String>, String> {
+) -> Result<Option<String>, ExtractorError> {
     // Try exact match first
     let exact: Option<(String,)> = sqlx::query_as(
         "SELECT id FROM nodes WHERE book_id = ? AND LOWER(name) = LOWER(?)"
@@ -155,7 +187,7 @@ async fn find_node_by_name(
     .bind(name)
     .fetch_optional(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     if let Some((id,)) = exact {
         return Ok(Some(id));
@@ -176,7 +208,7 @@ async fn find_node_by_name(
     .bind(name)
     .fetch_optional(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     Ok(similar.map(|(id,)| id))
 }
@@ -187,7 +219,7 @@ async fn create_edge_for_relation(
     relation: &ExtractedRelation,
     book_id: &str,
     source_chunk_id: &str,
-) -> Result<(), String> {
+) -> Result<(), ExtractorError> {
     // Find or create source node
     let source_node_id = match find_node_by_name(pool, &relation.source_name, book_id).await? {
         Some(id) => {
@@ -199,8 +231,10 @@ async fn create_edge_for_relation(
             // Create a new node for the source concept, using relation's explanation as description
             let node_id = uuid::Uuid::new_v4().to_string();
             let created_at = chrono::Utc::now().to_rfc3339();
-            let examples_json = serde_json::to_string(&Vec::<String>::new()).map_err(|e| e.to_string())?;
-            let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id]).map_err(|e| e.to_string())?;
+            let examples_json = serde_json::to_string(&Vec::<String>::new())
+                .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
+            let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id])
+                .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
 
             sqlx::query(
                 r#"
@@ -217,7 +251,7 @@ async fn create_edge_for_relation(
             .bind(&created_at)
             .execute(pool)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
             node_id
         }
@@ -234,8 +268,10 @@ async fn create_edge_for_relation(
             // Create a new node for the target concept, using relation's explanation as description
             let node_id = uuid::Uuid::new_v4().to_string();
             let created_at = chrono::Utc::now().to_rfc3339();
-            let examples_json = serde_json::to_string(&Vec::<String>::new()).map_err(|e| e.to_string())?;
-            let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id]).map_err(|e| e.to_string())?;
+            let examples_json = serde_json::to_string(&Vec::<String>::new())
+                .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
+            let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id])
+                .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
 
             sqlx::query(
                 r#"
@@ -252,7 +288,7 @@ async fn create_edge_for_relation(
             .bind(&created_at)
             .execute(pool)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
             node_id
         }
@@ -267,7 +303,7 @@ async fn create_edge_for_relation(
     .bind(&relation.relation_type)
     .fetch_optional(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     if let Some((existing_id,)) = existing_edge {
         // Edge already exists, merge source_chunk_id into it
@@ -278,7 +314,8 @@ async fn create_edge_for_relation(
     // Create the edge
     let edge_id = uuid::Uuid::new_v4().to_string();
     let created_at = chrono::Utc::now().to_rfc3339();
-    let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id]).map_err(|e| e.to_string())?;
+    let source_chunk_ids_json = serde_json::to_string(&[source_chunk_id])
+        .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
 
     sqlx::query(
         r#"
@@ -294,7 +331,7 @@ async fn create_edge_for_relation(
     .bind(&created_at)
     .execute(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     Ok(())
 }
@@ -304,14 +341,14 @@ async fn merge_edge_sources(
     pool: &SqlitePool,
     edge_id: &str,
     new_chunk_id: &str,
-) -> Result<(), String> {
+) -> Result<(), ExtractorError> {
     let existing_chunk_ids: String = sqlx::query_scalar(
         "SELECT source_chunk_ids FROM edges WHERE id = ?"
     )
     .bind(edge_id)
     .fetch_one(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     let mut chunk_ids: Vec<String> = serde_json::from_str(&existing_chunk_ids).unwrap_or_default();
 
@@ -319,14 +356,15 @@ async fn merge_edge_sources(
         chunk_ids.push(new_chunk_id.to_string());
     }
 
-    let updated_chunk_ids = serde_json::to_string(&chunk_ids).map_err(|e| e.to_string())?;
+    let updated_chunk_ids = serde_json::to_string(&chunk_ids)
+        .map_err(|e| ExtractorError::SerializationError(e.to_string()))?;
 
     sqlx::query("UPDATE edges SET source_chunk_ids = ? WHERE id = ?")
         .bind(&updated_chunk_ids)
         .bind(edge_id)
         .execute(pool)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     Ok(())
 }
@@ -335,7 +373,7 @@ async fn merge_edge_sources(
 pub async fn extract_concepts_from_book(
     pool: &SqlitePool,
     book_id: &str,
-) -> Result<(usize, usize), String> {
+) -> Result<(usize, usize), ExtractorError> {
     tracing::info!("[{}] Starting concept extraction for book", book_id);
 
     // Get book language configuration from books table
@@ -346,7 +384,7 @@ pub async fn extract_concepts_from_book(
     .bind(book_id)
     .fetch_one(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     // Convert 'auto' to default language 'en', keep 'zh' or 'en' as-is
     let language = match book_language.as_str() {
@@ -363,7 +401,7 @@ pub async fn extract_concepts_from_book(
     .bind(book_id)
     .fetch_all(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ExtractorError::DatabaseError(e.to_string()))?;
 
     tracing::info!("[{}] Found {} chunks to process", book_id, chunks.len());
 
@@ -384,21 +422,22 @@ pub async fn extract_concepts_from_book(
 
     // Get LLM config from centralized config system
     let model_config = crate::config::get_model_config(&pool).await
-        .unwrap_or_else(|_| crate::config::ModelConfig {
-            embedding_model: "text-embedding-qwen3-embedding-0.6b".to_string(),
-            embedding_url: "http://localhost:1234/v1/embeddings".to_string(),
-            llm_model: "qwen3.5-9b".to_string(),
-            llm_api_url: "http://localhost:1234/v1".to_string(),
-            reranker_model: "qwen3.5-9b".to_string(),
-        });
+        .map_err(|e| ExtractorError::ConfigError(e.to_string()))?;
     let llm_api_url = model_config.llm_api_url;
     let llm_model = model_config.llm_model;
+    let api_key = model_config.api_key;
 
     let mut handles = Vec::new();
 
     for (chunk_id, content) in chunks {
         let pool = pool.clone();
-        let llm = LlmClient::new(&llm_api_url, &llm_model);
+        let llm = match LlmClient::new(&llm_api_url, &llm_model, &api_key) {
+            Ok(client) => client,
+            Err(e) => {
+                tracing::error!("[{}] Failed to create LLM client: {}", chunk_id, e);
+                continue;
+            }
+        };
         let semaphore = semaphore.clone();
         let book_id = book_id.to_string();
         let language = language.clone();
@@ -406,7 +445,7 @@ pub async fn extract_concepts_from_book(
 
         let handle = tokio::spawn(async move {
             tracing::debug!("[{}] Acquired permit, processing chunk (content len: {})", chunk_id, content_len);
-            let _permit = semaphore.acquire().await.unwrap();
+            let _permit = semaphore.acquire().await.ok();
 
             tracing::info!("[{}] Processing chunk...", chunk_id);
             let result = process_chunk(

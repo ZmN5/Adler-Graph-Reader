@@ -61,13 +61,14 @@ export function EPUBReader({
   const [currentChapter, setCurrentChapter] = useState<string>('Unknown')
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [currentChapterHref, setCurrentChapterHref] = useState<string | null>(null)
   const renditionRef = useRef<Rendition | null>(null)
   const tocRef = useRef<Chapter[]>([])
-  const currentChapterHrefRef = useRef<string | null>(null)
   const isNavigatingRef = useRef(false)
   const [isRenditionReady, setIsRenditionReady] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const eventCleanupRef = useRef<Array<() => void>>([])
 
   const bookUrl = `/api/books/${bookId}/file`
 
@@ -95,7 +96,7 @@ export function EPUBReader({
       )
       if (chapter) {
         setCurrentChapter(chapter.label)
-        currentChapterHrefRef.current = chapter.href
+        setCurrentChapterHref(chapter.href)
       }
       return
     }
@@ -115,7 +116,7 @@ export function EPUBReader({
           )
           if (chapter) {
             setCurrentChapter(chapter.label)
-            currentChapterHrefRef.current = chapter.href
+            setCurrentChapterHref(chapter.href)
           }
         }
       }
@@ -179,6 +180,14 @@ export function EPUBReader({
       doc.addEventListener('wheel', handleWheel, { passive: false })
       doc.addEventListener('touchstart', handleTouchStart, { passive: true })
       doc.addEventListener('touchmove', handleTouchMove, { passive: false })
+
+      // Store cleanup function for this content document
+      const cleanup = () => {
+        doc.removeEventListener('wheel', handleWheel)
+        doc.removeEventListener('touchstart', handleTouchStart)
+        doc.removeEventListener('touchmove', handleTouchMove)
+      }
+      eventCleanupRef.current.push(cleanup)
     })
 
     // Extract TOC from book
@@ -206,7 +215,7 @@ export function EPUBReader({
         // Set initial chapter name
         if (toc.length > 0) {
           setCurrentChapter(toc[0].label)
-          currentChapterHrefRef.current = toc[0].href
+          setCurrentChapterHref(toc[0].href)
         }
 
         setIsLoading(false)
@@ -257,7 +266,7 @@ export function EPUBReader({
             const chapter = tocRef.current.find((c) => c.href === chapterHref)
             if (chapter) {
               setCurrentChapter(chapter.label)
-              currentChapterHrefRef.current = chapter.href
+              setCurrentChapterHref(chapter.href)
             }
           }).catch(console.error)
         } else {
@@ -266,7 +275,7 @@ export function EPUBReader({
             const chapter = tocRef.current.find((c) => c.href === chapterHref)
             if (chapter) {
               setCurrentChapter(chapter.label)
-              currentChapterHrefRef.current = chapter.href
+              setCurrentChapterHref(chapter.href)
             }
           }).catch(console.error)
         }
@@ -283,7 +292,7 @@ export function EPUBReader({
   }, [highlightAnchor, chapterHref, pageNumber, totalPagesProp, isRenditionReady])
 
   // Chapter navigation helpers
-  const currentChapterIndex = chapters.findIndex((c) => c.href === currentChapterHrefRef.current)
+  const currentChapterIndex = chapters.findIndex((c) => c.href === currentChapterHref)
   const isFirstChapter = currentChapterIndex <= 0
   const isLastChapter = currentChapterIndex >= chapters.length - 1
 
@@ -338,6 +347,14 @@ export function EPUBReader({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [goToPrevChapter, goToNextChapter])
+
+  // Cleanup event listeners registered on iframe documents
+  useEffect(() => {
+    return () => {
+      eventCleanupRef.current.forEach((cleanup) => cleanup())
+      eventCleanupRef.current = []
+    }
+  }, [])
 
   return (
     <div className={cn('flex flex-col h-full', className)}>

@@ -205,13 +205,10 @@ pub fn parse_citations_from_response(
     response: &str,
     retrieval_outputs: &[crate::retrieval::RetrievalOutput],
 ) -> Vec<crate::llm_client::Citation> {
-    use regex::Regex;
-
-    let citation_pattern = Regex::new(r"\[Source:\s*(\d+)\]").unwrap();
     let mut seen_indices = std::collections::HashSet::new();
     let mut citations = Vec::new();
 
-    for caps in citation_pattern.captures_iter(response) {
+    for caps in crate::utils::CITATION_REGEX.captures_iter(response) {
         if let Ok(idx) = caps[1].parse::<usize>() {
             if idx > 0 && idx <= retrieval_outputs.len() && seen_indices.insert(idx) {
                 let result = &retrieval_outputs[idx - 1];
@@ -231,27 +228,46 @@ pub fn parse_citations_from_response(
     citations
 }
 
+/// Errors that can occur during chat operations
+#[derive(Debug)]
+pub enum ChatError {
+    ConfigError(String),
+    RetrievalError(String),
+}
+
+impl std::fmt::Display for ChatError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChatError::ConfigError(msg) => write!(f, "Config error: {}", msg),
+            ChatError::RetrievalError(msg) => write!(f, "Retrieval error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ChatError {}
+
 /// Perform RAG retrieval for a chat query
 pub async fn retrieve_for_chat(
     pool: &SqlitePool,
     book_id: &str,
     query: &str,
-) -> Result<Vec<crate::retrieval::RetrievalOutput>, String> {
+) -> Result<Vec<crate::retrieval::RetrievalOutput>, ChatError> {
     let model_config = config::get_model_config(pool)
         .await
-        .map_err(|e| format!("Failed to get model config: {}", e))?;
+        .map_err(|e| ChatError::ConfigError(e.to_string()))?;
 
     let retriever = HybridRetriever::new(
         pool.clone(),
         model_config.llm_api_url,
         model_config.embedding_model,
         model_config.embedding_url,
+        model_config.api_key,
     );
 
     let results = retriever
         .retrieve_for_query(query, Some(book_id), Some(5))
         .await
-        .map_err(|e| format!("Retrieval failed: {}", e))?;
+        .map_err(|e| ChatError::RetrievalError(e.to_string()))?;
 
     Ok(results)
 }
@@ -366,9 +382,16 @@ pub async fn stream_chat_response(
             }
         };
 
-        let llm_client = LlmClient::new(&model_config.llm_api_url,
-            &model_config.llm_model,
-        );
+        let llm_client = match LlmClient::new(&model_config.llm_api_url, &model_config.llm_model, &model_config.api_key) {
+            Ok(client) => client,
+            Err(e) => {
+                yield Ok(Event::default().data(
+                    serde_json::json!({"type": "error", "message": format!("LLM client error: {}", e)}).to_string()
+                ));
+                yield Ok(Event::default().data(r#"{"type":"done"}"#));
+                return;
+            }
+        };
 
         let mut full_text = String::new();
         let mut token_stream = llm_client.into_chat_stream(messages);

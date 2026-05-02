@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { listBooks, deleteBook, extractBook, parseBook, BookSummary } from '@/lib/api-client'
 import { Book, Trash2, Sparkles, FileText, BookOpen, CheckCircle, PlayCircle } from 'lucide-react'
@@ -27,6 +27,15 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
   const [extractionError, setExtractionError] = useState<{ bookId: string; message: string } | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<{ id: string; name: string } | null>(null)
+  const extractionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (extractionTimeoutRef.current) {
+        clearTimeout(extractionTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const loadBooks = useCallback(async () => {
     try {
@@ -78,7 +87,8 @@ export function BookList({ className, onSelectBook, onUploadSuccess, onExtractio
       await loadBooks()
 
       // Auto-clear result after 5 seconds
-      setTimeout(() => {
+      if (extractionTimeoutRef.current) clearTimeout(extractionTimeoutRef.current)
+      extractionTimeoutRef.current = setTimeout(() => {
         setExtractionResult((prev) =>
           prev?.bookId === book.id ? null : prev
         )

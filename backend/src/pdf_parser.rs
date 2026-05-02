@@ -7,17 +7,37 @@ use crate::config;
 use crate::embedding;
 use crate::text_utils::split_text_with_overlap;
 
+/// Errors that can occur during PDF parsing operations
+#[derive(Debug)]
+pub enum PdfParseError {
+    FileNotFound(String),
+    ExtractError(String),
+    DatabaseError(String),
+}
+
+impl std::fmt::Display for PdfParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PdfParseError::FileNotFound(msg) => write!(f, "File not found: {}", msg),
+            PdfParseError::ExtractError(msg) => write!(f, "Extract error: {}", msg),
+            PdfParseError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for PdfParseError {}
+
 /// Parse a PDF file and create chunks in the database
 /// Each page becomes a chunk, or pages are split into ~16000 char segments (~4000 tokens) with overlap
-pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Result<usize, String> {
+pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Result<usize, PdfParseError> {
     // Verify file exists
     let path = Path::new(file_path);
     if !path.exists() {
-        return Err(format!("PDF file not found: {}", file_path));
+        return Err(PdfParseError::FileNotFound(file_path.to_string()));
     }
 
     // Extract text from PDF
-    let full_text = extract_text(path).map_err(|e| format!("Failed to extract text from PDF: {}", e))?;
+    let full_text = extract_text(path).map_err(|e| PdfParseError::ExtractError(format!("Failed to extract text from PDF: {}", e)))?;
 
     // Get total pages by counting page markers in the extracted text
     // pdf-extract extracts text page by page, separated by page markers
@@ -30,14 +50,14 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
         .bind(book_id)
         .execute(pool)
         .await
-        .map_err(|e| format!("Failed to update total_pages: {}", e))?;
+        .map_err(|e| PdfParseError::DatabaseError(format!("Failed to update total_pages: {}", e)))?;
 
     // Delete existing chunks for this book (in case of re-parsing)
     sqlx::query("DELETE FROM chunks WHERE book_id = ?")
         .bind(book_id)
         .execute(pool)
         .await
-        .map_err(|e| format!("Failed to delete existing chunks: {}", e))?;
+        .map_err(|e| PdfParseError::DatabaseError(format!("Failed to delete existing chunks: {}", e)))?;
 
     // Create chunks from pages
     // Strategy: each page is one chunk, with a target of ~16000 chars (~4000 tokens) per chunk
@@ -63,21 +83,21 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
             .bind(book_id)
             .bind(page_num)
             .bind(page_num)
-            .bind(&page_text)
+            .bind(page_text)
             .bind(&created_at)
             .execute(pool)
             .await
-            .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+            .map_err(|e| PdfParseError::DatabaseError(format!("Failed to insert chunk: {}", e)))?;
 
             // Insert into FTS table
             sqlx::query(
                 "INSERT INTO chunks_fts (chunk_id, content) VALUES (?, ?)"
             )
             .bind(&chunk_id)
-            .bind(&page_text)
+            .bind(page_text)
             .execute(pool)
             .await
-            .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+            .map_err(|e| PdfParseError::DatabaseError(format!("Failed to insert FTS entry: {}", e)))?;
 
             chunks_created += 1;
         } else {
@@ -98,7 +118,7 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
                 .bind(&created_at)
                 .execute(pool)
                 .await
-                .map_err(|e| format!("Failed to insert chunk: {}", e))?;
+                .map_err(|e| PdfParseError::DatabaseError(format!("Failed to insert chunk: {}", e)))?;
 
                 // Insert into FTS table
                 sqlx::query(
@@ -108,7 +128,7 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
                 .bind(chunk_content)
                 .execute(pool)
                 .await
-                .map_err(|e| format!("Failed to insert FTS entry: {}", e))?;
+                .map_err(|e| PdfParseError::DatabaseError(format!("Failed to insert FTS entry: {}", e)))?;
 
                 chunks_created += 1;
             }
@@ -133,6 +153,7 @@ pub async fn parse_pdf(book_id: &str, file_path: &str, pool: &SqlitePool) -> Res
             &book_id_clone,
             &model_config.embedding_model,
             &model_config.embedding_url,
+            &model_config.api_key,
         )
         .await
         {
@@ -193,4 +214,3 @@ fn split_pages_from_text(text: &str) -> Vec<String> {
 
     pages
 }
-

@@ -9,7 +9,9 @@ export function useHighlight() {
   // Clear timeout on unmount
   useEffect(() => {
     return () => {
-      timeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const timeouts = timeoutsRef.current
+      timeouts.forEach((timeout) => clearTimeout(timeout))
     }
   }, [])
 

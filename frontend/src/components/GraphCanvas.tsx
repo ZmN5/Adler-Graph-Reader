@@ -135,13 +135,14 @@ export function GraphCanvas({
   // Pulse animation for core concepts - uses ref to avoid React re-renders
   useEffect(() => {
     let animationId: number
-    let startTime = Date.now()
+    const startTime = Date.now()
 
     const animate = () => {
       const elapsed = Date.now() - startTime
       pulseTimeRef.current = elapsed / 1000
-      // Force graph redraw via internal method (typed as any since it's not in d.ts)
-      ;(graphRef.current as any)?.refresh()
+      // Force graph redraw via internal method
+      const graph = graphRef.current as unknown as { refresh?: () => void } | undefined
+      graph?.refresh?.()
       animationId = requestAnimationFrame(animate)
     }
     animate()
@@ -227,10 +228,10 @@ export function GraphCanvas({
   // Center on selected node
   useEffect(() => {
     if (selectedNodeId && graphRef.current) {
-      // Use timeout to allow graph to render first
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         graphRef.current?.centerAt(0, 0, 500)
       }, 100)
+      return () => clearTimeout(timeoutId)
     }
   }, [selectedNodeId])
 
