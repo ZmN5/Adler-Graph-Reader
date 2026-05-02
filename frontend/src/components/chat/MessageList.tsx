@@ -63,8 +63,8 @@ function MessageBubble({
       >
         <div
           className={cn(
-            'text-sm leading-relaxed whitespace-pre-wrap',
-            isUser ? 'text-white' : 'text-gray-700'
+            'text-sm leading-relaxed',
+            isUser ? 'text-white whitespace-pre-wrap' : 'text-gray-700'
           )}
         >
           {isUser ? (

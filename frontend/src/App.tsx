@@ -26,6 +26,7 @@ function App() {
   const [epubChapterHref, setEpubChapterHref] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'graph' | 'core-concepts'>('graph')
   const [highlightChunkId, setHighlightChunkId] = useState<string | null>(null)
+  const [highlightText, setHighlightText] = useState<string | null>(null)
   const [isReaderCollapsed, setIsReaderCollapsed] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
@@ -72,11 +73,21 @@ function App() {
     if (!selectedBook) return
 
     try {
-      // Get chunk details to find the page number
+      // Get chunk details to find the page number and content
       const chunk = await getChunk(chunkId)
 
       // Set highlight chunk ID for both PDF and EPUB
       setHighlightChunkId(chunkId)
+
+      // Extract search text from chunk content for highlighting
+      const content = chunk.content || ''
+      // Use first 120 chars as search text, trying to avoid cutting mid-sentence
+      let searchText = content.slice(0, 120).trim()
+      const lastSpace = searchText.lastIndexOf(' ')
+      if (lastSpace > 60) {
+        searchText = searchText.slice(0, lastSpace)
+      }
+      setHighlightText(searchText || null)
 
       // Navigate to the page/chapter
       if (selectedBook.format.toLowerCase() === 'pdf') {
@@ -127,6 +138,7 @@ function App() {
                       className="h-full"
                       pageNumber={pdfPageNumber}
                       highlightChunkId={highlightChunkId}
+                      highlightText={highlightText}
                     />
                   ) : (
                     <EPUBReader
@@ -134,7 +146,7 @@ function App() {
                       className="h-full"
                       chapterHref={epubChapterHref}
                       totalPages={selectedBook.total_pages ?? undefined}
-                      highlightAnchor={null}
+                      highlightText={highlightText}
                     />
                   )}
                 </div>

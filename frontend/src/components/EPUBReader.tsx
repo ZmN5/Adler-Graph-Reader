@@ -9,6 +9,8 @@ interface EPUBReaderProps {
   bookId: string
   className?: string
   highlightAnchor?: string | null
+  /** Text to search and highlight within chapters */
+  highlightText?: string | null
   /** External page number to navigate to (approximate for EPUB based on percentage) */
   pageNumber?: number
   /** Total pages for calculating percentage position in EPUB */
@@ -53,6 +55,7 @@ export function EPUBReader({
   bookId,
   className,
   highlightAnchor,
+  highlightText,
   pageNumber,
   totalPages: totalPagesProp,
   chapterHref,
@@ -64,48 +67,25 @@ export function EPUBReader({
   const [currentChapterHref, setCurrentChapterHref] = useState<string | null>(null)
   const renditionRef = useRef<Rendition | null>(null)
   const tocRef = useRef<Chapter[]>([])
-  const isNavigatingRef = useRef(false)
   const [isRenditionReady, setIsRenditionReady] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const eventCleanupRef = useRef<Array<() => void>>([])
+  const highlightAnnotationRef = useRef<string | null>(null)
+  const pendingHighlightRef = useRef<string | null>(null)
 
   const bookUrl = `/api/books/${bookId}/file`
 
-  // Handle location changes
+  // Handle location changes from react-reader / epubjs
   const locationChanged = useCallback((loc: string) => {
-
-    const rendition = renditionRef.current
-    if (!rendition) return
-
-    // For href navigation (from TOC), we need to handle it ourselves because
-    // react-reader's componentDidUpdate might not work correctly with href strings
-    if (!loc.includes('epubcfi') && !loc.includes('epubcfi(')) {
-      // For href navigation, use rendition.display() directly
-      // Then the CFI-based locationChanged will fire and we can update state from that
-      rendition.display(loc).then(() => {
-      }).catch((err) => {
-        console.error('[EPUBReader] display(href) failed:', err)
-      })
-      // Update location state immediately - don't wait for display() to complete
-      setLocation(loc)
-      // Also find and set the current chapter label right away
-      const chapter = tocRef.current.find((c) =>
-        loc.toLowerCase().includes(c.href.toLowerCase()) ||
-        c.href.toLowerCase().includes(loc.toLowerCase())
-      )
-      if (chapter) {
-        setCurrentChapter(chapter.label)
-        setCurrentChapterHref(chapter.href)
-      }
-      return
-    }
-
-    // For CFI navigation, just update the location state
+    // Always update location state so react-reader tracks the current position
     setLocation(loc)
 
     // Update current chapter based on location
     if (tocRef.current.length > 0) {
+      const rendition = renditionRef.current
+      if (!rendition) return
+
       const locResult = rendition.currentLocation()
       const handleLocObj = (result: { start?: { href?: string } }) => {
         const currentHref = result?.start?.href
@@ -124,6 +104,67 @@ export function EPUBReader({
         console.error('[EPUBReader] currentLocation() failed:', err)
       })
     }
+
+    // Apply pending highlight after navigation completes
+    if (pendingHighlightRef.current) {
+      const searchText = pendingHighlightRef.current
+      pendingHighlightRef.current = null
+
+      const rendition = renditionRef.current
+      const book = (rendition as unknown as { book?: Book }).book
+      if (!book || typeof (book as unknown as { find?: (text: string) => Promise<Array<{ cfi: string; excerpt: string }>> }).find !== 'function') {
+        return
+      }
+
+      // Delay slightly to ensure chapter content is loaded
+      setTimeout(async () => {
+        try {
+          // Clear previous highlight annotation
+          if (highlightAnnotationRef.current && rendition) {
+            try {
+              rendition.annotations.remove('highlight', highlightAnnotationRef.current)
+            } catch {
+              // ignore removal errors
+            }
+            highlightAnnotationRef.current = null
+          }
+
+          const trimmed = searchText.trim()
+          if (!trimmed) return
+
+          let results: Array<{ cfi: string; excerpt: string }> = []
+          results = await (book as unknown as { find: (text: string) => Promise<Array<{ cfi: string; excerpt: string }>> }).find(trimmed)
+
+          // Fallback: search for first 60 chars
+          if (results.length === 0 && trimmed.length > 60) {
+            const fallback = trimmed.slice(0, 60).trim()
+            if (fallback.length >= 10) {
+              results = await (book as unknown as { find: (text: string) => Promise<Array<{ cfi: string; excerpt: string }>> }).find(fallback)
+            }
+          }
+
+          if (results.length === 0 || !rendition) return
+
+          const result = results[0]
+          const cfi = result.cfi
+
+          rendition.annotations.add(
+            'highlight',
+            cfi,
+            {},
+            () => {},
+            'reader-highlight',
+            {
+              fill: 'rgba(255, 215, 0, 0.4)',
+              'fill-opacity': '0.4',
+            }
+          )
+          highlightAnnotationRef.current = cfi
+        } catch (err) {
+          console.error('Failed to highlight text in EPUB:', err)
+        }
+      }, 200)
+    }
   }, [])
 
   // Get rendition when ready
@@ -131,7 +172,7 @@ export function EPUBReader({
     renditionRef.current = rendition
     setIsRenditionReady(true)
 
-    // Inject CSS to apply Apple light theme
+    // Inject CSS to apply Apple light theme and highlight styles
     rendition.hooks.content.register((contents: Contents) => {
       contents.addStylesheetCss(`
         body, html {
@@ -146,6 +187,10 @@ export function EPUBReader({
         }
         a {
           color: #007AFF !important;
+        }
+        .reader-highlight {
+          background-color: rgba(255, 215, 0, 0.4) !important;
+          border-radius: 2px !important;
         }
       `, 'apple-theme-fix')
 
@@ -226,70 +271,27 @@ export function EPUBReader({
     }
   }, [])
 
-  // Handle highlight/chapter navigation from props
+  // Unified navigation effect: all prop-driven navigation goes through setLocation
+  // so react-reader's componentDidUpdate handles the single rendition.display() call
   useEffect(() => {
-    if (!renditionRef.current || !isRenditionReady) {
-      return
-    }
-
-    const rendition = renditionRef.current
+    if (!isRenditionReady) return
 
     // Priority: highlightAnchor (CFI) > chapterHref > pageNumber
     if (highlightAnchor) {
-      if (highlightAnchor.includes('epubcfi')) {
-        rendition.display(highlightAnchor).then(() => setLocation(highlightAnchor)).catch(console.error)
-      } else {
-        // It's a chapter href - use spine.get() to find correct spine item
-        const book = (rendition as unknown as { book?: Book }).book
-        if (book && book.spine) {
-          const spineItem = book.spine.get(highlightAnchor)
-          if (spineItem) {
-            rendition.display(spineItem.index).then(() => setLocation(highlightAnchor)).catch(console.error)
-          } else {
-            rendition.display(highlightAnchor).then(() => setLocation(highlightAnchor)).catch(console.error)
-          }
-        } else {
-          rendition.display(highlightAnchor).then(() => setLocation(highlightAnchor)).catch(console.error)
-        }
-      }
+      setLocation(highlightAnchor)
     } else if (chapterHref) {
-
-      // Use spine.get() to find correct spine item
-      const book = (rendition as unknown as { book?: Book }).book
-      if (book && book.spine) {
-        const spineItem = book.spine.get(chapterHref)
-        if (spineItem) {
-          rendition.display(spineItem.index).then(() => {
-            setLocation(chapterHref)
-            // Immediately update currentChapter from tocRef - don't rely on currentLocation()
-            // which can return nav.xhtml instead of the actual chapter
-            const chapter = tocRef.current.find((c) => c.href === chapterHref)
-            if (chapter) {
-              setCurrentChapter(chapter.label)
-              setCurrentChapterHref(chapter.href)
-            }
-          }).catch(console.error)
-        } else {
-          rendition.display(chapterHref).then(() => {
-            setLocation(chapterHref)
-            const chapter = tocRef.current.find((c) => c.href === chapterHref)
-            if (chapter) {
-              setCurrentChapter(chapter.label)
-              setCurrentChapterHref(chapter.href)
-            }
-          }).catch(console.error)
-        }
-      } else {
-        rendition.display(chapterHref).then(() => setLocation(chapterHref)).catch(console.error)
+      setLocation(chapterHref)
+      // Queue highlight for after navigation completes
+      if (highlightText) {
+        pendingHighlightRef.current = highlightText
       }
     } else if (pageNumber && pageNumber > 0) {
-      // Convert page number to percentage for EPUB
       const percentage = totalPagesProp && totalPagesProp > 0
         ? (pageNumber - 1) / totalPagesProp
         : (pageNumber - 1) / 100
-      rendition.display(Math.max(0, Math.min(0.999, percentage))).catch(console.error)
+      setLocation(Math.max(0, Math.min(0.999, percentage)))
     }
-  }, [highlightAnchor, chapterHref, pageNumber, totalPagesProp, isRenditionReady])
+  }, [highlightAnchor, chapterHref, pageNumber, totalPagesProp, isRenditionReady, highlightText])
 
   // Chapter navigation helpers
   const currentChapterIndex = chapters.findIndex((c) => c.href === currentChapterHref)
@@ -297,21 +299,11 @@ export function EPUBReader({
   const isLastChapter = currentChapterIndex >= chapters.length - 1
 
   const goToChapter = useCallback((index: number) => {
-    const rendition = renditionRef.current
-    if (!rendition || index < 0 || index >= chapters.length) return
-    if (isNavigatingRef.current) return
+    if (index < 0 || index >= chapters.length) return
     const chapter = chapters[index]
     if (!chapter) return
-    isNavigatingRef.current = true
-    // Only call rendition.display() — do NOT setLocation here.
-    // locationChanged callback will update location state and current chapter
-    // when epubjs fires the location change event, preventing duplicate display() calls.
-    rendition.display(chapter.href)
-      .then(() => { isNavigatingRef.current = false })
-      .catch((err) => {
-        isNavigatingRef.current = false
-        console.error('[EPUBReader] goToChapter failed:', err)
-      })
+    // Navigate via setLocation so react-reader handles the single rendition.display() call
+    setLocation(chapter.href)
   }, [chapters])
 
   const goToPrevChapter = useCallback(() => {

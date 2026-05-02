@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-client'
 import { useTranslation } from '@/lib/i18n'
 import { X, FileText } from 'lucide-react'
+import { MarkdownRenderer } from './MarkdownRenderer'
 import { NodeSummary } from './node-detail/NodeSummary'
 import { NodeCitations } from './node-detail/NodeCitations'
 import { NodeEdges } from './node-detail/NodeEdges'
@@ -259,7 +260,7 @@ export function NodeDetailPanel({
     }
   }, [node])
 
-  // Render summary with clickable citation markers
+  // Render summary with clickable citation markers and Markdown support
   const renderSummaryWithCitations = useCallback((summaryText: string) => {
     // Use streamingCitations if available, otherwise use summary.citations
     const citations = streamingCitations.length > 0 ? streamingCitations : (summary?.citations || [])
@@ -285,7 +286,24 @@ export function NodeDetailPanel({
           </button>
         )
       }
-      return <span key={index}>{part}</span>
+      // Determine if this part contains block-level markdown
+      const trimmed = part.trimStart()
+      const isBlock =
+        part.includes('\n\n') ||
+        trimmed.startsWith('#') ||
+        trimmed.startsWith('- ') ||
+        trimmed.startsWith('* ') ||
+        trimmed.startsWith('1. ') ||
+        trimmed.startsWith('> ') ||
+        trimmed.startsWith('```') ||
+        trimmed.startsWith('|')
+      return (
+        <MarkdownRenderer
+          key={index}
+          text={part}
+          inline={!isBlock}
+        />
+      )
     })
   }, [streamingCitations, summary?.citations, handleCitationClick])
 

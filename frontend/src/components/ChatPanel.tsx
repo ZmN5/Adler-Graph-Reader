@@ -17,6 +17,7 @@ import { ConversationList } from './chat/ConversationList'
 import { MessageList } from './chat/MessageList'
 import { MessageInput } from './chat/MessageInput'
 import { NodeContextBanner } from './chat/NodeContextBanner'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 export interface ChatPanelProps {
   bookId: string
@@ -256,7 +257,7 @@ export function ChatPanel({
     }
   }, [inputText, currentConversationId, isStreaming])
 
-  // Render citations in text
+  // Render citations in text with Markdown support
   const renderTextWithCitations = useCallback(
     (text: string, citations: Citation[]) => {
       const parts = text.split(/(\[Source:\s*\d+\])/g)
@@ -281,7 +282,24 @@ export function ChatPanel({
             </button>
           )
         }
-        return <span key={index}>{part}</span>
+        // Determine if this part contains block-level markdown
+        const trimmed = part.trimStart()
+        const isBlock =
+          part.includes('\n\n') ||
+          trimmed.startsWith('#') ||
+          trimmed.startsWith('- ') ||
+          trimmed.startsWith('* ') ||
+          trimmed.startsWith('1. ') ||
+          trimmed.startsWith('> ') ||
+          trimmed.startsWith('```') ||
+          trimmed.startsWith('|')
+        return (
+          <MarkdownRenderer
+            key={index}
+            text={part}
+            inline={!isBlock}
+          />
+        )
       })
     },
     [onCitationClick]

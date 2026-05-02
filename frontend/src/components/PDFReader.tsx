@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { FileText } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
+import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 
 // Set worker source
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
@@ -10,6 +11,8 @@ interface PDFReaderProps {
   bookId: string
   className?: string
   highlightChunkId?: string | null
+  /** Text to search and highlight on the page */
+  highlightText?: string | null
   /** External page number to navigate to */
   pageNumber?: number
 }
@@ -21,10 +24,18 @@ interface PageInfo {
   yOffset: number
 }
 
+interface HighlightRect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
 export function PDFReader({
   bookId,
   className,
   highlightChunkId,
+  highlightText,
   pageNumber,
 }: PDFReaderProps) {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
@@ -36,6 +47,8 @@ export function PDFReader({
   const [containerReady, setContainerReady] = useState(false)
   // Trigger to force re-render of visible pages after dimension recalculation
   const [recalcTrigger, setRecalcTrigger] = useState(0)
+  // Highlight state: page number -> array of highlight rects
+  const [pageHighlights, setPageHighlights] = useState<Map<number, HighlightRect[]>>(new Map())
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null)
@@ -50,6 +63,8 @@ export function PDFReader({
   const scaleRef = useRef(1)
   const containerWidthRef = useRef(0)
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null)
+  const highlightTextRef = useRef(highlightText)
+  highlightTextRef.current = highlightText
 
   // Load PDF document only (dimension calculation happens in recalculate effect)
   useEffect(() => {
@@ -61,6 +76,7 @@ export function PDFReader({
     setPageInfos([])
     setTotalHeight(0)
     renderingRef.current.clear()
+    setPageHighlights(new Map())
 
     const loadPdf = async () => {
       try {
@@ -300,7 +316,117 @@ export function PDFReader({
     }
   }, [pageNumber, pageInfos])
 
-  // Highlight handling
+  // Search and highlight text when highlightText changes
+  useEffect(() => {
+    if (!pdfDoc || pageInfos.length === 0 || !highlightText) {
+      if (!highlightText) setPageHighlights(new Map())
+      return
+    }
+
+    const searchAndHighlight = async () => {
+      const newHighlights = new Map<number, HighlightRect[]>()
+      const search = highlightText.trim()
+      if (!search) {
+        setPageHighlights(newHighlights)
+        return
+      }
+
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        try {
+          const page = await pdfDoc.getPage(pageNum)
+          const textContent = await page.getTextContent()
+          const items = textContent.items as TextItem[]
+
+          // Build full page text and map positions to items
+          let fullText = ''
+          const itemRanges: { item: TextItem; start: number; end: number }[] = []
+
+          for (const item of items) {
+            const start = fullText.length
+            fullText += item.str
+            itemRanges.push({ item, start, end: fullText.length })
+          }
+
+          // Search for highlight text
+          let matchIndex = fullText.indexOf(search)
+          if (matchIndex === -1) {
+            // Fallback: search for first 60 chars
+            const fallback = search.slice(0, 60).trim()
+            if (fallback.length >= 10) {
+              matchIndex = fullText.indexOf(fallback)
+            }
+          }
+
+          if (matchIndex === -1) continue
+
+          const pageInfo = pageInfos.find(p => p.pageNumber === pageNum)
+          if (!pageInfo) continue
+
+          const baseViewport = page.getViewport({ scale: 1 })
+          const displayScale = pageInfo.width / baseViewport.width
+
+          const matchStart = matchIndex
+          const matchEnd = matchIndex + search.length
+          const rects: HighlightRect[] = []
+
+          for (const { item, start, end } of itemRanges) {
+            if (end <= matchStart || start >= matchEnd) continue
+
+            const transform = item.transform
+            const itemX = transform[4]
+            const itemY = transform[5]
+
+            // Calculate overlap ratio within this item
+            const overlapStart = Math.max(start, matchStart)
+            const overlapEnd = Math.min(end, matchEnd)
+            const charStart = overlapStart - start
+            const charEnd = overlapEnd - start
+            const ratio = charEnd > charStart ? (charEnd - charStart) / item.str.length : 1
+
+            // Convert to display coordinates
+            const x = itemX * displayScale
+            const y = (baseViewport.height - itemY) * displayScale
+            const w = item.width * ratio * displayScale
+            const h = item.height * displayScale
+
+            rects.push({
+              left: x,
+              top: y - h * 0.8,
+              width: w,
+              height: h * 1.2,
+            })
+          }
+
+          if (rects.length > 0) {
+            newHighlights.set(pageNum, rects)
+          }
+        } catch (err) {
+          console.error(`Failed to highlight page ${pageNum}:`, err)
+        }
+      }
+
+      setPageHighlights(newHighlights)
+
+      // Scroll to first highlight
+      for (const [pageNum, rects] of newHighlights) {
+        if (rects.length > 0) {
+          const pageInfo = pageInfos.find(p => p.pageNumber === pageNum)
+          if (pageInfo && scrollContainerRef.current) {
+            const targetY = pageInfo.yOffset + rects[0].top - 50
+            scrollContainerRef.current.scrollTo({
+              top: Math.max(0, targetY),
+              behavior: 'smooth',
+            })
+          }
+          break
+        }
+      }
+    }
+
+    searchAndHighlight()
+  }, [pdfDoc, pageInfos, highlightText])
+
+  // Highlight chunk ID logging (kept for debugging)
   useEffect(() => {
     if (highlightChunkId) {
       console.log('Highlight chunk:', highlightChunkId)
@@ -370,6 +496,22 @@ export function PDFReader({
                   height: '100%',
                 }}
               />
+              {/* Highlight overlay layer */}
+              {pageHighlights.get(pageInfo.pageNumber)?.map((rect, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    position: 'absolute',
+                    left: rect.left,
+                    top: rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                    backgroundColor: 'rgba(255, 215, 0, 0.35)',
+                    borderRadius: '2px',
+                    pointerEvents: 'none',
+                  }}
+                />
+              ))}
             </div>
           ))}
         </div>
