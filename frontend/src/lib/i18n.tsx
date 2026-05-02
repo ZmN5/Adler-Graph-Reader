@@ -223,6 +223,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 }
 
 // Hook to use translations
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTranslation() {
   const context = useContext(I18nContext)
   // Always call hook at top level to satisfy rules-of-hooks
