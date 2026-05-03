@@ -224,8 +224,9 @@ fn build_chat_user_message(
                 format!("Pages {}-{}", result.page_start, result.page_end)
             };
             // Truncate content (char-safe for multi-byte UTF-8)
-            let truncated = if result.content.chars().count() > 1500 {
-                format!("{}...[content truncated]", result.content.chars().take(1500).collect::<String>())
+            // Use conservative limit to stay within small-model context windows
+            let truncated = if result.content.chars().count() > 500 {
+                format!("{}...[content truncated]", result.content.chars().take(500).collect::<String>())
             } else {
                 result.content.clone()
             };
@@ -526,15 +527,33 @@ pub fn build_chat_messages(
 ) -> Vec<ChatMessage> {
     let mut messages = vec![ChatMessage::new("system", &build_chat_system_prompt())];
 
-    // Add history (skip system messages if any in DB)
-    for msg in history {
+    // Add history (skip system messages if any in DB, and skip the last
+    // user message since we append an enriched version below)
+    let history_len = history.len();
+    let mut prev_role: Option<&str> = None;
+    for (i, msg) in history.iter().enumerate() {
         if msg.role == "system" {
             continue;
+        }
+        if i == history_len - 1 && msg.role == "user" {
+            continue;
+        }
+        if msg.content.trim().is_empty() {
+            continue;
+        }
+        // Insert a synthetic separator if two user messages appear back-to-back
+        // (happens when a prior turn produced an empty assistant response)
+        if msg.role == "user" && prev_role == Some("user") {
+            messages.push(ChatMessage::new(
+                "assistant",
+                "[No response generated for the previous question. Please focus on the latest question.]",
+            ));
         }
         messages.push(ChatMessage::new(
             &msg.role,
             &msg.content,
         ));
+        prev_role = Some(&msg.role);
     }
 
     // Add current user message with retrieved sources and node context
@@ -745,7 +764,7 @@ pub async fn stream_chat_response(
             }
 
             let total = merged.len();
-            merged.truncate(8);
+            merged.truncate(5);
 
             tracing::info!(
                 "[Chat] Node-aware: {} source + {} fused → {} merged (from {})",
@@ -820,7 +839,7 @@ pub async fn stream_chat_response(
                     yield Ok(Event::default().data(text_chunk.to_string()));
                 }
                 Ok(SummaryStreamItem::Done) => {
-                    yield Ok(Event::default().data(r#"{"type":"done"}"#));
+                    // Don't send done yet — post-processing handles it
                 }
                 Err(e) => {
                     let error_chunk = serde_json::json!({
@@ -835,7 +854,26 @@ pub async fn stream_chat_response(
             }
         }
 
-        // 7. Parse citations
+        // 7. Handle empty response: roll back user message and signal error
+        if full_text.trim().is_empty() {
+            tracing::warn!("[Chat] Assistant response was empty, rolling back turn");
+            // Delete the unanswered user message so history stays clean
+            if let Err(e) = sqlx::query(
+                "DELETE FROM messages WHERE id = (SELECT id FROM messages WHERE conversation_id = ? AND role = 'user' ORDER BY created_at DESC LIMIT 1)"
+            )
+            .bind(&conversation_id)
+            .execute(&pool)
+            .await {
+                tracing::error!("[Chat] Failed to delete unanswered user message: {}", e);
+            }
+            yield Ok(Event::default().data(
+                serde_json::json!({"type": "error", "message": "LLM returned an empty response. Please try again."}).to_string()
+            ));
+            yield Ok(Event::default().data(r#"{"type":"done"}"#));
+            return;
+        }
+
+        // 8. Parse citations
         let citations = parse_citations_from_response(&full_text, &retrieval_outputs
         );
 
@@ -861,7 +899,7 @@ pub async fn stream_chat_response(
         // Send final done
         yield Ok(Event::default().data(r#"{"type":"done"}"#));
 
-        // 8. Save assistant message
+        // 9. Save assistant message
         let citations_json = if !retrieval_outputs.is_empty() {
             let simple_citations: Vec<serde_json::Value> = retrieval_outputs.iter().enumerate().map(|(idx, r)| {
                 serde_json::json!({

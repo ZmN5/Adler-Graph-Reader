@@ -585,7 +585,16 @@ impl LlmClient {
                                     }
                                 }
                                 Err(e) => {
-                                    tracing::warn!("[ChatStream] Failed to parse SSE data: {}", e);
+                                    // Check if this is an API error response (e.g. context length exceeded)
+                                    if let Ok(err_resp) = serde_json::from_str::<serde_json::Value>(data) {
+                                        if let Some(err_msg) = err_resp.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
+                                            tracing::error!("[ChatStream] API error: {}", err_msg);
+                                            yield Err(LlmError::ApiError(err_msg.to_string()));
+                                            return;
+                                        }
+                                    }
+                                    tracing::warn!("[ChatStream] Failed to parse SSE data ({} chars): {} | raw: {}",
+                                        data.len(), e, &data[..data.len().min(500)]);
                                 }
                             }
                         }
