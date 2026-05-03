@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { FileText } from 'lucide-react'
+import { FileText, List, ChevronLeft, ChevronDown } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 
@@ -31,6 +31,12 @@ interface HighlightRect {
   height: number
 }
 
+interface TocItem {
+  title: string
+  pageNumber: number
+  depth: number
+}
+
 export function PDFReader({
   bookId,
   className,
@@ -49,6 +55,9 @@ export function PDFReader({
   const [recalcTrigger, setRecalcTrigger] = useState(0)
   // Highlight state: page number -> array of highlight rects
   const [pageHighlights, setPageHighlights] = useState<Map<number, HighlightRect[]>>(new Map())
+  // PDF outline (table of contents)
+  const [outline, setOutline] = useState<TocItem[]>([])
+  const [tocOpen, setTocOpen] = useState(false)
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null)
@@ -106,6 +115,68 @@ export function PDFReader({
       cancelled = true
     }
   }, [bookId])
+
+  // Load PDF outline (table of contents) after document loads
+  useEffect(() => {
+    if (!pdfDoc) return
+    let cancelled = false
+
+    const loadOutline = async () => {
+      try {
+        const outlineNodes = await pdfDoc.getOutline()
+        if (!outlineNodes || outlineNodes.length === 0) return
+        if (cancelled) return
+
+        const flatten = async (items: any[], depth = 0): Promise<TocItem[]> => {
+          const result: TocItem[] = []
+          for (const item of items) {
+            let pageNumber = 0
+            if (item.dest) {
+              try {
+                let destArray: any
+                if (typeof item.dest === 'string') {
+                  destArray = await pdfDoc.getDestination(item.dest)
+                } else {
+                  destArray = item.dest
+                }
+                if (destArray && destArray[0]) {
+                  // Try getPageIndex first (handles page ref objects)
+                  const pageIndex = await pdfDoc.getPageIndex(destArray[0])
+                  if (pageIndex >= 0) {
+                    pageNumber = pageIndex + 1
+                  } else if (typeof destArray[0] === 'number' && destArray[0] >= 0) {
+                    // Fallback: some PDFs use a direct page number in the dest array
+                    pageNumber = destArray[0] + 1
+                  }
+                }
+              } catch (err) {
+                console.warn(`Failed to resolve destination for TOC item "${item.title}":`, err)
+              }
+            }
+            result.push({ title: item.title, pageNumber, depth })
+            if (item.items && item.items.length > 0) {
+              const children = await flatten(item.items, depth + 1)
+              result.push(...children)
+            }
+          }
+          return result
+        }
+
+        const toc = await flatten(outlineNodes)
+        if (!cancelled) {
+          setOutline(toc.filter((item) => item.pageNumber > 0))
+        }
+      } catch (err) {
+        console.error('Failed to load PDF outline:', err)
+      }
+    }
+
+    loadOutline()
+
+    return () => {
+      cancelled = true
+    }
+  }, [pdfDoc])
 
   // Mark container as ready after mount
   useEffect(() => {
@@ -258,6 +329,27 @@ export function PDFReader({
       renderingRef.current.delete(pageNumber)
     }
   }, [pdfDoc, pageInfos])
+
+  // Navigate to a specific page (used by TOC and external props)
+  const goToPage = useCallback((targetPage: number) => {
+    if (!scrollContainerRef.current) {
+      console.warn('Cannot navigate: scroll container not ready')
+      return
+    }
+    if (pageInfos.length === 0) {
+      console.warn('Cannot navigate: page dimensions not yet calculated')
+      return
+    }
+    const validPage = Math.max(1, Math.min(targetPage, pageInfos.length))
+    const pageInfo = pageInfos[validPage - 1]
+    if (pageInfo) {
+      scrollContainerRef.current.scrollTo({
+        top: pageInfo.yOffset,
+        behavior: 'smooth',
+      })
+      setTocOpen(false)
+    }
+  }, [pageInfos])
 
   // Handle scroll events for virtual scrolling
   useEffect(() => {
@@ -433,23 +525,111 @@ export function PDFReader({
     }
   }, [highlightChunkId])
 
+  // Determine which TOC item corresponds to the currently visible page
+  const activeTocIndex = useMemo(() => {
+    let activeIndex = -1
+    let maxPage = -1
+    for (let i = 0; i < outline.length; i++) {
+      const item = outline[i]
+      if (item.pageNumber > 0 && item.pageNumber <= currentVisiblePage && item.pageNumber > maxPage) {
+        maxPage = item.pageNumber
+        activeIndex = i
+      }
+    }
+    return activeIndex
+  }, [outline, currentVisiblePage])
+
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header showing current page */}
-      <div className="flex items-center justify-center p-3 border-b border-gray-200 bg-slate-50 flex-shrink-0">
-        <div className="text-sm text-gray-500">
-          {isLoading ? 'Loading...' : error ? 'Error' : `Page ${currentVisiblePage} of ${pageInfos.length || '?'}`}
+      <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-slate-50 flex-shrink-0">
+        {outline.length > 0 ? (
+          <button
+            onClick={() => setTocOpen(!tocOpen)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-sans font-medium transition-colors border',
+              tocOpen
+                ? 'bg-apple-blue text-white border-apple-blue'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-slate-100'
+            )}
+            aria-label={tocOpen ? 'Close contents' : 'Open contents'}
+            title={tocOpen ? 'Close contents' : 'Open contents'}
+          >
+            <List className="w-4 h-4" />
+            <span>目录</span>
+          </button>
+        ) : (
+          <div className="w-[72px] flex-shrink-0" />
+        )}
+
+        <div className="flex-1 min-w-0 text-center">
+          <div className="text-sm text-gray-500">
+            {isLoading ? 'Loading...' : error ? 'Error' : `Page ${currentVisiblePage} of ${pageInfos.length || '?'}`}
+          </div>
         </div>
+
+        <div className="w-[72px] flex-shrink-0" />
       </div>
 
-      {/* Scroll container with virtual pages - always rendered so ref callback fires */}
-      <div
-        ref={(el) => {
-          scrollContainerRef.current = el
-          setContainerElement(el)
-        }}
-        className="flex-1 min-h-0 overflow-y-auto bg-white"
-      >
+      {/* Main content: TOC sidebar + scroll container */}
+      <div className="flex flex-1 min-h-0">
+        {/* TOC Sidebar */}
+        <div
+          className={cn(
+            'flex-shrink-0 border-r border-gray-200 bg-white transition-all duration-300 ease-in-out overflow-hidden',
+            tocOpen ? 'w-[260px] opacity-100' : 'w-0 opacity-0'
+          )}
+        >
+          <div className="w-[260px] h-full flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-slate-50">
+              <span className="text-sm font-semibold text-gray-700">Contents</span>
+              <button
+                onClick={() => setTocOpen(false)}
+                className="p-1 rounded-md hover:bg-slate-200 transition-colors"
+                aria-label="Close contents"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto py-2">
+              {outline.map((item, index) => {
+                const isActive = index === activeTocIndex
+                const pagesReady = pageInfos.length > 0
+                return (
+                  <button
+                    key={index}
+                    onClick={() => goToPage(item.pageNumber)}
+                    disabled={!pagesReady}
+                    className={cn(
+                      'w-full text-left px-4 py-2 text-sm font-sans transition-colors flex items-center gap-1',
+                      !pagesReady && 'opacity-40 cursor-not-allowed',
+                      isActive && pagesReady
+                        ? 'bg-apple-blue/10 text-apple-blue font-medium'
+                        : pagesReady
+                          ? 'text-gray-700 hover:bg-slate-50'
+                          : 'text-gray-400'
+                    )}
+                    style={{ paddingLeft: `${16 + item.depth * 16}px` }}
+                  >
+                    {item.depth > 0 && (
+                      <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                    )}
+                    <span className="truncate">{item.title}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Scroll container with virtual pages - always rendered so ref callback fires */}
+        <div
+          ref={(el) => {
+            scrollContainerRef.current = el
+            setContainerElement(el)
+          }}
+          className="flex-1 min-h-0 overflow-y-auto bg-white"
+        >
         {isLoading && (
           <div className="flex items-center justify-center h-full">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-apple-blue" />
@@ -514,6 +694,7 @@ export function PDFReader({
               ))}
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>

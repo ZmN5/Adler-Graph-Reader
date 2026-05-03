@@ -302,8 +302,56 @@ export function EPUBReader({
     if (index < 0 || index >= chapters.length) return
     const chapter = chapters[index]
     if (!chapter) return
-    // Navigate via setLocation so react-reader handles the single rendition.display() call
-    setLocation(chapter.href)
+
+    // Update chapter indicator immediately for responsive UI
+    setCurrentChapter(chapter.label)
+    setCurrentChapterHref(chapter.href)
+
+    const rendition = renditionRef.current
+    if (!rendition) return
+
+    // epubjs's internal scrollTo targets its own container which can't scroll
+    // in our layout (height === scrollHeight). Instead, tell epubjs to display
+    // the chapter, then manually scroll our outer container to the right position.
+    rendition.display(chapter.href).then(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const container = scrollContainerRef.current
+          if (!container) return
+
+          // Calculate proportional scroll position based on the chapter's
+          // position in the spine, since continuous mode renders all sections
+          // sequentially in the outer container.
+          const manager = (rendition as any).manager
+          const book = manager?.book || (rendition as any).book
+          if (book?.spine) {
+            const section = book.spine.get(chapter.href)
+            if (section) {
+              const totalSections = book.spine.items.length
+              const sectionIndex = section.index
+              const targetTop = (sectionIndex / totalSections) * container.scrollHeight
+              container.scrollTo({ top: targetTop, behavior: 'smooth' })
+            }
+          }
+        })
+      })
+    }).catch(() => {
+      // display failed, still try to scroll proportionally
+      requestAnimationFrame(() => {
+        const container = scrollContainerRef.current
+        if (!container) return
+        const manager = (rendition as any).manager
+        const book = manager?.book || (rendition as any).book
+        if (book?.spine) {
+          const section = book.spine.get(chapter.href)
+          if (section) {
+            const totalSections = book.spine.items.length
+            const targetTop = (section.index / totalSections) * container.scrollHeight
+            container.scrollTo({ top: targetTop, behavior: 'smooth' })
+          }
+        }
+      })
+    })
   }, [chapters])
 
   const goToPrevChapter = useCallback(() => {
@@ -455,6 +503,7 @@ export function EPUBReader({
                 flow: 'scrolled',
                 manager: 'continuous',
                 spread: 'none',
+                allowScriptedContent: true,
               }}
               epubInitOptions={{
                 openAs: 'epub',
