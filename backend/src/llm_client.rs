@@ -420,6 +420,67 @@ impl LlmClient {
         })
     }
 
+    /// Simple non-streaming chat completion, returns the response text.
+    /// Used for HyDE passage generation and other single-turn LLM calls.
+    pub async fn chat_completion(
+        &self,
+        messages: Vec<ChatMessage>,
+        temperature: f32,
+    ) -> Result<String, LlmError> {
+        let chat_request = ChatRequest {
+            model: self.model.clone(),
+            messages,
+            temperature,
+            stream: None,
+        };
+
+        let url = format!("{}/chat/completions", self.base_url);
+
+        let client = self.client.clone();
+        let api_key = self.api_key.clone();
+        let response = with_retry(
+            || {
+                let client = client.clone();
+                let url = url.clone();
+                let api_key = api_key.clone();
+                let chat_request = chat_request.clone();
+                async move {
+                    let resp = client
+                        .post(&url)
+                        .header("Authorization", format!("Bearer {}", api_key))
+                        .json(&chat_request)
+                        .send()
+                        .await
+                        .map_err(|e| {
+                            tracing::error!("[ChatCompletion] Connection error: {}", e);
+                            LlmError::ConnectionError(e.to_string())
+                        })?;
+
+                    if !resp.status().is_success() {
+                        let status = resp.status();
+                        let body = resp.text().await.unwrap_or_default();
+                        tracing::error!("[ChatCompletion] API error {}: {}", status, body);
+                        return Err(LlmError::ApiError(format!("API error {}: {}", status, body)));
+                    }
+                    Ok(resp)
+                }
+            },
+            3,
+        )
+        .await?;
+
+        let chat_response: ChatResponse = response.json().await.map_err(|e| {
+            tracing::error!("[ChatCompletion] Parse error: {}", e);
+            LlmError::ParseError(e.to_string())
+        })?;
+
+        chat_response
+            .choices
+            .first()
+            .map(|c| c.message.content.clone())
+            .ok_or(LlmError::EmptyResponse)
+    }
+
     /// Generate a chat response with true streaming token output
     ///
     /// Returns a stream of SummaryStreamItem (text tokens and done signals)

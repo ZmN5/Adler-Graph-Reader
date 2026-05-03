@@ -48,6 +48,7 @@ export function ChatPanel({
   const abortControllerRef = useRef<AbortController | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const prevNodeIdRef = useRef<string | null>(null)
+  const activeNodeIdRef = useRef<string | null>(null)
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -110,6 +111,7 @@ export function ChatPanel({
   const handleAskAboutNode = useCallback(() => {
     if (!nodeContext) return
     const question = `请介绍一下「${nodeContext.name}」`
+    activeNodeIdRef.current = nodeContext.id
     setInputText(question)
     setNodeContext(null)
     inputRef.current?.focus()
@@ -218,8 +220,10 @@ export function ChatPanel({
       const generator = await sendMessageStream(
         currentConversationId,
         content,
-        controller.signal
+        controller.signal,
+        activeNodeIdRef.current
       )
+      activeNodeIdRef.current = null
 
       for await (const chunk of generator) {
         if (controller.signal.aborted) break

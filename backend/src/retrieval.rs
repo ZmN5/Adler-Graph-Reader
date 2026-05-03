@@ -507,6 +507,74 @@ pub fn reciprocal_rank_fusion(
     fused_results
 }
 
+/// Generalized RRF fusion for N result lists.
+///
+/// For each unique chunk across all lists, computes:
+///   rrf_score = Σ 1 / (k + rank_in_list_i)  for each list i where the chunk appears
+pub fn reciprocal_rank_fusion_multi(
+    result_lists: &[Vec<SearchResult>],
+    k: Option<f64>,
+) -> Vec<FusedResult> {
+    let k = k.unwrap_or(RRF_K);
+
+    // Build rank maps for each list (1-indexed ranks)
+    let rank_maps: Vec<HashMap<&str, usize>> = result_lists
+        .iter()
+        .map(|list| {
+            list.iter()
+                .enumerate()
+                .map(|(idx, r)| (r.chunk_id.as_str(), idx + 1))
+                .collect()
+        })
+        .collect();
+
+    // Collect all unique chunk IDs across all lists
+    let mut all_chunks: Vec<&str> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for rank_map in &rank_maps {
+        for chunk_id in rank_map.keys() {
+            if seen.insert(*chunk_id) {
+                all_chunks.push(chunk_id);
+            }
+        }
+    }
+
+    // Calculate RRF scores
+    let mut fused_results: Vec<FusedResult> = all_chunks
+        .into_iter()
+        .map(|chunk_id| {
+            let mut rrf_score = 0.0;
+            for rank_map in &rank_maps {
+                if let Some(&rank) = rank_map.get(chunk_id) {
+                    rrf_score += 1.0 / (k + rank as f64);
+                }
+            }
+            FusedResult {
+                chunk_id: chunk_id.to_string(),
+                rrf_score,
+                vector_score: None,
+                bm25_score: None,
+            }
+        })
+        .collect();
+
+    // Sort by RRF score descending
+    fused_results.sort_by(|a, b| {
+        b.rrf_score
+            .partial_cmp(&a.rrf_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    tracing::info!(
+        "[RRF-Multi] Fused {} lists ({} results) into {} fused",
+        result_lists.len(),
+        result_lists.iter().map(|l| l.len()).sum::<usize>(),
+        fused_results.len()
+    );
+
+    fused_results
+}
+
 /// Convert fused results to final retrieval results
 #[allow(dead_code)]
 pub fn fused_to_retrieval_results(fused: Vec<FusedResult>) -> Vec<RetrievalResult> {

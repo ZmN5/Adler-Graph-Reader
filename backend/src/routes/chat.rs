@@ -62,7 +62,7 @@ pub async fn send_message_stream(
         req.content.len()
     );
 
-    let stream = crate::chat::stream_chat_response(pool.0, conversation_id, req.content).await;
+    let stream = crate::chat::stream_chat_response(pool.0, conversation_id, req.content, req.node_id).await;
 
     Ok(Sse::new(stream)
         .keep_alive(KeepAlive::default())

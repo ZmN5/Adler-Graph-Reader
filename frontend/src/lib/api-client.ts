@@ -444,7 +444,8 @@ export async function deleteConversation(conversationId: string): Promise<void> 
 export async function sendMessageStream(
   conversationId: string,
   content: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  nodeId?: string | null,
 ): Promise<AsyncGenerator<StreamChunk, void, unknown>> {
   const API_BASE_URL = import.meta.env.PROD
     ? (import.meta.env.VITE_API_BASE_URL || '')
@@ -465,7 +466,7 @@ export async function sendMessageStream(
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, node_id: nodeId || undefined }),
       signal: fetchSignal,
     }
   )

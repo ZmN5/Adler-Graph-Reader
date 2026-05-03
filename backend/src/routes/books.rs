@@ -155,6 +155,19 @@ pub async fn upload_book(
     .execute(&*pool)
     .await?;
 
+    // Auto-parse after upload so chunks exist immediately
+    match format {
+        "pdf" => {
+            crate::pdf_parser::parse_pdf(&book_id, file_path.to_str().unwrap_or(""), &pool).await
+                .map_err(|e| AppError::Internal(format!("Failed to parse PDF: {}", e)))?;
+        }
+        "epub" => {
+            crate::epub_parser::parse_epub(&book_id, file_path.to_str().unwrap_or(""), &pool).await
+                .map_err(|e| AppError::Internal(format!("Failed to parse EPUB: {}", e)))?;
+        }
+        _ => unreachable!(),
+    };
+
     Ok((StatusCode::CREATED, Json(UploadResponse { book_id, title: title_for_db })))
 }
 

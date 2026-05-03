@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::config;
 use crate::llm_client::{ChatMessage, LlmClient, SummaryStreamItem};
-use crate::retrieval::HybridRetriever;
+use crate::retrieval::{HybridRetriever, reciprocal_rank_fusion_multi};
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,8 @@ pub struct CreateConversationRequest {
 #[derive(Debug, Deserialize)]
 pub struct SendMessageRequest {
     pub content: String,
+    #[serde(default)]
+    pub node_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -42,6 +45,14 @@ pub struct ConversationWithMessages {
     #[serde(flatten)]
     pub conversation: Conversation,
     pub messages: Vec<Message>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChatNodeContext {
+    pub name: String,
+    pub native_term: Option<String>,
+    pub description: Option<String>,
+    pub examples: Vec<String>,
 }
 
 // ─── DB Operations ───────────────────────────────────────────────────────────
@@ -168,9 +179,41 @@ Key-Value Cache is a foundational technique for efficient LLM inference [Source:
 "#.to_string()
 }
 
-/// Build user message with retrieved sources
-fn build_chat_user_message(content: &str, retrieval_outputs: &[crate::retrieval::RetrievalOutput]) -> String {
-    let mut msg = format!("Question: {}\n\n", content);
+/// Build user message with retrieved sources and optional node context
+fn build_chat_user_message(
+    content: &str,
+    retrieval_outputs: &[crate::retrieval::RetrievalOutput],
+    node_context: Option<&ChatNodeContext>,
+) -> String {
+    let mut msg = String::new();
+
+    // Prepend node metadata when available
+    if let Some(nc) = node_context {
+        let native_info = match &nc.native_term {
+            Some(nt) if nt != &nc.name => format!(" (source term: \"{}\")", nt),
+            _ => String::new(),
+        };
+        msg.push_str(&format!(
+            "The user is asking about the concept \"{}\"{} from the book.\n",
+            nc.name, native_info
+        ));
+        if let Some(ref desc) = nc.description {
+            msg.push_str(&format!("Concept description: {}\n", desc));
+        }
+        if !nc.examples.is_empty() {
+            msg.push_str("Examples: ");
+            for (i, example) in nc.examples.iter().enumerate() {
+                if i > 0 {
+                    msg.push_str("; ");
+                }
+                msg.push_str(example);
+            }
+            msg.push_str("\n");
+        }
+        msg.push('\n');
+    }
+
+    msg.push_str(&format!("Question: {}\n\n", content));
 
     if !retrieval_outputs.is_empty() {
         msg.push_str("---\nRETRIEVED SOURCE MATERIALS:\n\n");
@@ -272,11 +315,214 @@ pub async fn retrieve_for_chat(
     Ok(results)
 }
 
+// ─── Node-Aware Retrieval Helpers ──────────────────────────────────────────────
+
+/// Load chunk contents by chunk IDs directly from the database.
+/// These are authoritative source chunks (from node.source_chunk_ids).
+async fn load_chunks_by_ids(
+    pool: &SqlitePool,
+    chunk_ids: &[String],
+) -> Result<Vec<crate::retrieval::RetrievalOutput>, ChatError> {
+    if chunk_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let placeholders: Vec<String> = chunk_ids.iter().map(|_| "?".to_string()).collect();
+    let in_clause = placeholders.join(",");
+    let query_str = format!(
+        "SELECT id, content, page_start, page_end FROM chunks WHERE id IN ({})",
+        in_clause
+    );
+
+    let mut query = sqlx::query_as::<_, (String, String, i64, i64)>(&query_str);
+    for id in chunk_ids {
+        query = query.bind(id);
+    }
+
+    let rows = query
+        .fetch_all(pool)
+        .await
+        .map_err(|e| ChatError::RetrievalError(format!("Failed to load source chunks: {}", e)))?;
+
+    let outputs: Vec<crate::retrieval::RetrievalOutput> = rows
+        .into_iter()
+        .map(|(chunk_id, content, page_start, page_end)| {
+            crate::retrieval::RetrievalOutput {
+                chunk_id,
+                content,
+                page_start,
+                page_end,
+                vector_score: None,
+                bm25_score: None,
+                final_score: 1.0,
+            }
+        })
+        .collect();
+
+    Ok(outputs)
+}
+
+/// Fetch node metadata and source chunks from the database.
+async fn fetch_node_context(
+    pool: &SqlitePool,
+    node_id: &str,
+) -> Result<Option<(ChatNodeContext, Vec<crate::retrieval::RetrievalOutput>)>, ChatError> {
+    let node_row: Option<(String, Option<String>, Option<String>, String, String, String)> =
+        sqlx::query_as(
+            "SELECT name, native_term, description, examples, language, source_chunk_ids FROM nodes WHERE id = ?"
+        )
+        .bind(node_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| ChatError::RetrievalError(format!("Failed to fetch node: {}", e)))?;
+
+    let (name, native_term, description, examples_json, _language, source_chunk_ids_json) =
+        match node_row {
+            Some(row) => row,
+            None => return Ok(None),
+        };
+
+    let examples: Vec<String> = serde_json::from_str(&examples_json).unwrap_or_default();
+    let source_chunk_ids: Vec<String> =
+        serde_json::from_str(&source_chunk_ids_json).unwrap_or_default();
+
+    let source_chunks = load_chunks_by_ids(pool, &source_chunk_ids).await?;
+
+    let node_context = ChatNodeContext {
+        name,
+        native_term,
+        description,
+        examples,
+    };
+
+    Ok(Some((node_context, source_chunks)))
+}
+
+/// Generate a HyDE (Hypothetical Document Embeddings) passage.
+/// Creates a short hypothetical passage about the concept in the source language,
+/// which serves as a richer query for vector search against document chunks.
+async fn generate_hyde_passage(
+    pool: &SqlitePool,
+    node_context: &ChatNodeContext,
+    user_question: &str,
+    book_language: &str,
+) -> Result<String, ChatError> {
+    let model_config = config::get_model_config(pool)
+        .await
+        .map_err(|e| ChatError::ConfigError(e.to_string()))?;
+
+    let llm_client = LlmClient::new(
+        &model_config.llm_api_url,
+        &model_config.llm_model,
+        &model_config.api_key,
+    )
+    .map_err(|e| ChatError::ConfigError(format!("Failed to create LLM client: {}", e)))?;
+
+    let lang_name = match book_language {
+        "zh" => "Chinese",
+        _ => "English",
+    };
+
+    let native_info = match &node_context.native_term {
+        Some(nt) if *nt != node_context.name => format!(" (also known as \"{}\")", nt),
+        _ => String::new(),
+    };
+
+    let desc = node_context
+        .description
+        .as_deref()
+        .unwrap_or("No description available.");
+
+    let examples_str = if node_context.examples.is_empty() {
+        "No examples available.".to_string()
+    } else {
+        node_context.examples.join("\n")
+    };
+
+    let prompt = format!(
+        "You are helping with document retrieval. Write a short informative passage \
+        (2-3 paragraphs) in {lang_name} about the concept \"{name}\"{native_info}. \
+        The user asked: \"{question}\"\n\n\
+        Description: {desc}\n\n\
+        Examples: {examples}\n\n\
+        Write as if explaining this concept in a technical book. Include specific \
+        terminology, key details, and context that would appear in a document \
+        discussing this topic. This passage will be used for semantic search retrieval.",
+        name = node_context.name,
+        question = user_question,
+        desc = desc,
+        examples = examples_str,
+    );
+
+    let messages = vec![ChatMessage::new("user", &prompt)];
+
+    llm_client
+        .chat_completion(messages, 0.3)
+        .await
+        .map_err(|e| ChatError::RetrievalError(format!("HyDE generation failed: {}", e)))
+}
+
+/// Build RetrievalOutput from fused RRF results by loading chunk data from DB.
+async fn build_retrieval_outputs_from_fused(
+    pool: &SqlitePool,
+    fused: &[crate::retrieval::FusedResult],
+) -> Result<Vec<crate::retrieval::RetrievalOutput>, ChatError> {
+    if fused.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let chunk_ids: Vec<String> = fused.iter().map(|f| f.chunk_id.clone()).collect();
+    let placeholders: Vec<String> = chunk_ids.iter().map(|_| "?".to_string()).collect();
+    let in_clause = placeholders.join(",");
+    let query_str = format!(
+        "SELECT id, content, page_start, page_end FROM chunks WHERE id IN ({})",
+        in_clause
+    );
+
+    let mut query = sqlx::query_as::<_, (String, String, i64, i64)>(&query_str);
+    for id in &chunk_ids {
+        query = query.bind(id);
+    }
+
+    let rows = query
+        .fetch_all(pool)
+        .await
+        .map_err(|e| ChatError::RetrievalError(format!("Failed to load chunks: {}", e)))?;
+
+    let chunk_data: std::collections::HashMap<String, (String, i64, i64)> = rows
+        .into_iter()
+        .map(|(id, content, ps, pe)| (id, (content, ps, pe)))
+        .collect();
+
+    // Maintain RRF order
+    let outputs: Vec<crate::retrieval::RetrievalOutput> = fused
+        .iter()
+        .filter_map(|f| {
+            chunk_data.get(&f.chunk_id).map(|(content, page_start, page_end)| {
+                crate::retrieval::RetrievalOutput {
+                    chunk_id: f.chunk_id.clone(),
+                    content: content.clone(),
+                    page_start: *page_start,
+                    page_end: *page_end,
+                    vector_score: f.vector_score,
+                    bm25_score: f.bm25_score,
+                    final_score: f.rrf_score,
+                }
+            })
+        })
+        .collect();
+
+    Ok(outputs)
+}
+
+// ─── Prompt Building ──────────────────────────────────────────────────────────
+
 /// Build LLM messages for chat: system + history + current user message with sources
 pub fn build_chat_messages(
     history: &[Message],
     user_content: &str,
     retrieval_outputs: &[crate::retrieval::RetrievalOutput],
+    node_context: Option<&ChatNodeContext>,
 ) -> Vec<ChatMessage> {
     let mut messages = vec![ChatMessage::new("system", &build_chat_system_prompt())];
 
@@ -291,8 +537,8 @@ pub fn build_chat_messages(
         ));
     }
 
-    // Add current user message with retrieved sources
-    let user_msg = build_chat_user_message(user_content, retrieval_outputs);
+    // Add current user message with retrieved sources and node context
+    let user_msg = build_chat_user_message(user_content, retrieval_outputs, node_context);
     messages.push(ChatMessage::new("user", &user_msg));
 
     messages
@@ -304,6 +550,7 @@ pub async fn stream_chat_response(
     pool: SqlitePool,
     conversation_id: String,
     user_content: String,
+    node_id: Option<String>,
 ) -> impl futures::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>> {
     use axum::response::sse::Event;
     use futures::StreamExt;
@@ -348,17 +595,181 @@ pub async fn stream_chat_response(
         .await
         .unwrap_or_default();
 
-        // 4. Perform RAG retrieval
-        let retrieval_outputs = match retrieve_for_chat(
-            &pool,
-            &conversation.book_id,
-            &user_content,
-        ).await {
-            Ok(outputs) => outputs,
-            Err(e) => {
-                tracing::warn!("[Chat] Retrieval failed: {}", e);
-                Vec::new()
+        // 4. Perform RAG retrieval (node-aware when node_id is present)
+        let (node_context, retrieval_outputs) = if let Some(ref nid) = node_id {
+            // Fetch node context and source chunks (authoritative, always included)
+            let (ctx, source_chunks) = match fetch_node_context(&pool, nid).await {
+                Ok(Some((ctx, chunks))) => (Some(ctx), chunks),
+                Ok(None) => (None, Vec::new()),
+                Err(e) => {
+                    tracing::warn!("[Chat] Failed to fetch node context: {}", e);
+                    (None, Vec::new())
+                }
+            };
+
+            // Get model config for embedding and BM25 calls
+            let model_config = config::get_model_config(&pool).await.ok();
+
+            // Get book language for cross-language HyDE generation
+            let book_language: String = sqlx::query_scalar(
+                "SELECT language FROM books WHERE id = ?"
+            )
+            .bind(&conversation.book_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap_or_default()
+            .unwrap_or_else(|| "auto".to_string());
+
+            let source_lang = if book_language == "auto" || book_language.is_empty() {
+                "en"
+            } else {
+                &book_language
+            };
+
+            // Collect search result lists for multi-strategy RRF fusion
+            let mut all_search_lists: Vec<Vec<crate::retrieval::SearchResult>> = Vec::new();
+
+            // Strategy A: HyDE vector search (hypothetical passage → embedding → cosine similarity)
+            if let (Some(ref node_ctx), Some(ref mc)) = (ctx.as_ref(), model_config.as_ref()) {
+                if let Ok(hyde_text) = generate_hyde_passage(
+                    &pool,
+                    node_ctx,
+                    &user_content,
+                    source_lang,
+                ).await {
+                    tracing::info!("[Chat] HyDE passage: {} chars", hyde_text.len());
+                    match crate::retrieval::vector_search_with_query(
+                        &pool,
+                        &hyde_text,
+                        Some(&conversation.book_id),
+                        Some(50),
+                        &mc.embedding_model,
+                        &mc.embedding_url,
+                        &mc.api_key,
+                    ).await {
+                        Ok(results) => {
+                            tracing::info!("[Chat] HyDE vector: {} results", results.len());
+                            all_search_lists.push(results);
+                        }
+                        Err(e) => tracing::warn!("[Chat] HyDE vector failed: {}", e),
+                    }
+                }
             }
+
+            // Strategy B: BM25 with native_term (source-language term for cross-language matching)
+            if let Some(ref node_ctx) = ctx {
+                let bm25_query = node_ctx
+                    .native_term
+                    .as_deref()
+                    .filter(|nt| !nt.is_empty())
+                    .unwrap_or(&node_ctx.name);
+                match crate::retrieval::bm25_search(
+                    &pool,
+                    bm25_query,
+                    Some(&conversation.book_id),
+                    Some(50),
+                ).await {
+                    Ok(results) => {
+                        tracing::info!("[Chat] Native BM25 '{}': {} results",
+                            bm25_query.chars().take(50).collect::<String>(),
+                            results.len());
+                        all_search_lists.push(results);
+                    }
+                    Err(e) => tracing::warn!("[Chat] Native BM25 failed: {}", e),
+                }
+            }
+
+            // Strategy C: Vector search with original user question
+            if let Some(ref mc) = model_config {
+                match crate::retrieval::vector_search_with_query(
+                    &pool,
+                    &user_content,
+                    Some(&conversation.book_id),
+                    Some(50),
+                    &mc.embedding_model,
+                    &mc.embedding_url,
+                    &mc.api_key,
+                ).await {
+                    Ok(results) => {
+                        tracing::info!("[Chat] Question vector: {} results", results.len());
+                        all_search_lists.push(results);
+                    }
+                    Err(e) => tracing::warn!("[Chat] Question vector failed: {}", e),
+                }
+            }
+
+            // Strategy D: BM25 with user question
+            match crate::retrieval::bm25_search(
+                &pool,
+                &user_content,
+                Some(&conversation.book_id),
+                Some(50),
+            ).await {
+                Ok(results) => {
+                    tracing::info!("[Chat] Question BM25: {} results", results.len());
+                    all_search_lists.push(results);
+                }
+                Err(e) => tracing::warn!("[Chat] Question BM25 failed: {}", e),
+            }
+
+            // RRF fuse all non-empty search result lists
+            let fused_outputs = {
+                let non_empty: Vec<Vec<crate::retrieval::SearchResult>> = all_search_lists
+                    .into_iter()
+                    .filter(|l| !l.is_empty())
+                    .collect();
+
+                if non_empty.is_empty() {
+                    Vec::new()
+                } else {
+                    let fused = reciprocal_rank_fusion_multi(&non_empty, None);
+
+                    // Convert FusedResult → RetrievalOutput by loading chunk data
+                    build_retrieval_outputs_from_fused(&pool, &fused).await
+                        .unwrap_or_default()
+                }
+            };
+
+            // Merge: source chunks first (unduplicated), then fused search results
+            let source_ids: HashSet<String> = source_chunks
+                .iter()
+                .map(|r| r.chunk_id.clone())
+                .collect();
+            let source_count = source_ids.len();
+
+            let mut merged = source_chunks;
+            for result in fused_outputs {
+                if !source_ids.contains(&result.chunk_id) {
+                    merged.push(result);
+                }
+            }
+
+            let total = merged.len();
+            merged.truncate(8);
+
+            tracing::info!(
+                "[Chat] Node-aware: {} source + {} fused → {} merged (from {})",
+                source_count,
+                total.saturating_sub(source_count),
+                merged.len(),
+                total
+            );
+
+            (ctx, merged)
+        } else {
+            // No node_id: standard retrieval
+            let outputs = match retrieve_for_chat(
+                &pool,
+                &conversation.book_id,
+                &user_content,
+            ).await {
+                Ok(outputs) => outputs,
+                Err(e) => {
+                    tracing::warn!("[Chat] Retrieval failed: {}", e);
+                    Vec::new()
+                }
+            };
+            (None, outputs)
         };
 
         tracing::info!(
@@ -368,7 +779,12 @@ pub async fn stream_chat_response(
         );
 
         // 5. Build LLM messages
-        let messages = build_chat_messages(&history, &user_content, &retrieval_outputs);
+        let messages = build_chat_messages(
+            &history,
+            &user_content,
+            &retrieval_outputs,
+            node_context.as_ref(),
+        );
 
         // 6. Stream LLM response
         let model_config = match config::get_model_config(&pool).await {
